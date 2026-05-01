@@ -1,0 +1,846 @@
+SPÉCIFICATION TECHNIQUE DÉVELOPPEURS
+Système de gestion scolaire – Frontend & Backend
+Base de données existante : paulbert_base
+1. Objectif technique
+
+L’objectif est de développer une application web complète de gestion scolaire connectée à la base de données existante paulbert_base.
+
+Le système devra permettre :
+
+la consultation et la mise à jour des données scolaires ;
+l’exploitation des modules métier définis dans le cahier fonctionnel ;
+la séparation claire entre frontend, backend et base de données ;
+une gestion sécurisée des accès par rôles ;
+une architecture évolutive pour supporter de futurs modules.
+2. Hypothèses de départ
+
+Le développement part des hypothèses suivantes :
+
+la base de données paulbert_base est déjà créée ;
+les tables principales sont déjà définies ;
+le développement portera sur :
+l’API backend ;
+le frontend d’administration ;
+la sécurité d’accès ;
+les règles métier ;
+les écrans utilisateurs ;
+les exports et dashboards ;
+l’application est principalement destinée à une utilisation interne par l’établissement.
+3. Architecture technique recommandée
+3.1 Architecture générale
+
+Le système doit être construit selon une architecture en trois couches :
+
+Couche 1 – Frontend
+
+Interface web utilisateur responsive permettant :
+
+l’authentification ;
+l’affichage des tableaux de bord ;
+la gestion des modules ;
+la saisie et consultation des données ;
+les exports, impressions et interactions utilisateur.
+Couche 2 – Backend API
+
+Serveur applicatif exposant des endpoints REST sécurisés pour :
+
+authentification ;
+lecture/écriture des données ;
+logique métier ;
+calculs ;
+génération de documents ;
+contrôle des permissions.
+Couche 3 – Base de données
+
+Base relationnelle existante : paulbert_base
+Elle contient les tables nécessaires au fonctionnement métier.
+
+4. Stack technique recommandée
+Option recommandée
+Frontend
+React.js
+Vite ou Next.js en mode dashboard
+TypeScript recommandé
+Tailwind CSS ou Bootstrap
+React Query ou Axios pour consommation API
+React Router pour navigation
+bibliothèque de tables avancées pour listing, filtres, tri
+bibliothèque de graphiques pour dashboards
+Backend
+Laravel 11 recommandé
+ou
+Node.js avec NestJS
+
+Vu ton profil et tes projets précédents, Laravel + React est le choix le plus cohérent.
+
+Base de données
+MySQL / MariaDB
+connexion directe à paulbert_base
+Authentification
+JWT ou Sanctum si Laravel
+gestion RBAC obligatoire
+Génération documents
+PDF : DomPDF / Snappy / équivalent
+Excel : Laravel Excel ou équivalent
+5. Organisation globale du projet
+5.1 Structure logique
+
+Le projet doit être séparé en :
+
+frontend-admin
+backend-api
+base de données existante paulbert_base
+5.2 Communication
+
+Le frontend ne doit jamais interroger directement la base.
+Toute interaction doit passer par le backend.
+
+6. Modules à développer
+
+Les développeurs doivent structurer le projet selon les modules suivants :
+
+Authentification et utilisateurs
+Dashboard
+Élèves
+Enseignants
+Classes, niveaux, matières
+Notes et bulletins
+Absences
+Emploi du temps
+Finances
+Documents
+Notifications / annonces
+Paramètres système
+Reporting / exports
+Audit et logs
+7. Règles d’architecture backend
+7.1 Principe général
+
+Le backend doit être organisé de manière modulaire.
+
+Chaque module doit contenir :
+
+Controller
+Service
+Repository ou accès modèle
+Validator / Request DTO
+Policy / Permission layer
+Resource / Transformer pour réponses API
+7.2 Structure backend recommandée
+Si Laravel
+app/Http/Controllers
+app/Models
+app/Services
+app/Repositories si utilisé
+app/Http/Requests
+app/Policies
+app/Http/Resources
+routes/api.php
+7.3 Responsabilités
+Controller : reçoit la requête, appelle les services
+Service : contient la logique métier
+Model : mapping base de données
+Request : validation des entrées
+Resource : format de sortie JSON
+Policy / Middleware : contrôle d’accès
+8. Conventions API
+8.1 Standard API
+
+L’API doit être RESTful.
+
+Exemple de préfixe
+
+/api/v1/
+
+8.2 Format des réponses
+Réponse succès
+{
+  "success": true,
+  "message": "Opération réussie",
+  "data": {}
+}
+Réponse erreur
+{
+  "success": false,
+  "message": "Erreur de validation",
+  "errors": {
+    "field": ["Ce champ est obligatoire"]
+  }
+}
+8.3 Pagination
+
+Toutes les listes doivent supporter :
+
+page
+per_page
+search
+sort_by
+sort_order
+filtres métier
+8.4 Conventions HTTP
+GET : lecture
+POST : création
+PUT/PATCH : modification
+DELETE : suppression logique ou physique selon cas
+9. Authentification et autorisation
+9.1 Authentification
+
+Le backend doit fournir :
+
+login
+logout
+refresh token si JWT
+récupération profil utilisateur connecté
+changement mot de passe
+réinitialisation mot de passe
+9.2 Autorisation
+
+Le système doit gérer :
+
+rôles ;
+permissions par module ;
+permissions par action.
+Exemples
+students.view
+students.create
+students.edit
+students.delete
+grades.enter
+grades.validate
+finance.payments.create
+9.3 Middleware
+
+Chaque route protégée doit être couverte par :
+
+middleware auth
+middleware role/permission
+10. Mapping backend avec la BDD paulbert_base
+
+Le backend doit être branché sur les tables existantes de paulbert_base.
+
+Les développeurs doivent :
+
+créer les modèles correspondant aux tables existantes ;
+respecter exactement les noms des colonnes si possible ;
+définir les relations ORM ;
+éviter de modifier la structure SQL sans validation ;
+documenter les éventuels écarts entre le code et la base.
+11. Relations ORM attendues
+Élèves
+un élève peut avoir plusieurs inscriptions
+un élève peut avoir plusieurs absences
+un élève peut avoir plusieurs notes
+un élève peut avoir plusieurs bulletins
+un élève peut avoir plusieurs paiements
+un élève peut avoir plusieurs documents
+un élève peut avoir plusieurs tuteurs
+Enseignants
+un enseignant peut avoir plusieurs affectations classe/matière
+un enseignant peut avoir plusieurs entrées d’emploi du temps
+un enseignant peut saisir plusieurs notes
+un enseignant peut marquer des absences
+Classes
+une classe appartient à un niveau
+une classe appartient à une année scolaire
+une classe possède plusieurs élèves
+une classe possède plusieurs affectations enseignant/matière
+une classe possède plusieurs créneaux
+Notes
+une note appartient à un élève
+une note appartient à une matière
+une note appartient à une période
+une note peut être liée à un enseignant
+Finance
+un paiement peut appartenir à un élève
+un paiement peut être lié à une facture
+une facture peut avoir plusieurs paiements
+12. Modules backend détaillés
+12.1 Module Auth
+Endpoints
+POST /auth/login
+POST /auth/logout
+GET /auth/me
+POST /auth/change-password
+POST /auth/forgot-password
+POST /auth/reset-password
+Règles
+hash sécurisé des mots de passe
+blocage éventuel après tentatives multiples
+expiration des sessions / tokens
+journalisation des connexions
+12.2 Module Dashboard
+Endpoints
+GET /dashboard/admin
+GET /dashboard/pedagogical
+GET /dashboard/financial
+GET /dashboard/teacher
+Données à remonter
+total élèves
+total enseignants
+total classes
+absences du jour
+retards du jour
+moyennes par classe
+paiements récents
+impayés
+annonces
+alertes
+Backend
+
+Le service dashboard doit agréger plusieurs tables et renvoyer un JSON prêt pour affichage graphique.
+
+12.3 Module Élèves
+Endpoints
+GET /students
+POST /students
+GET /students/{id}
+PUT /students/{id}
+DELETE /students/{id}
+GET /students/{id}/history
+GET /students/{id}/documents
+GET /students/{id}/grades
+GET /students/{id}/attendance
+GET /students/export
+Validation
+code élève unique
+nom/prénom obligatoires
+date de naissance obligatoire
+statut valide
+données du tuteur si exigées
+Backend
+
+Prévoir :
+
+recherche multicritère
+filtres par classe / niveau / statut
+historique scolaire
+import/export CSV ou Excel
+12.4 Module Enseignants
+Endpoints
+GET /teachers
+POST /teachers
+GET /teachers/{id}
+PUT /teachers/{id}
+DELETE /teachers/{id}
+GET /teachers/{id}/schedule
+GET /teachers/{id}/classes
+GET /teachers/{id}/subjects
+GET /teachers/{id}/documents
+Validation
+code enseignant unique
+données contractuelles selon besoin
+affectations cohérentes
+12.5 Module Classes / Niveaux / Matières
+Endpoints
+GET /levels
+GET /classes
+POST /classes
+GET /classes/{id}
+PUT /classes/{id}
+GET /classes/{id}/students
+GET /classes/{id}/teachers
+GET /subjects
+POST /subjects
+Règles
+une classe liée à une année scolaire
+pas de doublon de code classe dans la même année
+filtrage par niveau et année
+12.6 Module Notes et Bulletins
+Endpoints
+GET /grades
+POST /grades
+PUT /grades/{id}
+GET /grades/student/{studentId}
+GET /grades/class/{classId}
+POST /grades/bulk-entry
+POST /grades/validate
+GET /bulletins
+GET /bulletins/{id}
+POST /bulletins/generate
+GET /bulletins/{id}/pdf
+Règles métier backend
+seuls les enseignants affectés peuvent saisir les notes
+contrôle sur les coefficients
+calcul automatique :
+moyenne matière
+moyenne période
+moyenne générale
+rang
+verrouillage possible d’une période clôturée
+génération bulletin uniquement si données suffisantes
+Points techniques
+service de calcul centralisé
+éviter les calculs dispersés dans les controllers
+prévoir recalcul global par élève, classe ou période
+12.7 Module Absences
+Endpoints
+GET /attendance
+POST /attendance
+POST /attendance/bulk
+PUT /attendance/{id}
+GET /attendance/student/{studentId}
+GET /attendance/class/{classId}
+POST /attendance/justify/{id}
+GET /attendance/stats
+Règles métier
+saisie par séance ou journée
+un enregistrement unique par élève, date et séance
+statut : présent, absent, retard, justifié
+seuils d’alerte paramétrables
+12.8 Module Emploi du temps
+Endpoints
+GET /schedules
+POST /schedules
+PUT /schedules/{id}
+DELETE /schedules/{id}
+GET /schedules/class/{classId}
+GET /schedules/teacher/{teacherId}
+GET /schedules/room/{roomId}
+Règles métier
+aucun conflit enseignant
+aucune double réservation de salle
+horaires cohérents
+visibilité selon rôle
+Logique technique
+
+Prévoir un service de validation avant enregistrement :
+
+collision enseignant
+collision salle
+collision classe
+12.9 Module Finance
+Sous-modules
+frais scolaires
+factures
+paiements
+reçus
+dépenses
+reporting financier
+Endpoints
+GET /fees
+POST /fees/assign
+GET /invoices
+POST /invoices
+GET /payments
+POST /payments
+GET /payments/{id}/receipt
+GET /expenses
+POST /expenses
+GET /finance/dashboard
+GET /finance/reports
+Règles métier
+génération référence unique facture
+génération référence unique paiement
+mise à jour automatique du solde
+statut paiement : payé / partiel / impayé
+historique non supprimable sans traçabilité
+Backend
+
+Prévoir services dédiés :
+
+InvoiceService
+PaymentService
+ExpenseService
+FinancialReportService
+12.10 Module Documents
+Endpoints
+GET /documents
+POST /documents/upload
+GET /documents/{id}
+DELETE /documents/{id}
+GET /documents/student/{studentId}
+GET /documents/teacher/{teacherId}
+Contraintes
+contrôle de type de fichier
+contrôle de taille
+stockage structuré
+nommage propre
+restrictions par rôle
+Arborescence recommandée
+/storage/students/{student_id}/
+/storage/teachers/{teacher_id}/
+/storage/bulletins/{year}/
+/storage/invoices/{year}/
+/storage/receipts/{year}/
+12.11 Module Notifications / Annonces
+Endpoints
+GET /announcements
+POST /announcements
+GET /notifications
+POST /notifications/read/{id}
+Usage
+alertes dashboard
+annonces établissement
+notifications système internes
+12.12 Module Paramètres
+Endpoints
+GET /settings
+PUT /settings
+GET /school-years
+POST /school-years
+GET /evaluation-periods
+POST /evaluation-periods
+GET /expense-categories
+POST /expense-categories
+13. Règles métier critiques à coder
+
+Voici les règles les plus importantes à implémenter côté backend :
+
+13.1 Élèves
+un élève ne doit pas avoir plusieurs inscriptions actives pour la même année scolaire ;
+un élève ne doit pas être affecté à deux classes principales sur la même année ;
+l’historique scolaire doit rester conservé.
+13.2 Notes
+une note doit être liée à un élève, une matière, une période ;
+les notes doivent respecter une plage autorisée ;
+les périodes clôturées ne doivent plus être modifiables sans permission spéciale ;
+les moyennes doivent être recalculées après toute modification.
+13.3 Absences
+pas de doublon absence sur même séance ;
+un retard peut contenir un nombre de minutes ;
+une justification doit garder l’auteur et la date de validation.
+13.4 Emploi du temps
+pas de chevauchement de créneau pour un enseignant ;
+pas de chevauchement de salle ;
+pas de chevauchement pour une même classe.
+13.5 Finance
+chaque paiement doit générer une trace ;
+une facture annulée ne doit pas disparaître physiquement ;
+toute correction doit être historisée ;
+le solde d’un élève doit être recalculé après paiement.
+14. Frontend – Spécification technique
+14.1 Principes généraux
+
+Le frontend doit être conçu comme un dashboard d’administration modulaire.
+
+Il doit offrir :
+
+navigation latérale par module ;
+header avec utilisateur connecté ;
+système de notifications ;
+filtres avancés ;
+formulaires robustes ;
+tableaux performants ;
+responsive design.
+14.2 Pages principales
+Auth
+login
+mot de passe oublié
+changement mot de passe
+Dashboard
+dashboard administrateur
+dashboard direction
+dashboard enseignant
+dashboard financier
+Élèves
+liste
+création
+modification
+fiche détail
+historique
+documents
+notes
+absences
+Enseignants
+liste
+création
+modification
+fiche enseignant
+planning
+documents
+Classes
+liste
+détail
+élèves par classe
+enseignants par classe
+emploi du temps classe
+Notes
+saisie par classe
+saisie par matière
+consultation résultats
+classement
+bulletins
+Absences
+marquage rapide
+historique
+statistiques
+Emploi du temps
+vue calendrier / grille
+vue classe
+vue enseignant
+vue salle
+Finance
+dashboard financier
+liste paiements
+liste factures
+dépenses
+reçus
+impayés
+exports
+Documents
+liste
+upload
+téléchargement
+classement
+Paramètres
+années scolaires
+niveaux
+classes
+matières
+périodes
+frais
+catégories dépenses
+utilisateurs
+rôles
+14.3 Composants frontend réutilisables
+
+Les développeurs frontend doivent créer des composants génériques :
+
+table de données
+filtre avancé
+formulaire standard
+modal de confirmation
+uploader de fichiers
+badge de statut
+carte statistique
+graphe dashboard
+pagination
+select de recherche
+date picker
+impression/export button
+14.4 Gestion d’état
+
+Prévoir une gestion claire de l’état :
+
+état global utilisateur connecté
+permissions utilisateur
+notifications
+paramètres globaux
+filtres de pages
+
+React Query est recommandé pour :
+
+cache API
+revalidation
+pagination
+loading/error handling
+14.5 Gestion des permissions côté frontend
+
+Le frontend doit masquer ou afficher les actions selon les permissions :
+
+Exemples :
+
+bouton “Ajouter élève”
+bouton “Modifier note”
+bouton “Valider bulletin”
+bouton “Supprimer document”
+
+Attention :
+Le contrôle frontend est seulement visuel.
+La vraie sécurité doit rester côté backend.
+
+15. UX attendue pour les écrans clés
+Dashboard
+cartes KPI
+graphes
+liste alertes
+accès rapides
+vue propre par rôle
+Listes
+tableau filtrable
+recherche rapide
+tri
+pagination
+export
+Fiches détail
+informations générales
+onglets
+historique
+actions contextuelles
+Saisie notes / absences
+vue grille rapide
+sauvegarde claire
+validation facile
+messages d’erreur précis
+Emploi du temps
+vue hebdomadaire lisible
+couleurs par matière ou type
+drag/drop possible en V2
+16. Validation frontend / backend
+Frontend
+validation UX immédiate
+messages clairs
+contrôle de type et format
+Backend
+validation obligatoire serveur
+aucune confiance dans les données frontend
+erreurs structurées et exploitables
+17. Sécurité technique
+Backend
+auth sécurisée
+validation des permissions
+rate limiting login
+protection des fichiers
+logs des actions sensibles
+protection contre injections
+sanitation des entrées
+CORS maîtrisé
+Frontend
+stockage sécurisé du token
+gestion de session expirée
+redirection si non autorisé
+pas d’exposition d’informations sensibles
+18. Gestion des fichiers
+
+Les fichiers doivent être gérés avec :
+
+upload sécurisé ;
+noms de fichiers nettoyés ;
+stockage segmenté ;
+lien signé ou route sécurisée pour téléchargement ;
+contrôle d’accès avant lecture.
+
+Le backend ne doit jamais exposer directement des chemins sensibles sans vérification.
+
+19. Logs et audit
+
+Le backend doit enregistrer dans audit_logs les actions sensibles :
+
+connexion
+création/modification/suppression élève
+création/modification/suppression enseignant
+saisie/modification note
+validation bulletin
+enregistrement paiement
+annulation facture
+upload/suppression document
+modification paramètres
+20. Reporting et exports
+
+Le backend doit permettre l’export :
+
+PDF bulletins
+PDF reçus
+PDF factures
+Excel élèves
+Excel absences
+Excel résultats
+Excel paiements / dépenses
+
+Le frontend doit proposer des actions d’export depuis les pages concernées.
+
+21. Performance et bonnes pratiques
+Backend
+pagination obligatoire sur grosses listes
+eager loading sur relations
+indexation exploitée
+éviter N+1 queries
+services métier centralisés
+endpoints spécialisés si dashboards lourds
+Frontend
+lazy loading des pages
+composants réutilisables
+loaders cohérents
+cache sur données consultatives
+limiter les rerenders inutiles
+22. Environnements
+
+Prévoir au minimum :
+
+local
+staging
+production
+Variables backend
+DB_HOST
+DB_PORT
+DB_DATABASE=paulbert_base
+DB_USERNAME
+DB_PASSWORD
+APP_ENV
+APP_KEY
+JWT_SECRET ou SANCTUM config
+FILESYSTEM_DISK
+MAIL_CONFIG si notifications email
+Variables frontend
+API_BASE_URL
+APP_NAME
+ENVIRONMENT
+23. Plan de développement recommandé
+Sprint 1
+auth
+rôles/permissions
+structure frontend
+structure backend
+connexion à paulbert_base
+Sprint 2
+élèves
+enseignants
+classes/niveaux/matières
+Sprint 3
+absences
+emploi du temps
+Sprint 4
+notes
+calculs
+bulletins
+Sprint 5
+finance
+factures
+paiements
+reçus
+Sprint 6
+documents
+notifications
+reporting
+audit
+optimisation
+24. Livrables attendus des développeurs
+Backend
+code source API
+documentation endpoints
+mapping ORM complet
+validations métier
+système auth
+permissions
+génération PDF/Excel
+logs
+Frontend
+dashboard complet
+pages modules
+composants réutilisables
+gestion auth
+gestion permissions
+intégration API complète
+Qualité
+README installation
+fichier .env.example
+documentation structure projet
+jeux de données de test
+plan de test minimal
+25. Recommandation finale de mise en œuvre
+
+Vu que la BDD paulbert_base existe déjà, la première étape technique doit être :
+
+analyser exactement la structure réelle de la base ;
+générer les modèles backend correspondant aux tables ;
+documenter les relations réelles ;
+stabiliser l’API avant de développer massivement le frontend.
+
+En pratique, l’ordre recommandé est :
+
+backend auth + models
+backend CRUD principaux
+frontend shell + navigation
+intégration progressive module par module
+logique métier avancée
+reporting
+optimisation finale
+26. Conclusion
+
+Cette spécification technique doit servir de base de travail pour les développeurs afin de réaliser un système scolaire complet connecté à paulbert_base, avec :
+
+un backend API propre et sécurisé ;
+un frontend d’administration moderne ;
+une gestion stricte des permissions ;
+une implémentation fidèle aux règles métier ;
+une architecture évolutive.

@@ -1,0 +1,258 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply m-0 min-h-screen bg-school-cream font-sans text-school-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: 'Fredoka', Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+
+  .font-display {
+    font-family: 'Fredoka', Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+}
+
+@layer components {
+  /* Playful confetti-style background */
+  .school-page-bg {
+    background-color: #fffbf2;
+    background-image:
+      radial-gradient(circle at 18% 22%, rgba(79, 195, 247, 0.18) 0, transparent 38%),
+      radial-gradient(circle at 82% 18%, rgba(255, 111, 181, 0.16) 0, transparent 38%),
+      radial-gradient(circle at 78% 82%, rgba(255, 212, 59, 0.20) 0, transparent 40%),
+      radial-gradient(circle at 15% 85%, rgba(102, 209, 122, 0.16) 0, transparent 40%),
+      radial-gradient(circle at 6px 6px, rgba(142, 92, 255, 0.08) 1.5px, transparent 0),
+      radial-gradient(circle at 18px 18px, rgba(255, 159, 67, 0.08) 1.5px, transparent 0);
+    background-size: auto, auto, auto, auto, 28px 28px, 28px 28px;
+  }
+
+  .school-main-surface {
+    @apply rounded-school-lg border-2 border-white bg-school-paper/95;
+    box-shadow:
+      0 12px 44px -8px rgba(142, 92, 255, 0.18),
+      0 20px 56px -16px rgba(79, 195, 247, 0.18),
+      0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  }
+
+  /* Rainbow top-ribbon used on headers / surfaces */
+  .school-rainbow-ribbon {
+    @apply relative;
+  }
+  .school-rainbow-ribbon::before {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-1.5 rounded-t-[inherit] bg-school-rainbow bg-[length:200%_100%] animate-rainbow-slide;
+  }
+
+  .school-btn-primary {
+    @apply rounded-2xl bg-gradient-to-br from-school-bubblegum via-school-grape to-school-sky px-5 py-2.5 text-sm font-bold text-white shadow-school-pop transition-transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+  }
+
+  .school-btn-secondary {
+    @apply rounded-2xl border-2 border-school-sky/60 bg-white px-4 py-2 text-sm font-bold text-school-skydeep transition hover:border-school-grape hover:bg-school-mist/70 hover:text-school-grape disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .school-btn-sun {
+    @apply rounded-2xl bg-gradient-to-br from-school-sun to-school-mango px-5 py-2.5 text-sm font-bold text-school-ink shadow-school-pop transition-transform hover:-translate-y-0.5 active:scale-[0.97];
+  }
+
+  .school-input {
+    @apply w-full rounded-2xl border-2 border-school-border bg-white px-4 py-2.5 text-school-ink shadow-sm transition placeholder:text-school-inkmuted/60 focus:border-school-grape focus:outline-none focus:ring-4 focus:ring-school-lilac/40 sm:text-sm;
+  }
+
+  .school-card {
+    @apply rounded-3xl border-2 border-white bg-white p-5 shadow-school transition hover:shadow-school-lg;
+  }
+
+  /* Colored card variants — useful for dashboard tiles */
+  .school-card-pink { @apply school-card bg-gradient-to-br from-white to-[#FFE4F1]; }
+  .school-card-blue { @apply school-card bg-gradient-to-br from-white to-[#E3F2FD]; }
+  .school-card-green { @apply school-card bg-gradient-to-br from-white to-[#E6F8EA]; }
+  .school-card-yellow { @apply school-card bg-gradient-to-br from-white to-[#FFF6C9]; }
+  .school-card-purple { @apply school-card bg-gradient-to-br from-white to-[#EFE6FF]; }
+  .school-card-orange { @apply school-card bg-gradient-to-br from-white to-[#FFE8D1]; }
+
+  .school-badge {
+    @apply inline-flex items-center rounded-full bg-school-sunsoft px-3 py-0.5 text-xs font-bold text-amber-900;
+  }
+  .school-badge-pink { @apply inline-flex items-center rounded-full bg-[#FFE4F1] px-3 py-0.5 text-xs font-bold text-[#C2185B]; }
+  .school-badge-blue { @apply inline-flex items-center rounded-full bg-[#E3F2FD] px-3 py-0.5 text-xs font-bold text-[#1565C0]; }
+  .school-badge-green { @apply inline-flex items-center rounded-full bg-[#E6F8EA] px-3 py-0.5 text-xs font-bold text-[#2E7D32]; }
+  .school-badge-purple { @apply inline-flex items-center rounded-full bg-[#EFE6FF] px-3 py-0.5 text-xs font-bold text-[#5E35B1]; }
+
+  /* Section shell — the canonical container used across simple-mode pages. */
+  .school-section {
+    @apply rounded-3xl border-2 border-school-line bg-white p-4 shadow-school sm:p-5 lg:p-6;
+  }
+
+  /* KPI tile — used on dashboard, finance, attendance summaries.
+     The base tile stays neutral; pair it with a `.school-accent-*` modifier
+     to color the top-strip per card so dashboards never feel chaotic. */
+  .school-tile {
+    @apply relative overflow-hidden rounded-3xl border-2 border-school-line bg-white p-5 shadow-school transition hover:-translate-y-0.5 hover:shadow-school-lg;
+  }
+  .school-tile::before {
+    content: '';
+    @apply pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-3xl bg-school-grape/70 opacity-90;
+  }
+
+  /* Accent strip helpers — apply alongside .school-tile (or any rounded
+     container) to give it a clear, single-color identity. */
+  .school-accent-pink::before   { @apply bg-school-bubblegum; content: ''; }
+  .school-accent-blue::before   { @apply bg-school-skydeep;   content: ''; }
+  .school-accent-green::before  { @apply bg-school-leafdeep;  content: ''; }
+  .school-accent-yellow::before { @apply bg-school-sun;       content: ''; }
+  .school-accent-purple::before { @apply bg-school-grape;     content: ''; }
+  .school-accent-orange::before { @apply bg-school-mango;     content: ''; }
+  .school-accent-coral::before  { @apply bg-school-coral;     content: ''; }
+  .school-accent-mint::before   { @apply bg-school-mint;      content: ''; }
+  .school-accent-rainbow::before {
+    @apply bg-school-rainbow bg-[length:200%_100%] animate-rainbow-slide opacity-90;
+    content: '';
+  }
+
+  /* Select styled like school-input (Tailwind's @apply can't chain .school-input). */
+  .school-select {
+    @apply w-full rounded-2xl border-2 border-school-border bg-white px-3 py-2.5 text-school-ink shadow-sm transition focus:border-school-grape focus:outline-none focus:ring-4 focus:ring-school-lilac/40 sm:text-sm;
+  }
+
+  /* Status pill base. Compose with a color-specific class. */
+  .school-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider;
+  }
+  .school-pill-green  { @apply school-pill bg-school-leaf/15 text-school-leafdeep; }
+  .school-pill-coral  { @apply school-pill bg-school-coral/15 text-[#B23A2E]; }
+  .school-pill-sky    { @apply school-pill bg-school-sky/15 text-school-skydeep; }
+  .school-pill-sun    { @apply school-pill bg-school-sun/25 text-[#8A6A00]; }
+  .school-pill-grape  { @apply school-pill bg-school-grape/15 text-school-grape; }
+  .school-pill-muted  { @apply school-pill bg-school-bg text-school-inkmuted; }
+
+  /* Themed data table. Used inside .school-section. */
+  .school-table-wrap {
+    @apply overflow-x-auto rounded-2xl border-2 border-school-line bg-white;
+  }
+  .school-table {
+    @apply w-full min-w-full text-sm;
+  }
+  .school-table thead {
+    @apply bg-school-chip text-[11px] font-bold uppercase tracking-wider text-school-grape;
+  }
+  .school-table thead th {
+    @apply px-3 py-3 text-left sm:px-4;
+  }
+  .school-table tbody tr {
+    @apply border-t border-school-line/70 transition-colors hover:bg-school-cream/60;
+  }
+  .school-table tbody td {
+    @apply px-3 py-3 align-middle text-school-ink sm:px-4;
+  }
+
+  /* Sticky action bar for simple-mode forms on tablets. */
+  .school-fab {
+    @apply sticky bottom-2 z-20 flex items-center justify-between gap-3 rounded-3xl border-2 border-white bg-gradient-to-r from-school-bubblegum/95 via-school-grape/95 to-school-sky/95 px-3 py-2.5 text-sm font-semibold text-white shadow-school-lg backdrop-blur sm:bottom-3 sm:px-4 sm:py-3;
+  }
+
+  /* Compact page header strip used on dashboards. */
+  .school-hero {
+    @apply relative overflow-hidden rounded-3xl border-2 border-white bg-gradient-to-br from-school-bubblegum via-school-grape to-school-sky p-4 text-white shadow-school-lg sm:p-6;
+  }
+  .school-hero::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 bg-school-radial opacity-40 mix-blend-screen;
+  }
+
+  /* Student/person initials bubble. */
+  .school-initials {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-xs font-bold text-white shadow-sm;
+  }
+
+  /* Large tap target used on tablets (attendance toggles). */
+  .school-toggle {
+    @apply flex min-h-[44px] min-w-[88px] items-center justify-center gap-1.5 rounded-2xl border-2 px-3 py-2 text-sm font-bold transition active:scale-[0.98];
+  }
+  .school-toggle-on  { @apply school-toggle border-school-leaf bg-school-leaf/15 text-school-leafdeep; }
+  .school-toggle-off { @apply school-toggle border-school-coral bg-school-coral/15 text-[#B23A2E]; }
+  .school-toggle-idle{ @apply school-toggle border-school-border bg-white text-school-inkmuted; }
+
+  /* Quick-action card — used on the dashboard to promote primary workflows. */
+  .school-quick {
+    @apply flex items-center gap-3 rounded-3xl border-2 border-white bg-white/80 px-4 py-3 text-left text-sm font-semibold text-school-ink shadow-school transition hover:-translate-y-0.5 hover:bg-white hover:shadow-school-lg;
+  }
+  .school-quick-icon {
+    @apply flex h-11 w-11 items-center justify-center rounded-2xl text-xl shadow-sm;
+  }
+
+  /* Section subheading — consistent typography for in-page section titles. */
+  .school-section-title {
+    @apply flex items-center gap-2 font-display text-base font-bold text-school-ink sm:text-lg;
+  }
+  .school-section-title-icon {
+    @apply flex h-9 w-9 items-center justify-center rounded-2xl text-lg shadow-sm;
+  }
+
+  /* Friendly empty state used inside tables / sections. */
+  .school-empty {
+    @apply flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-school-line bg-white/60 px-4 py-8 text-center sm:py-10;
+  }
+  .school-empty-emoji {
+    @apply flex h-14 w-14 items-center justify-center rounded-3xl bg-school-cream text-3xl shadow-sm;
+  }
+  .school-empty-title {
+    @apply font-display text-base font-bold text-school-ink;
+  }
+  .school-empty-hint {
+    @apply max-w-md text-sm font-medium text-school-inkmuted;
+  }
+
+  /* Lightweight progress bar — used in attendance/finance overviews. */
+  .school-stat-bar {
+    @apply relative h-2.5 w-full overflow-hidden rounded-full bg-school-bg;
+  }
+  .school-stat-bar-fill {
+    @apply h-full rounded-full transition-[width] duration-500 ease-out;
+  }
+
+  /* Tab pill — themed alternative to bare buttons for in-page tab nav. */
+  .school-tab-pill {
+    @apply rounded-full px-4 py-1.5 text-sm font-bold transition;
+  }
+  .school-tab-pill-active {
+    @apply bg-gradient-to-br from-school-bubblegum via-school-grape to-school-sky text-white shadow;
+  }
+  .school-tab-pill-idle {
+    @apply text-school-inkmuted hover:text-school-grape;
+  }
+
+  /* Soft chip used in headers/breadcrumbs (e.g. school-year context). */
+  .school-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-school-chip px-3 py-1 text-xs font-bold text-school-grape;
+  }
+  .school-chip-on-dark {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur;
+  }
+
+  /* Definition-list rows for detail pages. */
+  .school-dl {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+  .school-dl > div {
+    @apply rounded-2xl border-2 border-school-line bg-white px-4 py-3;
+  }
+  .school-dl dt {
+    @apply text-[11px] font-bold uppercase tracking-wider text-school-inkmuted;
+  }
+  .school-dl dd {
+    @apply mt-0.5 font-semibold text-school-ink;
+  }
+}

@@ -1,0 +1,148 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import * as announcementsApi from '../../api/announcements'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorState } from '../../components/ui/ErrorState'
+import { LoadingState } from '../../components/ui/LoadingState'
+import { useAuth } from '../../contexts/AuthContext'
+import { useSimpleMode } from '../../contexts/SimpleModeContext'
+
+export function AnnouncementsListPage() {
+  const { hasPermission } = useAuth()
+  const { simpleMode } = useSimpleMode()
+  const qc = useQueryClient()
+  const canManage = hasPermission('announcements.manage')
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['announcements'],
+    queryFn: () => announcementsApi.fetchAnnouncements({ per_page: 50 }),
+  })
+
+  const publishMut = useMutation({
+    mutationFn: announcementsApi.publishAnnouncement,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements'] }),
+  })
+
+  const archiveMut = useMutation({
+    mutationFn: announcementsApi.archiveAnnouncement,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements'] }),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: announcementsApi.deleteAnnouncement,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['announcements'] }),
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-slate-800">Annonces</h2>
+        {canManage ? (
+          <Link
+            to="/communications/annonces/nouveau"
+            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Nouvelle annonce
+          </Link>
+        ) : null}
+      </div>
+      {isLoading && <LoadingState label="Chargement des annonces…" lines={3} />}
+      {error && <ErrorState error={error} fallback="Impossible de charger les annonces." />}
+
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              <th className="px-4 py-2">Titre</th>
+              {!simpleMode && <th className="px-4 py-2">Public</th>}
+              {!simpleMode && <th className="px-4 py-2">Statut</th>}
+              {!simpleMode && <th className="px-4 py-2">Période</th>}
+              {canManage ? <th className="px-4 py-2">Actions</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {data?.items.map((a) => (
+              <tr key={a.id} className="border-b border-slate-100">
+                <td className="px-4 py-2 font-medium text-slate-800">{a.title}</td>
+                {!simpleMode && (
+                  <td className="px-4 py-2 text-slate-600">{a.audience_type}</td>
+                )}
+                {!simpleMode && (
+                  <td className="px-4 py-2">
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">
+                      {a.status}
+                    </span>
+                  </td>
+                )}
+                {!simpleMode && (
+                  <td className="px-4 py-2 text-slate-600">
+                    {a.start_date ?? '—'} → {a.end_date ?? '—'}
+                  </td>
+                )}
+                {canManage ? (
+                  <td className="px-4 py-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        to={`/communications/annonces/${a.id}/editer`}
+                        className="text-indigo-600 hover:underline"
+                      >
+                        Modifier
+                      </Link>
+                      {!simpleMode && a.status !== 'published' ? (
+                        <button
+                          type="button"
+                          className="text-emerald-600 hover:underline"
+                          onClick={() => void publishMut.mutateAsync(a.id)}
+                        >
+                          Publier
+                        </button>
+                      ) : null}
+                      {!simpleMode && a.status !== 'archived' ? (
+                        <button
+                          type="button"
+                          className="text-amber-700 hover:underline"
+                          onClick={() => void archiveMut.mutateAsync(a.id)}
+                        >
+                          Archiver
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="text-red-600 hover:underline"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              'Supprimer définitivement cette annonce ?'
+                            )
+                          ) {
+                            void deleteMut.mutateAsync(a.id)
+                          }
+                        }}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!isLoading && !error && !data?.items.length ? (
+          <EmptyState
+            emoji="📢"
+            title="Aucune annonce"
+            hint="Créez votre première annonce pour informer élèves, parents et enseignants."
+            action={
+              canManage ? (
+                <Link to="/communications/annonces/nouveau" className="school-btn-primary">
+                  Créer une annonce
+                </Link>
+              ) : null
+            }
+          />
+        ) : null}
+      </div>
+    </div>
+  )
+}

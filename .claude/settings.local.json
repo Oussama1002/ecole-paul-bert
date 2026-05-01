@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"permission.*teachers\\\\|teachers\\\\\\\\.\" \"C:/xampp2/htdocs/ecole-paul-bert/backend-api/routes/api.php\")",
+      "Bash(php artisan *)",
+      "Bash(/c/xampp2/php/php.exe /c/xampp2/htdocs/ecole-paul-bert/backend-api/artisan migrate --force)",
+      "Read(//c/xampp2/php/**)",
+      "Bash(ls /c/xampp*/php/php.exe)",
+      "Bash(\"/c/Users/DELL/.config/herd/bin/php84/php.exe\" /c/xampp2/htdocs/ecole-paul-bert/backend-api/artisan migrate --force)",
+      "Bash(\"/c/Users/DELL/.config/herd/bin/php84/php.exe\" /c/xampp2/htdocs/ecole-paul-bert/backend-api/artisan migrate:status)",
+      "Bash(\"/c/Users/DELL/.config/herd/bin/php84/php.exe\" /c/xampp2/htdocs/ecole-paul-bert/backend-api/artisan tinker --execute=\"echo Schema::hasColumn\\('student_guardians', 'is_primary_contact'\\) ? 'EXISTS' : 'MISSING';\")",
+      "Bash(/c/Users/DELL/.config/herd/bin/php84/php.exe /c/xampp2/htdocs/ecole-paul-bert/backend-api/artisan tinker '--execute=Schema::table\\('\\\\''student_guardians'\\\\'', function\\($t\\){ $t->boolean\\('\\\\''is_primary_contact'\\\\''\\)->default\\(false\\)->after\\('\\\\''can_pickup_student'\\\\''\\); }\\); echo '\\\\''Column added'\\\\'';')",
+      "Bash(xargs cat *)",
+      "Bash(/c/Users/DELL/.config/herd/bin/php84/php.exe /c/xampp2/htdocs/ecole-paul-bert/backend-api/artisan tinker '--execute= *)",
+      "Bash(xargs grep *)",
+      "Read(//c/Users/DELL/Herd/**)",
+      "Bash(npm run *)",
+      "Bash(/c/xampp2/php/php.exe artisan *)",
+      "Bash(where php *)",
+      "Bash(\"C:/Users/DELL/.config/herd/bin/php.bat\" artisan *)",
+      "Bash(npx tsc *)",
+      "Bash(find /c/xampp2/htdocs/ecole-paul-bert/backend-api/app/Models -name \"Student.php\" -exec cat {} \\\\;)",
+      "Bash(grep -A 20 \"^ALTER TABLE \\\\`enrollments\\\\`\" /c/xampp2/htdocs/ecole-paul-bert/backend-api/database/schema/paulbert_base_structure.sql)",
+      "Bash(grep -A 10 \"^ALTER TABLE \\\\`student_class_assignments\\\\`\" /c/xampp2/htdocs/ecole-paul-bert/backend-api/database/schema/paulbert_base_structure.sql)",
+      "Bash(C:/Users/DELL/.config/herd/bin/php.bat -l app/Http/Controllers/Api/V1/GradeController.php app/Http/Controllers/Api/V1/AttendanceRecordController.php app/Http/Controllers/Api/V1/ScheduleEntryController.php app/Http/Controllers/Api/V1/SchoolClassController.php app/Http/Controllers/Api/V1/SubjectController.php)",
+      "Bash(C:/Users/DELL/.config/herd/bin/php.bat -l app/Http/Middleware/BlockUnreadyPortalRoles.php bootstrap/app.php routes/api.php)",
+      "Bash(C:/Users/DELL/.config/herd/bin/php.bat -l app/Http/Controllers/Api/V1/DocumentController.php app/Http/Controllers/Api/V1/TeacherDocumentController.php routes/api.php)",
+      "Bash(grep -i \"\\\\.\\(tsx\\\\|ts\\\\|jsx\\\\|js\\)$\")",
+      "Read(//c/xampp2/conf/**)",
+      "Read(//c/xampp2/apache/conf/extra//**)",
+      "PowerShell(Get-Command php)",
+      "PowerShell(& \"C:\\\\xampp2\\\\apache\\\\bin\\\\httpd.exe\" -t 2>&1)",
+      "PowerShell(& \"C:\\\\xampp2\\\\apache\\\\bin\\\\httpd.exe\" -k stop 2>&1)",
+      "PowerShell(& \"C:\\\\xampp2\\\\apache\\\\bin\\\\httpd.exe\" -k start 2>&1)",
+      "PowerShell(\"Apache restarted\")"
+    ]
+  }
+}
