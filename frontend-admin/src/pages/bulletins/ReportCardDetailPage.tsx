@@ -196,7 +196,7 @@ export function ReportCardDetailPage() {
                 setPdfLoading(true)
                 try {
                   const res = await apiClient.get<Blob>(
-                    `/v1/report-cards/${data.id}/download`,
+                    `/v1/report-cards/${data.id}/pdf`,
                     { responseType: 'blob' }
                   )
                   if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl)
