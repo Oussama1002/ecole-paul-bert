@@ -1,11 +1,21 @@
 import axios, { type AxiosError } from 'axios'
 import type { ApiEnvelope } from '../types/api'
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+/** Dev: empty → same-origin `/api` (Vite proxy). If VITE_API_BASE_URL is set, use host root only — `/api` is always appended here. */
+function resolveApiBaseURL(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL?.trim() ?? ''
+  if (!raw) {
+    return '/api'
+  }
+  const noTrailing = raw.replace(/\/+$/, '')
+  const root = noTrailing.endsWith('/api')
+    ? noTrailing.slice(0, -4).replace(/\/+$/, '')
+    : noTrailing
+  return `${root}/api`
+}
 
 export const apiClient = axios.create({
-  baseURL: baseURL ? `${baseURL}/api` : '/api',
+  baseURL: resolveApiBaseURL(),
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',

@@ -10,6 +10,7 @@ Projet de gestion scolaire (API Laravel + interface React), connecté à la base
 | [`frontend-admin/`](frontend-admin/) | Interface d’administration (Vite, React, TypeScript, Tailwind) |
 | [`docs/BDD_MAPPING.md`](docs/BDD_MAPPING.md) | Audit SQL, contraintes, mapping tables → modèles |
 | [`docs/GUIDE_DEVELOPPEMENT.md`](docs/GUIDE_DEVELOPPEMENT.md) | Normes d’équipe (Git, API, erreurs, permissions) |
+| [`docs/GUIDE_CLIENT.md`](docs/GUIDE_CLIENT.md) | Guide utilisateur pour le personnel de l’école (connexion, modes Simple/Avancé, menus) |
 | [`paulbert_base.sql`](paulbert_base.sql) | Schéma et données de référence (rôles) |
 
 ## Démarrage rapide

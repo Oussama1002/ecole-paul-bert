@@ -21,10 +21,20 @@ return [
 
     'allowed_origins' => array_values(array_filter(array_map(
         'trim',
-        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173'))
+        explode(',', env(
+            'CORS_ALLOWED_ORIGINS',
+            'http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173'
+        ))
     ))),
 
-    'allowed_origins_patterns' => [],
+    /*
+    | En local, autorise tout port sur localhost / 127.0.0.1 (évite les erreurs si
+    | CORS_ALLOWED_ORIGINS omet le port, ex. http://localhost au lieu de :5173).
+    | Désactivé en production.
+    */
+    'allowed_origins_patterns' => env('APP_ENV', 'production') === 'production'
+        ? []
+        : ['#^https?://(localhost|127\.0\.0\.1)(:\\d+)?$#'],
 
     'allowed_headers' => ['*'],
 

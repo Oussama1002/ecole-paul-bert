@@ -93,15 +93,23 @@ class ReportCardController extends Controller
     public function download(Request $request, ReportCard $reportCard)
     {
         if (! $reportCard->pdf_path || ! Storage::disk('local')->exists($reportCard->pdf_path)) {
-            // regenerate on demand
-            $this->svc->generatePdf($reportCard);
-            $reportCard = $reportCard->fresh();
+            try {
+                $this->svc->generatePdf($reportCard);
+                $reportCard = $reportCard->fresh();
+            } catch (\Throwable $e) {
+                return ApiResponse::error('Impossible de générer le PDF : '.$e->getMessage(), [], 500);
+            }
+        }
+
+        if (! $reportCard->pdf_path || ! Storage::disk('local')->exists($reportCard->pdf_path)) {
+            return ApiResponse::error('Fichier PDF introuvable après génération.', [], 404);
         }
 
         $name = "bulletin_{$reportCard->student_id}_{$reportCard->evaluation_period_id}.pdf";
 
-        return Storage::disk('local')->download($reportCard->pdf_path, $name, [
+        return Storage::disk('local')->response($reportCard->pdf_path, $name, [
             'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$name.'"',
         ]);
     }
 
