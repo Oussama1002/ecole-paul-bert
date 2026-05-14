@@ -25,6 +25,8 @@ export function ParametragePeriodsPage() {
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
   const [evalClosedFilter, setEvalClosedFilter] = useState<number | ''>('')
 
+  // Term form
+  const [tEditId, setTEditId] = useState<number | null>(null)
   const [tName, setTName] = useState('')
   const [tCode, setTCode] = useState('')
   const [tCodeManual, setTCodeManual] = useState(false)
@@ -34,6 +36,8 @@ export function ParametragePeriodsPage() {
   const [tActive, setTActive] = useState(true)
   const [tErr, setTErr] = useState<string | null>(null)
 
+  // Eval period form
+  const [eEditId, setEEditId] = useState<number | null>(null)
   const [eTermId, setETermId] = useState<number | ''>('')
   const [eName, setEName] = useState('')
   const [eCode, setECode] = useState('')
@@ -77,13 +81,37 @@ export function ParametragePeriodsPage() {
       evaluationPeriodsApi.fetchEvaluationPeriods({
         per_page: 100,
         school_year_id: schoolYearId,
-        is_closed:
-          evalClosedFilter === '' ? undefined : Boolean(evalClosedFilter),
+        is_closed: evalClosedFilter === '' ? undefined : Boolean(evalClosedFilter),
         sort_by: 'sort_order',
         sort_order: 'asc',
       }),
     enabled: schoolYearId > 0,
   })
+
+  function resetTermForm() {
+    setTEditId(null)
+    setTName('')
+    setTCode('')
+    setTCodeManual(false)
+    setTStart('')
+    setTEnd('')
+    setTOrder(1)
+    setTActive(true)
+    setTErr(null)
+  }
+
+  function resetEvalForm() {
+    setEEditId(null)
+    setEName('')
+    setECode('')
+    setECodeManual(false)
+    setEStart('')
+    setEEnd('')
+    setEOrder(1)
+    setEClosed(false)
+    setETermId('')
+    setEErr(null)
+  }
 
   const createTerm = useMutation({
     mutationFn: () =>
@@ -98,16 +126,26 @@ export function ParametragePeriodsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['academic-terms'] })
-      setTName('')
-      setTCode('')
-      setTCodeManual(false)
-      setTStart('')
-      setTEnd('')
-      setTOrder(1)
-      setTActive(true)
-      setTErr(null)
+      resetTermForm()
     },
     onError: (e: unknown) => setTErr(getApiErrorMessage(e, 'Impossible de créer le trimestre.')),
+  })
+
+  const updateTerm = useMutation({
+    mutationFn: () =>
+      academicTermsApi.updateAcademicTerm(tEditId!, {
+        name: tName,
+        code: tCode,
+        start_date: tStart,
+        end_date: tEnd,
+        sort_order: tOrder,
+        is_active: tActive,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic-terms'] })
+      resetTermForm()
+    },
+    onError: (e: unknown) => setTErr(getApiErrorMessage(e, 'Impossible de modifier le trimestre.')),
   })
 
   const createEval = useMutation({
@@ -124,43 +162,55 @@ export function ParametragePeriodsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-periods'] })
-      setEName('')
-      setECode('')
-      setECodeManual(false)
-      setEStart('')
-      setEEnd('')
-      setEOrder(1)
-      setEClosed(false)
-      setETermId('')
-      setEErr(null)
+      resetEvalForm()
     },
     onError: (e: unknown) => setEErr(getApiErrorMessage(e, "Impossible de créer la période d'évaluation.")),
   })
 
+  const updateEval = useMutation({
+    mutationFn: () =>
+      evaluationPeriodsApi.updateEvaluationPeriod(eEditId!, {
+        term_id: eTermId === '' ? null : (eTermId as number),
+        name: eName,
+        code: eCode,
+        start_date: eStart,
+        end_date: eEnd,
+        sort_order: eOrder,
+        is_closed: eClosed,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluation-periods'] })
+      resetEvalForm()
+    },
+    onError: (e: unknown) => setEErr(getApiErrorMessage(e, "Impossible de modifier la période d'évaluation.")),
+  })
+
   const delTerm = useMutation({
     mutationFn: (id: number) => academicTermsApi.deleteAcademicTerm(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['academic-terms'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['academic-terms'] }),
   })
 
   const delEval = useMutation({
-    mutationFn: (id: number) =>
-      evaluationPeriodsApi.deleteEvaluationPeriod(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['evaluation-periods'] }),
+    mutationFn: (id: number) => evaluationPeriodsApi.deleteEvaluationPeriod(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evaluation-periods'] }),
   })
 
   function submitTerm(e: FormEvent) {
     e.preventDefault()
     setTErr(null)
-    createTerm.mutate()
+    if (tEditId) updateTerm.mutate()
+    else createTerm.mutate()
   }
 
   function submitEval(e: FormEvent) {
     e.preventDefault()
     setEErr(null)
-    createEval.mutate()
+    if (eEditId) updateEval.mutate()
+    else createEval.mutate()
   }
+
+  const tPending = createTerm.isPending || updateTerm.isPending
+  const ePending = createEval.isPending || updateEval.isPending
 
   return (
     <div className="space-y-10">
@@ -191,16 +241,17 @@ export function ParametragePeriodsPage() {
 
       {schoolYearId > 0 && (
         <>
+          {/* ── Trimestres ── */}
           <section>
-            <h3 className="mb-3 text-lg font-medium text-slate-800">
-              Trimestres / semestres
-            </h3>
+            <h3 className="mb-3 text-lg font-medium text-slate-800">Trimestres / semestres</h3>
             {canTerms && (
               <form
                 onSubmit={submitTerm}
                 className="mb-4 max-w-3xl rounded-lg border border-slate-200 bg-slate-50 p-4"
               >
-                <p className="mb-3 text-sm font-medium text-slate-700">Nouveau trimestre</p>
+                <p className="mb-3 text-sm font-medium text-slate-700">
+                  {tEditId ? 'Modifier le trimestre' : 'Nouveau trimestre'}
+                </p>
                 {tErr && (
                   <p className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{tErr}</p>
                 )}
@@ -208,10 +259,10 @@ export function ParametragePeriodsPage() {
                   <FieldGroup label="Nom *">
                     <input
                       required
-                      placeholder="Ex : Trimestre 1"
+                      placeholder="Ex : 1er trimestre"
                       value={tName}
                       onChange={(e) => setTName(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Code *">
@@ -220,7 +271,7 @@ export function ParametragePeriodsPage() {
                       placeholder="Ex : T1-PB"
                       value={tCode}
                       onChange={(e) => { setTCodeManual(true); setTCode(e.target.value) }}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Ordre d'affichage">
@@ -229,7 +280,7 @@ export function ParametragePeriodsPage() {
                       min={0}
                       value={tOrder}
                       onChange={(e) => setTOrder(parseInt(e.target.value, 10) || 0)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Date de début *">
@@ -238,7 +289,7 @@ export function ParametragePeriodsPage() {
                       required
                       value={tStart}
                       onChange={(e) => setTStart(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Date de fin *">
@@ -247,11 +298,11 @@ export function ParametragePeriodsPage() {
                       required
                       value={tEnd}
                       onChange={(e) => setTEnd(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Statut">
-                    <label className="flex items-center gap-2 text-sm pt-2">
+                    <label className="flex items-center gap-2 pt-2 text-sm">
                       <input
                         type="checkbox"
                         checked={tActive}
@@ -261,13 +312,24 @@ export function ParametragePeriodsPage() {
                     </label>
                   </FieldGroup>
                 </div>
-                <button
-                  type="submit"
-                  disabled={createTerm.isPending}
-                  className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-                >
-                  {createTerm.isPending ? 'Enregistrement…' : 'Ajouter le trimestre'}
-                </button>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={tPending}
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {tPending ? 'Enregistrement…' : tEditId ? 'Mettre à jour' : 'Ajouter le trimestre'}
+                  </button>
+                  {tEditId && (
+                    <button
+                      type="button"
+                      onClick={resetTermForm}
+                      className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </div>
               </form>
             )}
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -284,27 +346,42 @@ export function ParametragePeriodsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {terms?.items.map((t) => (
-                    <tr key={t.id}>
+                    <tr key={t.id} className={tEditId === t.id ? 'bg-indigo-50' : ''}>
                       <td className="px-4 py-2 font-mono">{t.code}</td>
                       <td className="px-4 py-2">{t.name}</td>
                       <td className="px-4 py-2">{t.start_date}</td>
                       <td className="px-4 py-2">{t.end_date}</td>
-                      <td className="px-4 py-2">
-                        {t.is_active ? 'Oui' : 'Non'}
-                      </td>
+                      <td className="px-4 py-2">{t.is_active ? 'Oui' : 'Non'}</td>
                       <td className="px-4 py-2 text-right">
                         {canTerms && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm('Supprimer ce trimestre ?')) {
-                                delTerm.mutate(t.id)
-                              }
-                            }}
-                            className="text-xs text-red-600 hover:underline"
-                          >
-                            Supprimer
-                          </button>
+                          <span className="flex items-center justify-end gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTEditId(t.id)
+                                setTName(t.name)
+                                setTCode(t.code)
+                                setTCodeManual(true)
+                                setTStart(t.start_date?.slice(0, 10) ?? '')
+                                setTEnd(t.end_date?.slice(0, 10) ?? '')
+                                setTOrder(t.sort_order ?? 1)
+                                setTActive(t.is_active ?? true)
+                                setTErr(null)
+                              }}
+                              className="text-xs text-indigo-600 hover:underline"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm('Supprimer ce trimestre ?')) delTerm.mutate(t.id)
+                              }}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              Supprimer
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -314,19 +391,16 @@ export function ParametragePeriodsPage() {
             </div>
           </section>
 
+          {/* ── Périodes d'évaluation ── */}
           <section>
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <h3 className="text-lg font-medium text-slate-800">
-                Périodes d'évaluation
-              </h3>
+              <h3 className="text-lg font-medium text-slate-800">Périodes d'évaluation</h3>
               <label>
                 <span className="mb-1 block text-xs text-slate-500">État</span>
                 <select
                   value={evalClosedFilter === '' ? '' : evalClosedFilter}
                   onChange={(e) =>
-                    setEvalClosedFilter(
-                      e.target.value === '' ? '' : Number(e.target.value)
-                    )
+                    setEvalClosedFilter(e.target.value === '' ? '' : Number(e.target.value))
                   }
                   className="rounded border border-slate-300 px-3 py-2 text-sm"
                 >
@@ -341,7 +415,9 @@ export function ParametragePeriodsPage() {
                 onSubmit={submitEval}
                 className="mb-4 max-w-3xl rounded-lg border border-slate-200 bg-slate-50 p-4"
               >
-                <p className="mb-3 text-sm font-medium text-slate-700">Nouvelle période d'évaluation</p>
+                <p className="mb-3 text-sm font-medium text-slate-700">
+                  {eEditId ? "Modifier la période d'évaluation" : "Nouvelle période d'évaluation"}
+                </p>
                 {eErr && (
                   <p className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{eErr}</p>
                 )}
@@ -352,7 +428,7 @@ export function ParametragePeriodsPage() {
                       onChange={(e) =>
                         setETermId(e.target.value === '' ? '' : Number(e.target.value))
                       }
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     >
                       <option value="">— Aucun trimestre —</option>
                       {terms?.items.map((t) => (
@@ -365,10 +441,10 @@ export function ParametragePeriodsPage() {
                   <FieldGroup label="Nom *">
                     <input
                       required
-                      placeholder="Ex : Période 1"
+                      placeholder="Ex : Évaluation 1"
                       value={eName}
                       onChange={(e) => setEName(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Code *">
@@ -377,7 +453,7 @@ export function ParametragePeriodsPage() {
                       placeholder="Ex : EP1-PB"
                       value={eCode}
                       onChange={(e) => { setECodeManual(true); setECode(e.target.value) }}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Ordre d'affichage">
@@ -386,7 +462,7 @@ export function ParametragePeriodsPage() {
                       min={0}
                       value={eOrder}
                       onChange={(e) => setEOrder(parseInt(e.target.value, 10) || 0)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Date de début *">
@@ -395,7 +471,7 @@ export function ParametragePeriodsPage() {
                       required
                       value={eStart}
                       onChange={(e) => setEStart(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Date de fin *">
@@ -404,11 +480,11 @@ export function ParametragePeriodsPage() {
                       required
                       value={eEnd}
                       onChange={(e) => setEEnd(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     />
                   </FieldGroup>
                   <FieldGroup label="Statut">
-                    <label className="flex items-center gap-2 text-sm pt-2">
+                    <label className="flex items-center gap-2 pt-2 text-sm">
                       <input
                         type="checkbox"
                         checked={eClosed}
@@ -418,13 +494,24 @@ export function ParametragePeriodsPage() {
                     </label>
                   </FieldGroup>
                 </div>
-                <button
-                  type="submit"
-                  disabled={createEval.isPending}
-                  className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-                >
-                  {createEval.isPending ? 'Enregistrement…' : "Ajouter la période d'évaluation"}
-                </button>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={ePending}
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {ePending ? 'Enregistrement…' : eEditId ? 'Mettre à jour' : "Ajouter la période d'évaluation"}
+                  </button>
+                  {eEditId && (
+                    <button
+                      type="button"
+                      onClick={resetEvalForm}
+                      className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </div>
               </form>
             )}
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -441,7 +528,7 @@ export function ParametragePeriodsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {evalPeriods?.items.map((p) => (
-                    <tr key={p.id}>
+                    <tr key={p.id} className={eEditId === p.id ? 'bg-indigo-50' : ''}>
                       <td className="px-4 py-2 font-mono">{p.code}</td>
                       <td className="px-4 py-2">{p.name}</td>
                       <td className="px-4 py-2">{p.start_date}</td>
@@ -449,17 +536,35 @@ export function ParametragePeriodsPage() {
                       <td className="px-4 py-2">{p.is_closed ? 'Oui' : 'Non'}</td>
                       <td className="px-4 py-2 text-right">
                         {canEval && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm('Supprimer cette période ?')) {
-                                delEval.mutate(p.id)
-                              }
-                            }}
-                            className="text-xs text-red-600 hover:underline"
-                          >
-                            Supprimer
-                          </button>
+                          <span className="flex items-center justify-end gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEEditId(p.id)
+                                setEName(p.name)
+                                setECode(p.code)
+                                setECodeManual(true)
+                                setETermId(p.term_id ?? '')
+                                setEStart(p.start_date?.slice(0, 10) ?? '')
+                                setEEnd(p.end_date?.slice(0, 10) ?? '')
+                                setEOrder(p.sort_order ?? 1)
+                                setEClosed(p.is_closed ?? false)
+                                setEErr(null)
+                              }}
+                              className="text-xs text-indigo-600 hover:underline"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm('Supprimer cette période ?')) delEval.mutate(p.id)
+                              }}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              Supprimer
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>
