@@ -18,7 +18,7 @@ class IndexAnnouncementRequest extends FormRequest
             'status' => ['nullable', Rule::in(['draft', 'published', 'archived'])],
             'audience_type' => ['nullable', Rule::in(['all', 'students', 'teachers', 'staff', 'parents', 'class_specific'])],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 }

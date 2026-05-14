@@ -23,7 +23,7 @@ class IndexAttendanceRecordRequest extends FormRequest
             'to' => ['nullable', 'date'],
             'attendance_status' => ['nullable', 'in:present,absent,late'],
             'is_justified' => ['nullable', 'boolean'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
             'sort_by' => ['nullable', 'in:attendance_date,created_at,id'],
             'sort_order' => ['nullable', 'in:asc,desc'],
         ];

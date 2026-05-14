@@ -28,7 +28,7 @@ class IndexScheduleEntryRequest extends FormRequest
             'status' => ['nullable', Rule::in(['draft', 'published', 'cancelled'])],
             'sort_by' => ['nullable', 'string', Rule::in(['day_of_week', 'start_time', 'created_at'])],
             'sort_order' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 

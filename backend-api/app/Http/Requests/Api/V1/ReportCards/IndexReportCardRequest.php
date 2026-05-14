@@ -14,7 +14,7 @@ class IndexReportCardRequest extends BaseApiFormRequest
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
             'student_id' => ['nullable', 'integer', 'exists:students,id'],
             'status' => ['nullable', 'in:draft,published,archived'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 }

@@ -23,7 +23,7 @@ class IndexTeacherRequest extends FormRequest
             'employment_type' => ['nullable', Rule::in(['full_time', 'part_time', 'contract', 'temporary'])],
             'sort_by' => ['nullable', 'string', Rule::in(['last_name', 'first_name', 'employee_code', 'hire_date', 'created_at'])],
             'sort_order' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 
