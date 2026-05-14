@@ -4,6 +4,7 @@ import * as academicTermsApi from '../../api/academicTerms'
 import * as evaluationPeriodsApi from '../../api/evaluationPeriods'
 import * as schoolYearsApi from '../../api/schoolYears'
 import { useAuth } from '../../contexts/AuthContext'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 export function ParametragePeriodsPage() {
   const { hasPermission } = useAuth()
@@ -95,7 +96,7 @@ export function ParametragePeriodsPage() {
       setTActive(true)
       setTErr(null)
     },
-    onError: (e: Error) => setTErr(e.message),
+    onError: (e: unknown) => setTErr(getApiErrorMessage(e, 'Impossible de créer le trimestre.')),
   })
 
   const createEval = useMutation({
@@ -121,7 +122,7 @@ export function ParametragePeriodsPage() {
       setETermId('')
       setEErr(null)
     },
-    onError: (e: Error) => setEErr(e.message),
+    onError: (e: unknown) => setEErr(getApiErrorMessage(e, "Impossible de créer la période d'évaluation.")),
   })
 
   const delTerm = useMutation({
@@ -156,7 +157,7 @@ export function ParametragePeriodsPage() {
           Périodes académiques & évaluations
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Filtrez par année scolaire. Les chevauchements de dates sont contrôlés par l’API.
+          Filtrez par année scolaire. Les chevauchements de dates sont contrôlés par l'API.
         </p>
       </div>
 
@@ -185,61 +186,75 @@ export function ParametragePeriodsPage() {
             {canTerms && (
               <form
                 onSubmit={submitTerm}
-                className="mb-4 grid max-w-3xl grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-3"
+                className="mb-4 max-w-3xl rounded-lg border border-slate-200 bg-slate-50 p-4"
               >
+                <p className="mb-3 text-sm font-medium text-slate-700">Nouveau trimestre</p>
                 {tErr && (
-                  <p className="md:col-span-3 text-sm text-red-600">{tErr}</p>
+                  <p className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{tErr}</p>
                 )}
-                <input
-                  required
-                  placeholder="Nom"
-                  value={tName}
-                  onChange={(e) => setTName(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  required
-                  placeholder="Code"
-                  value={tCode}
-                  onChange={(e) => setTCode(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  required
-                  value={tStart}
-                  onChange={(e) => setTStart(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  required
-                  value={tEnd}
-                  onChange={(e) => setTEnd(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  value={tOrder}
-                  onChange={(e) => setTOrder(parseInt(e.target.value, 10) || 0)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="Ordre"
-                />
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={tActive}
-                    onChange={(e) => setTActive(e.target.checked)}
-                  />
-                  Actif
-                </label>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <FieldGroup label="Nom *">
+                    <input
+                      required
+                      placeholder="Ex : Trimestre 1"
+                      value={tName}
+                      onChange={(e) => setTName(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Code *">
+                    <input
+                      required
+                      placeholder="Ex : T1"
+                      value={tCode}
+                      onChange={(e) => setTCode(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Ordre d'affichage">
+                    <input
+                      type="number"
+                      min={0}
+                      value={tOrder}
+                      onChange={(e) => setTOrder(parseInt(e.target.value, 10) || 0)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Date de début *">
+                    <input
+                      type="date"
+                      required
+                      value={tStart}
+                      onChange={(e) => setTStart(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Date de fin *">
+                    <input
+                      type="date"
+                      required
+                      value={tEnd}
+                      onChange={(e) => setTEnd(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Statut">
+                    <label className="flex items-center gap-2 text-sm pt-2">
+                      <input
+                        type="checkbox"
+                        checked={tActive}
+                        onChange={(e) => setTActive(e.target.checked)}
+                      />
+                      Actif
+                    </label>
+                  </FieldGroup>
+                </div>
                 <button
                   type="submit"
                   disabled={createTerm.isPending}
-                  className="md:col-span-3 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
                 >
-                  Ajouter le trimestre
+                  {createTerm.isPending ? 'Enregistrement…' : 'Ajouter le trimestre'}
                 </button>
               </form>
             )}
@@ -270,11 +285,7 @@ export function ParametragePeriodsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (
-                                window.confirm(
-                                  'Supprimer ce trimestre ?'
-                                )
-                              ) {
+                              if (window.confirm('Supprimer ce trimestre ?')) {
                                 delTerm.mutate(t.id)
                               }
                             }}
@@ -294,7 +305,7 @@ export function ParametragePeriodsPage() {
           <section>
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <h3 className="text-lg font-medium text-slate-800">
-                Périodes d’évaluation
+                Périodes d'évaluation
               </h3>
               <label>
                 <span className="mb-1 block text-xs text-slate-500">État</span>
@@ -316,75 +327,91 @@ export function ParametragePeriodsPage() {
             {canEval && (
               <form
                 onSubmit={submitEval}
-                className="mb-4 grid max-w-3xl grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-3"
+                className="mb-4 max-w-3xl rounded-lg border border-slate-200 bg-slate-50 p-4"
               >
+                <p className="mb-3 text-sm font-medium text-slate-700">Nouvelle période d'évaluation</p>
                 {eErr && (
-                  <p className="md:col-span-3 text-sm text-red-600">{eErr}</p>
+                  <p className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600">{eErr}</p>
                 )}
-                <select
-                  value={eTermId === '' ? '' : eTermId}
-                  onChange={(e) =>
-                    setETermId(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  className="rounded border border-slate-300 px-3 py-2 text-sm md:col-span-3"
-                >
-                  <option value="">Trimestre (optionnel)</option>
-                  {terms?.items.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.code})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  required
-                  placeholder="Nom"
-                  value={eName}
-                  onChange={(e) => setEName(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  required
-                  placeholder="Code"
-                  value={eCode}
-                  onChange={(e) => setECode(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  required
-                  value={eStart}
-                  onChange={(e) => setEStart(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  type="date"
-                  required
-                  value={eEnd}
-                  onChange={(e) => setEEnd(e.target.value)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  value={eOrder}
-                  onChange={(e) => setEOrder(parseInt(e.target.value, 10) || 0)}
-                  className="rounded border border-slate-300 px-3 py-2 text-sm"
-                  placeholder="Ordre"
-                />
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={eClosed}
-                    onChange={(e) => setEClosed(e.target.checked)}
-                  />
-                  Fermée
-                </label>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <FieldGroup label="Trimestre (optionnel)" className="md:col-span-3">
+                    <select
+                      value={eTermId === '' ? '' : eTermId}
+                      onChange={(e) =>
+                        setETermId(e.target.value === '' ? '' : Number(e.target.value))
+                      }
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    >
+                      <option value="">— Aucun trimestre —</option>
+                      {terms?.items.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.code})
+                        </option>
+                      ))}
+                    </select>
+                  </FieldGroup>
+                  <FieldGroup label="Nom *">
+                    <input
+                      required
+                      placeholder="Ex : Période 1"
+                      value={eName}
+                      onChange={(e) => setEName(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Code *">
+                    <input
+                      required
+                      placeholder="Ex : P1"
+                      value={eCode}
+                      onChange={(e) => setECode(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Ordre d'affichage">
+                    <input
+                      type="number"
+                      min={0}
+                      value={eOrder}
+                      onChange={(e) => setEOrder(parseInt(e.target.value, 10) || 0)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Date de début *">
+                    <input
+                      type="date"
+                      required
+                      value={eStart}
+                      onChange={(e) => setEStart(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Date de fin *">
+                    <input
+                      type="date"
+                      required
+                      value={eEnd}
+                      onChange={(e) => setEEnd(e.target.value)}
+                      className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
+                    />
+                  </FieldGroup>
+                  <FieldGroup label="Statut">
+                    <label className="flex items-center gap-2 text-sm pt-2">
+                      <input
+                        type="checkbox"
+                        checked={eClosed}
+                        onChange={(e) => setEClosed(e.target.checked)}
+                      />
+                      Fermée
+                    </label>
+                  </FieldGroup>
+                </div>
                 <button
                   type="submit"
                   disabled={createEval.isPending}
-                  className="md:col-span-3 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
                 >
-                  Ajouter la période d’évaluation
+                  {createEval.isPending ? 'Enregistrement…' : "Ajouter la période d'évaluation"}
                 </button>
               </form>
             )}
@@ -413,11 +440,7 @@ export function ParametragePeriodsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (
-                                window.confirm(
-                                  'Supprimer cette période ?'
-                                )
-                              ) {
+                              if (window.confirm('Supprimer cette période ?')) {
                                 delEval.mutate(p.id)
                               }
                             }}
@@ -435,6 +458,23 @@ export function ParametragePeriodsPage() {
           </section>
         </>
       )}
+    </div>
+  )
+}
+
+function FieldGroup({
+  label,
+  children,
+  className = '',
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={className}>
+      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+      {children}
     </div>
   )
 }
