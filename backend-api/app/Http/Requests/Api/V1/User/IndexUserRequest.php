@@ -18,7 +18,7 @@ class IndexUserRequest extends FormRequest
     {
         return [
             'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'role_id' => ['sometimes', 'nullable', 'integer', 'exists:roles,id'],
             'status' => ['sometimes', 'nullable', 'string', 'in:active,inactive,suspended'],

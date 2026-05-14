@@ -18,7 +18,7 @@ class IndexEvaluationPeriodRequest extends FormRequest
     {
         return [
             'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'school_year_id' => ['sometimes', 'nullable', 'integer', 'exists:school_years,id'],
             'term_id' => ['sometimes', 'nullable', 'integer', 'exists:academic_terms,id'],
             'is_closed' => ['sometimes', 'nullable', 'boolean'],

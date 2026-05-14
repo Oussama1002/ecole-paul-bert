@@ -18,7 +18,7 @@ class IndexRoomRequest extends FormRequest
     {
         return [
             'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
             'room_type' => ['sometimes', 'nullable', 'string', 'in:classroom,lab,hall,office,library,sports,other'],
             'status' => ['sometimes', 'nullable', 'string', 'in:available,unavailable,maintenance'],

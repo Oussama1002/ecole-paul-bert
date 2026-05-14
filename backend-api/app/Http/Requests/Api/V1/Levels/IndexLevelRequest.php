@@ -18,7 +18,7 @@ class IndexLevelRequest extends FormRequest
     {
         return [
             'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
             'sort_by' => ['sometimes', 'string', 'in:id,name,code,sort_order,created_at'],
             'sort_order' => ['sometimes', 'string', 'in:asc,desc'],

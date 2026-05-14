@@ -18,7 +18,7 @@ class IndexSubjectRequest extends FormRequest
     {
         return [
             'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
             'level_id' => ['sometimes', 'nullable', 'integer', 'exists:levels,id'],
             'status' => ['sometimes', 'nullable', 'string', 'in:active,inactive'],
