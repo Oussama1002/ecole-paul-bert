@@ -27,6 +27,7 @@ export function ParametragePeriodsPage() {
 
   const [tName, setTName] = useState('')
   const [tCode, setTCode] = useState('')
+  const [tCodeManual, setTCodeManual] = useState(false)
   const [tStart, setTStart] = useState('')
   const [tEnd, setTEnd] = useState('')
   const [tOrder, setTOrder] = useState(1)
@@ -36,6 +37,7 @@ export function ParametragePeriodsPage() {
   const [eTermId, setETermId] = useState<number | ''>('')
   const [eName, setEName] = useState('')
   const [eCode, setECode] = useState('')
+  const [eCodeManual, setECodeManual] = useState(false)
   const [eStart, setEStart] = useState('')
   const [eEnd, setEEnd] = useState('')
   const [eOrder, setEOrder] = useState(1)
@@ -48,6 +50,14 @@ export function ParametragePeriodsPage() {
       setSchoolYearId(current.id)
     }
   }, [years, schoolYearId])
+
+  useEffect(() => {
+    if (!tCodeManual) setTCode(autoTermCode(tName))
+  }, [tName, tCodeManual])
+
+  useEffect(() => {
+    if (!eCodeManual) setECode(autoEvalCode(eName))
+  }, [eName, eCodeManual])
 
   const { data: terms } = useQuery({
     queryKey: ['academic-terms', schoolYearId],
@@ -90,6 +100,7 @@ export function ParametragePeriodsPage() {
       queryClient.invalidateQueries({ queryKey: ['academic-terms'] })
       setTName('')
       setTCode('')
+      setTCodeManual(false)
       setTStart('')
       setTEnd('')
       setTOrder(1)
@@ -115,6 +126,7 @@ export function ParametragePeriodsPage() {
       queryClient.invalidateQueries({ queryKey: ['evaluation-periods'] })
       setEName('')
       setECode('')
+      setECodeManual(false)
       setEStart('')
       setEEnd('')
       setEOrder(1)
@@ -205,9 +217,9 @@ export function ParametragePeriodsPage() {
                   <FieldGroup label="Code *">
                     <input
                       required
-                      placeholder="Ex : T1"
+                      placeholder="Ex : T1-PB"
                       value={tCode}
-                      onChange={(e) => setTCode(e.target.value)}
+                      onChange={(e) => { setTCodeManual(true); setTCode(e.target.value) }}
                       className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
                     />
                   </FieldGroup>
@@ -362,9 +374,9 @@ export function ParametragePeriodsPage() {
                   <FieldGroup label="Code *">
                     <input
                       required
-                      placeholder="Ex : P1"
+                      placeholder="Ex : EP1-PB"
                       value={eCode}
-                      onChange={(e) => setECode(e.target.value)}
+                      onChange={(e) => { setECodeManual(true); setECode(e.target.value) }}
                       className="rounded border border-slate-300 px-3 py-2 text-sm w-full"
                     />
                   </FieldGroup>
@@ -460,6 +472,16 @@ export function ParametragePeriodsPage() {
       )}
     </div>
   )
+}
+
+function autoTermCode(name: string): string {
+  const match = name.match(/\d+/)
+  return match ? `T${match[0]}-PB` : ''
+}
+
+function autoEvalCode(name: string): string {
+  const match = name.match(/\d+/)
+  return match ? `EP${match[0]}-PB` : ''
 }
 
 function FieldGroup({
