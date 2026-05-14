@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\SimpleSchoolSettings\UpdateSimpleSchoolSettingsRequ
 use App\Http\Requests\Api\V1\SimpleSchoolSettings\UploadSimpleSchoolLogoRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\AppSetting;
+use App\Models\ExpenseCategory;
 use App\Models\SchoolYear;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Aggregated “simple mode” school settings: identity, bulletin basics on PDF,
@@ -172,7 +174,9 @@ class SimpleSchoolSettingsController extends Controller
                 AppSetting::set(self::KEY_FIN_INCOME, $this->normalizeLabelList($fj['income_labels']), $user->id, 'json');
             }
             if (array_key_exists('expense_labels', $fj)) {
-                AppSetting::set(self::KEY_FIN_EXPENSE, $this->normalizeLabelList($fj['expense_labels']), $user->id, 'json');
+                $expenseLabels = $this->normalizeLabelList($fj['expense_labels']);
+                AppSetting::set(self::KEY_FIN_EXPENSE, $expenseLabels, $user->id, 'json');
+                $this->syncExpenseCategories($expenseLabels);
             }
         }
         $after = $this->auditStateSnapshot();
@@ -287,6 +291,29 @@ class SimpleSchoolSettingsController extends Controller
     private function defaultExpenseLabels(): array
     {
         return ['Salaires', 'Énergie', 'Entretien', 'Fournitures', 'Autre dépense'];
+    }
+
+    /**
+     * @param  list<string>  $labels
+     */
+    private function syncExpenseCategories(array $labels): void
+    {
+        $codes = [];
+        foreach ($labels as $name) {
+            $code = Str::slug($name, '_');
+            if ($code === '') {
+                continue;
+            }
+            $codes[] = $code;
+            ExpenseCategory::query()->updateOrCreate(
+                ['code' => $code],
+                ['name' => $name, 'status' => 'active']
+            );
+        }
+        // Deactivate categories that are no longer in the list
+        ExpenseCategory::query()
+            ->whereNotIn('code', $codes ?: ['__none__'])
+            ->update(['status' => 'inactive']);
     }
 
     private function logoPublicUrl(?string $logoPath): ?string
