@@ -22,9 +22,11 @@ import { getApiErrorMessage } from '../../utils/apiError'
 export function QuickStudentForm({
   existing,
   studentId,
+  onClose,
 }: {
   existing?: studentsApi.Student
   studentId?: number
+  onClose?: () => void
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -76,14 +78,18 @@ export function QuickStudentForm({
     onSuccess: (student) => {
       queryClient.invalidateQueries({ queryKey: ['students'] })
       queryClient.invalidateQueries({ queryKey: ['next-student-code'] })
-      const target = isNew ? `/eleves/${student.id}` : '/eleves'
-      navigate(target, {
-        state: {
-          flash: isNew
-            ? `Élève ${student.first_name} ${student.last_name} enregistré.`
-            : 'Fiche mise à jour.',
-        },
-      })
+      if (onClose) {
+        onClose()
+      } else {
+        const target = isNew ? `/eleves/${student.id}` : '/eleves'
+        navigate(target, {
+          state: {
+            flash: isNew
+              ? `Élève ${student.first_name} ${student.last_name} enregistré.`
+              : 'Fiche mise à jour.',
+          },
+        })
+      }
     },
     onError: (e) =>
       setError(getApiErrorMessage(e, "Impossible d'enregistrer l'élève.")),
@@ -100,20 +106,22 @@ export function QuickStudentForm({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
-        <Link
-          to="/eleves"
-          className="text-sm font-semibold text-school-grape underline-offset-4 hover:underline"
-        >
-          ← Retour aux élèves
-        </Link>
-        <h2 className="mt-3 font-display text-2xl font-bold text-school-ink sm:text-3xl">
-          {isNew ? 'Nouvel élève' : 'Modifier l’élève'}
-        </h2>
-        <p className="mt-1 text-sm text-school-inkmuted">
-          Remplissez l’essentiel — vous pourrez compléter la fiche plus tard.
-        </p>
-      </div>
+      {!onClose && (
+        <div className="mb-6">
+          <Link
+            to="/eleves"
+            className="text-sm font-semibold text-school-grape underline-offset-4 hover:underline"
+          >
+            ← Retour aux élèves
+          </Link>
+          <h2 className="mt-3 font-display text-2xl font-bold text-school-ink sm:text-3xl">
+            {isNew ? ‘Nouvel élève’ : ‘Modifier l’élève’}
+          </h2>
+          <p className="mt-1 text-sm text-school-inkmuted">
+            Remplissez l’essentiel — vous pourrez compléter la fiche plus tard.
+          </p>
+        </div>
+      )}
 
       <form
         onSubmit={(e: FormEvent) => {
@@ -299,22 +307,25 @@ export function QuickStudentForm({
         </section>
 
         <div className="flex flex-col-reverse items-stretch gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
-          <Link
-            to="/eleves"
-            className="school-btn-secondary text-center"
-          >
-            Annuler
-          </Link>
+          {onClose ? (
+            <button type="button" onClick={onClose} className="school-btn-secondary text-center">
+              Annuler
+            </button>
+          ) : (
+            <Link to="/eleves" className="school-btn-secondary text-center">
+              Annuler
+            </Link>
+          )}
           <button
             type="submit"
             disabled={save.isPending}
             className="school-btn-primary disabled:opacity-60"
           >
             {save.isPending
-              ? 'Enregistrement…'
+              ? ‘Enregistrement…’
               : isNew
-                ? 'Enregistrer l’élève'
-                : 'Mettre à jour'}
+                ? ‘Enregistrer l’élève’
+                : ‘Mettre à jour’}
           </button>
         </div>
       </form>

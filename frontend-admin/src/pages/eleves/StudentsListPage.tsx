@@ -14,6 +14,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { QuickStudentForm } from './QuickStudentForm'
 
 const statusLabels: Record<string, string> = {
   pending: 'En attente',
@@ -46,6 +47,7 @@ export function StudentsListPage() {
   const [levelId, setLevelId] = useState<number | ''>('')
   const [classId, setClassId] = useState<number | ''>('')
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [showNewModal, setShowNewModal] = useState(false)
 
   const canManage = hasPermission('students.manage')
   const canExport = hasPermission('students.export')
@@ -122,10 +124,6 @@ export function StudentsListPage() {
     class_id: classId === '' ? undefined : classId,
   }
 
-  const doExport = useMutation({
-    mutationFn: () => studentsApi.downloadStudentsExport(exportParams),
-  })
-
   const doExportExcel = useMutation({
     mutationFn: () => studentsApi.downloadStudentsExportExcel(exportParams),
   })
@@ -149,6 +147,26 @@ export function StudentsListPage() {
 
   return (
     <div>
+      {showNewModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
+          <div className="w-full max-w-2xl rounded-3xl border-2 border-school-line bg-school-bg shadow-2xl">
+            <div className="flex items-center justify-between border-b-2 border-school-line px-6 py-4">
+              <h2 className="font-display text-xl font-bold text-school-ink">Nouvel élève</h2>
+              <button
+                type="button"
+                onClick={() => setShowNewModal(false)}
+                className="rounded-xl border-2 border-school-line px-3 py-1 text-sm font-semibold text-school-inkmuted hover:bg-school-cream"
+              >
+                ✕ Fermer
+              </button>
+            </div>
+            <div className="p-6">
+              <QuickStudentForm onClose={() => setShowNewModal(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         emoji="🎒"
         title="Élèves"
@@ -184,40 +202,24 @@ export function StudentsListPage() {
                 </button>
               </>
             )}
-            {!simpleMode && canExport && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => doExport.mutate()}
-                  disabled={doExport.isPending}
-                  className="school-btn-secondary"
-                >
-                  Export CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => doExportExcel.mutate()}
-                  disabled={doExportExcel.isPending}
-                  className="school-btn-secondary"
-                >
-                  Export Excel
-                </button>
-              </>
-            )}
-            {simpleMode && canExport && (
+            {canExport && (
               <button
                 type="button"
                 onClick={() => doExportExcel.mutate()}
                 disabled={doExportExcel.isPending}
                 className="school-btn-secondary"
               >
-                Exporter (Excel)
+                {doExportExcel.isPending ? 'Export…' : 'Exporter Excel'}
               </button>
             )}
             {canManage && (
-              <Link to="/eleves/nouveau" className="school-btn-primary">
+              <button
+                type="button"
+                onClick={() => setShowNewModal(true)}
+                className="school-btn-primary"
+              >
                 + Nouvel élève
-              </Link>
+              </button>
             )}
           </>
         }
@@ -393,9 +395,13 @@ export function StudentsListPage() {
                 Réessayer
               </button>
               {canManage ? (
-                <Link to="/eleves/nouveau" className="school-btn-primary">
+                <button
+                  type="button"
+                  onClick={() => setShowNewModal(true)}
+                  className="school-btn-primary"
+                >
                   + Nouvel élève
-                </Link>
+                </button>
               ) : null}
             </div>
           }
