@@ -46,16 +46,28 @@ function GenerateYearModal({
   onSuccess: () => void
 }) {
   const suggestion = nextYearSuggestion(items)
+  const [name, setName] = useState(suggestion.name)
+  const [startDate, setStartDate] = useState(suggestion.start_date)
+  const [endDate, setEndDate] = useState(suggestion.end_date)
+  const [status, setStatus] = useState<string>('planned')
   const [error, setError] = useState<string | null>(null)
 
   const create = useMutation({
-    mutationFn: () => schoolYearsApi.createSchoolYear(suggestion),
+    mutationFn: () =>
+      schoolYearsApi.createSchoolYear({
+        name,
+        start_date: startDate,
+        end_date: endDate,
+        status,
+      }),
     onSuccess: () => {
       onSuccess()
       onClose()
     },
     onError: (e: Error) => setError(getApiErrorMessage(e, 'Erreur lors de la création.')),
   })
+
+  const inputCls = 'w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -64,26 +76,52 @@ function GenerateYearModal({
           Générer l'année scolaire
         </h3>
         <p className="mb-4 text-sm text-slate-500">
-          L'année suivante sera créée automatiquement avec le statut <strong>Planifiée</strong>.
+          Modifiez si besoin puis cliquez sur <strong>Générer</strong>.
         </p>
 
-        <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Nom</span>
-            <span className="font-semibold text-slate-800">{suggestion.name}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Début</span>
-            <span className="font-semibold text-slate-800">{suggestion.start_date}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Fin</span>
-            <span className="font-semibold text-slate-800">{suggestion.end_date}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">Statut</span>
-            <span className="font-semibold text-slate-800">Planifiée</span>
-          </div>
+        <div className="mb-4 space-y-3">
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-500">Nom</span>
+            <input
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls}
+              placeholder="2027-2028"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-500">Date de début</span>
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={inputCls}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-500">Date de fin</span>
+            <input
+              type="date"
+              required
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={inputCls}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-slate-500">Statut</span>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className={inputCls}
+            >
+              <option value="planned">Planifiée</option>
+              <option value="active">Active</option>
+              <option value="closed">Clôturée</option>
+            </select>
+          </label>
         </div>
 
         {error && (
