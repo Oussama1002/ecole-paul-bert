@@ -6,7 +6,11 @@ import { useSimpleMode } from '../../contexts/SimpleModeContext'
 import * as notificationsApi from '../../api/notifications'
 import { formatSchoolDate } from '../ui/SchoolDate'
 
-export function AppHeader() {
+interface AppHeaderProps {
+  onMenuToggle?: () => void
+}
+
+export function AppHeader({ onMenuToggle }: AppHeaderProps) {
   const { user, logout, hasPermission } = useAuth()
   const { simpleMode, canToggle, setSimpleMode } = useSimpleMode()
   const canNotif = hasPermission('notifications.view') && !simpleMode
@@ -37,6 +41,18 @@ export function AppHeader() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-school-border/60 bg-school-paper/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:px-6">
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-school-border/80 bg-white text-school-ink shadow-sm hover:bg-school-mist/30 md:hidden"
+          aria-label="Menu de navigation"
+        >
+          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden>
+            <rect width="18" height="2" rx="1" fill="currentColor" />
+            <rect y="6" width="18" height="2" rx="1" fill="currentColor" />
+            <rect y="12" width="18" height="2" rx="1" fill="currentColor" />
+          </svg>
+        </button>
         <span
           className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-school-bubblegum via-school-grape to-school-sky text-xl text-white shadow-school sm:flex"
           aria-hidden
@@ -47,7 +63,7 @@ export function AppHeader() {
           <h1 className="font-display text-lg font-bold text-school-ink sm:text-xl">
             École Paul Bert
           </h1>
-          <p className="text-xs font-medium capitalize text-school-inkmuted">
+          <p className="hidden text-xs font-medium capitalize text-school-inkmuted sm:block">
             <span aria-hidden className="mr-1">📅</span>
             {today}
           </p>
@@ -64,7 +80,7 @@ export function AppHeader() {
               type="button"
               onClick={() => void setSimpleMode(true)}
               className={[
-                'rounded-full px-3 py-1.5 transition',
+                'rounded-full px-2.5 py-1.5 transition sm:px-3',
                 simpleMode
                   ? 'bg-gradient-to-br from-school-bubblegum to-school-grape text-white shadow'
                   : 'text-school-inkmuted hover:text-school-grape',
@@ -78,7 +94,7 @@ export function AppHeader() {
               type="button"
               onClick={() => void setSimpleMode(false)}
               className={[
-                'rounded-full px-3 py-1.5 transition',
+                'rounded-full px-2.5 py-1.5 transition sm:px-3',
                 !simpleMode
                   ? 'bg-gradient-to-br from-school-skydeep to-school-grape text-white shadow'
                   : 'text-school-inkmuted hover:text-school-skydeep',
@@ -91,7 +107,7 @@ export function AppHeader() {
           </div>
         ) : null}
         {user && (
-          <div className="flex items-center gap-2 rounded-2xl border border-school-border/80 bg-white px-3 py-1.5 shadow-sm">
+          <div className="hidden items-center gap-2 rounded-2xl border border-school-border/80 bg-white px-3 py-1.5 shadow-sm sm:flex">
             <span className="text-sm font-medium text-school-ink">
               {user.first_name} {user.last_name}
             </span>

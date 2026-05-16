@@ -27,10 +27,15 @@ const simpleNav: NavItem[] = [
   { to: '/communications/annonces', label: 'Annonces', permission: 'announcements.view' },
 ]
 
+interface SimpleSidebarProps {
+  isOpen?: boolean
+  onClose?: () => void
+}
+
 const linkBase =
   'group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition-all duration-200'
 
-export function SimpleSidebar() {
+export function SimpleSidebar({ isOpen = false, onClose }: SimpleSidebarProps) {
   const { hasPermission } = useAuth()
 
   const items = simpleNav.filter(
@@ -46,7 +51,15 @@ export function SimpleSidebar() {
   const currentYear = years?.items.find((y) => y.is_current) ?? years?.items[0]
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-white/20 bg-school-sidebar shadow-school-lg">
+    <aside
+      className={[
+        'fixed inset-y-0 left-0 z-40 flex h-screen w-60 shrink-0 flex-col',
+        'border-r border-white/20 bg-school-sidebar shadow-school-lg',
+        'transition-transform duration-300 ease-in-out',
+        'md:sticky md:top-0 md:z-auto md:translate-x-0',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+      ].join(' ')}
+    >
       <div className="px-4 pb-3 pt-6 text-white">
         <div className="flex items-center gap-3 rounded-3xl bg-white/20 p-3 backdrop-blur-sm">
           <div
@@ -63,6 +76,14 @@ export function SimpleSidebar() {
               Mode simple
             </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30 md:hidden"
+            aria-label="Fermer le menu"
+          >
+            ✕
+          </button>
         </div>
       </div>
 

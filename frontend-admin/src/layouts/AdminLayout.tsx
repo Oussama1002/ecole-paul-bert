@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import * as schoolYearsApi from '../api/schoolYears'
 import { AppFooter } from '../components/layout/AppFooter'
 import { AppHeader } from '../components/layout/AppHeader'
@@ -37,15 +38,32 @@ function NoSchoolYearBanner() {
 
 export function AdminLayout() {
   const { simpleMode } = useSimpleMode()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [location.pathname])
 
   return (
     <div className="school-page-bg flex min-h-screen font-sans text-school-ink">
-      {simpleMode ? <SimpleSidebar /> : <AppSidebar />}
-      <div className="flex min-h-screen flex-1 flex-col">
-        <AppHeader />
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden
+        />
+      )}
+      {simpleMode ? (
+        <SimpleSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      ) : (
+        <AppSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      )}
+      <div className="flex min-h-screen flex-1 flex-col overflow-x-hidden">
+        <AppHeader onMenuToggle={() => setMobileNavOpen((v) => !v)} />
         <NoSchoolYearBanner />
         <main className="flex flex-1 flex-col px-3 pb-3 pt-2 sm:px-5 sm:pb-5 sm:pt-3">
-          <div className="school-main-surface flex min-h-0 flex-1 flex-col p-5 sm:p-8">
+          <div className="school-main-surface flex min-h-0 flex-1 flex-col p-4 sm:p-8">
             <Outlet />
           </div>
         </main>

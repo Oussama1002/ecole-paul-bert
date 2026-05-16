@@ -117,10 +117,15 @@ const paramNav: NavItem[] = [
   },
 ]
 
+interface AppSidebarProps {
+  isOpen?: boolean
+  onClose?: () => void
+}
+
 const linkBase =
   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 border-l-4'
 
-export function AppSidebar() {
+export function AppSidebar({ isOpen = false, onClose }: AppSidebarProps) {
   const { hasPermission } = useAuth()
 
   const filterNav = (items: NavItem[]) =>
@@ -143,8 +148,16 @@ export function AppSidebar() {
   })
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-school-border/40 bg-gradient-to-b from-school-skydeep via-school-leaf to-school-leafdeep shadow-school-lg">
-      <div className="px-4 pb-2 pt-5 text-white">
+    <aside
+      className={[
+        'fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col',
+        'border-r border-school-border/40 bg-gradient-to-b from-school-skydeep via-school-leaf to-school-leafdeep shadow-school-lg',
+        'transition-transform duration-300 ease-in-out',
+        'md:sticky md:top-0 md:z-auto md:translate-x-0',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+      ].join(' ')}
+    >
+      <div className="relative px-4 pb-2 pt-5 text-white">
         <div className="flex items-center gap-3 rounded-2xl bg-white/15 p-3 backdrop-blur-sm">
           <div
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/25 text-2xl shadow-inner"
@@ -160,6 +173,14 @@ export function AppSidebar() {
               École · Espace équipe
             </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30 md:hidden"
+            aria-label="Fermer le menu"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
