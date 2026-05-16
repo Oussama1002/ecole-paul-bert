@@ -84,7 +84,7 @@ export function AnnouncementFormPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h2 className="text-xl font-semibold text-slate-800">
-        {isEdit ? 'Modifier l’annonce' : 'Nouvelle annonce'}
+        {isEdit ? "Modifier l'annonce" : 'Nouvelle annonce'}
       </h2>
       <form
         className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"

@@ -85,7 +85,7 @@ export function SchoolYearFormPage() {
           ← Années scolaires
         </Link>
         <h2 className="mt-2 text-xl font-semibold text-slate-800">
-          {isNew ? 'Nouvelle année scolaire' : 'Modifier l’année scolaire'}
+          {isNew ? 'Nouvelle année scolaire' : "Modifier l'année scolaire"}
         </h2>
       </div>
 

@@ -166,7 +166,7 @@ export function StudentFormPage() {
           ← Élèves
         </Link>
         <h2 className="mt-2 text-xl font-semibold text-slate-800">
-          {isNew ? 'Nouvel élève' : 'Modifier l’élève'}
+          {isNew ? 'Nouvel élève' : "Modifier l'élève"}
         </h2>
       </div>
 
@@ -306,7 +306,7 @@ export function StudentFormPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs text-slate-500">Date d’admission</span>
+            <span className="mb-1 block text-xs text-slate-500">Date d'admission</span>
             <input
               type="date"
               value={admissionDate}
@@ -315,7 +315,7 @@ export function StudentFormPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs text-slate-500">Date d’inscription</span>
+            <span className="mb-1 block text-xs text-slate-500">Date d'inscription</span>
             <input
               type="date"
               value={registrationDate}

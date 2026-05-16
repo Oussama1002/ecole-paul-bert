@@ -245,7 +245,7 @@ export function InvoicesListPage() {
                 <option value="draft">Brouillon</option>
               </select>
             </Field>
-            <Field label="Date d’émission *">
+            <Field label="Date d'émission *">
               <input
                 type="date"
                 value={form.issue_date}
@@ -450,7 +450,7 @@ export function InvoicesListPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const reason = window.prompt('Motif d’annulation (optionnel) :', '')
+                          const reason = window.prompt("Motif d'annulation (optionnel) :", '')
                           if (reason !== null) {
                             cancel.mutate({ id: inv.id, reason })
                           }

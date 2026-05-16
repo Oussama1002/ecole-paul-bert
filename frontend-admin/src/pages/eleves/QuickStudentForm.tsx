@@ -115,10 +115,10 @@ export function QuickStudentForm({
             ← Retour aux élèves
           </Link>
           <h2 className="mt-3 font-display text-2xl font-bold text-school-ink sm:text-3xl">
-            {isNew ? ‘Nouvel élève’ : ‘Modifier l’élève’}
+            {isNew ? 'Nouvel élève' : "Modifier l'élève"}
           </h2>
           <p className="mt-1 text-sm text-school-inkmuted">
-            Remplissez l’essentiel — vous pourrez compléter la fiche plus tard.
+            Remplissez l'essentiel — vous pourrez compléter la fiche plus tard.
           </p>
         </div>
       )}
@@ -136,7 +136,7 @@ export function QuickStudentForm({
             return
           }
           if (!studentCode.trim()) {
-            setError('Indiquez le code ou matricule de l’élève.')
+            setError("Indiquez le code ou matricule de l'élève.")
             return
           }
           if (!phone1.trim() && !phone2.trim() && !phone3.trim()) {
@@ -322,10 +322,10 @@ export function QuickStudentForm({
             className="school-btn-primary disabled:opacity-60"
           >
             {save.isPending
-              ? ‘Enregistrement…’
+              ? 'Enregistrement…'
               : isNew
-                ? ‘Enregistrer l’élève’
-                : ‘Mettre à jour’}
+                ? "Enregistrer l'élève"
+                : 'Mettre à jour'}
           </button>
         </div>
       </form>

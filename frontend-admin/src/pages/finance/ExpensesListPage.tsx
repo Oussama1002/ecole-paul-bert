@@ -399,7 +399,7 @@ export function ExpensesListPage() {
                               type="button"
                               onClick={() => {
                                 const reason = window.prompt(
-                                  'Motif d’annulation (optionnel) :',
+                                  "Motif d'annulation (optionnel) :",
                                   ''
                                 )
                                 if (reason !== null) {

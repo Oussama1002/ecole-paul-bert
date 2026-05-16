@@ -16,7 +16,7 @@ export function ForgotPasswordPage() {
       await authApi.forgotPassword(email)
       setDone(true)
     } catch {
-      setError('Impossible d’envoyer la demande pour le moment.')
+      setError("Impossible d'envoyer la demande pour le moment.")
     } finally {
       setLoading(false)
     }

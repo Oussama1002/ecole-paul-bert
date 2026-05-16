@@ -128,7 +128,7 @@ export function TeacherFormPage() {
           ← Enseignants
         </Link>
         <h2 className="mt-2 text-xl font-semibold text-slate-800">
-          {isNew ? 'Nouvel enseignant' : 'Modifier l’enseignant'}
+          {isNew ? 'Nouvel enseignant' : "Modifier l'enseignant"}
         </h2>
       </div>
 
@@ -251,7 +251,7 @@ export function TeacherFormPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Date d’embauche
+              Date d'embauche
             </label>
             <input
               type="date"
@@ -308,7 +308,7 @@ export function TeacherFormPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Années d’expérience
+              Années d'expérience
             </label>
             <input
               type="number"

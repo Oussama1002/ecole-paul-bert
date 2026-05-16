@@ -120,7 +120,7 @@ export function UserFormPage() {
           ← Retour à la liste
         </Link>
         <h2 className="mt-2 text-xl font-semibold text-slate-800">
-          {isNew ? 'Nouvel utilisateur' : 'Modifier l’utilisateur'}
+          {isNew ? 'Nouvel utilisateur' : "Modifier l'utilisateur"}
         </h2>
       </div>
 
