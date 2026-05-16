@@ -84,7 +84,6 @@ export function StudentDetailPage() {
   const canManage   = hasPermission('students.manage')
   const canEnroll   = hasPermission('enrollments.manage')
   const canJustify  = hasPermission('attendance.justify')
-  const canAttend   = hasPermission('attendance.manage')
   const canDocs     = hasPermission('documents.manage')
   const canGrades   = hasPermission('grades.manage')
   const canFinance  = hasPermission('finance.manage')
@@ -131,12 +130,6 @@ export function StudentDetailPage() {
   const [editGradeId, setEditGradeId] = useState<number | null>(null)
   const [editGradeScore, setEditGradeScore] = useState('')
   const [editGradeErr, setEditGradeErr] = useState<string | null>(null)
-
-  // ── Absences state ─────────────────────────────────────────────────────────
-  const [newAbsDate, setNewAbsDate] = useState(new Date().toISOString().slice(0, 10))
-  const [newAbsStatus, setNewAbsStatus] = useState<'absent' | 'late' | 'present'>('absent')
-  const [newAbsMinutes, setNewAbsMinutes] = useState('')
-  const [newAbsErr, setNewAbsErr] = useState<string | null>(null)
 
   // ── Finance state ──────────────────────────────────────────────────────────
   const [newPayAmount, setNewPayAmount] = useState('')
@@ -331,22 +324,6 @@ export function StudentDetailPage() {
     mutationFn: () => gradesApi.updateGrade(editGradeId!, { score: parseFloat(editGradeScore) }),
     onSuccess: () => { void refetchGrades(); setEditGradeId(null); setEditGradeErr(null) },
     onError: (e) => setEditGradeErr(getApiErrorMessage(e, 'Impossible de modifier la note.')),
-  })
-
-  const addAbsence = useMutation({
-    mutationFn: () => attendanceApi.createAttendanceRecord({
-      school_year_id: currentEnrollment!.school_year_id,
-      class_id: currentEnrollment!.class_id,
-      student_id: numericId,
-      attendance_date: newAbsDate,
-      attendance_status: newAbsStatus,
-      minutes_late: newAbsMinutes ? parseInt(newAbsMinutes, 10) : null,
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance-records-student', numericId] })
-      setNewAbsErr(null)
-    },
-    onError: (e) => setNewAbsErr(getApiErrorMessage(e, 'Impossible d\'enregistrer le relevé.')),
   })
 
   const addPayment = useMutation({
@@ -776,38 +753,6 @@ export function StudentDetailPage() {
             )}
           </section>
 
-          {canAttend && currentEnrollment ? (
-            <form className="school-section space-y-3" onSubmit={(e) => {
-              e.preventDefault(); setNewAbsErr(null); addAbsence.mutate()
-            }}>
-              <SectionTitle emoji="➕" title="Enregistrer une absence / retard" iconClassName="bg-school-coral/15 text-[#B23A2E]" />
-              {newAbsErr && <p className="text-sm text-red-600">{newAbsErr}</p>}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Date">
-                  <input required type="date" value={newAbsDate} onChange={(e) => setNewAbsDate(e.target.value)} className="school-input" />
-                </Field>
-                <Field label="Statut">
-                  <select value={newAbsStatus} onChange={(e) => setNewAbsStatus(e.target.value as typeof newAbsStatus)} className="school-select">
-                    <option value="absent">Absent</option>
-                    <option value="late">Retard</option>
-                    <option value="present">Présent</option>
-                  </select>
-                </Field>
-                {newAbsStatus === 'late' && (
-                  <Field label="Durée retard (min)">
-                    <input type="number" min={1} value={newAbsMinutes} onChange={(e) => setNewAbsMinutes(e.target.value)} className="school-input" placeholder="15" />
-                  </Field>
-                )}
-              </div>
-              <div className="flex justify-end">
-                <button type="submit" disabled={addAbsence.isPending} className="school-btn-primary disabled:opacity-60">
-                  {addAbsence.isPending ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
-              </div>
-            </form>
-          ) : canAttend && !currentEnrollment ? (
-            <p className="text-sm text-school-inkmuted italic">L'élève doit être inscrit dans une classe pour enregistrer des absences.</p>
-          ) : null}
         </div>
       )}
 
