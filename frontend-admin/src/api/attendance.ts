@@ -121,6 +121,24 @@ export async function fetchAttendanceStats(params: {
   }
 }
 
+export async function createAttendanceRecord(payload: {
+  school_year_id: number
+  class_id: number
+  student_id: number
+  attendance_date: string
+  attendance_status: AttendanceStatus
+  term_id?: number | null
+  minutes_late?: number | null
+  remarks?: string | null
+}): Promise<AttendanceRecord> {
+  const { data } = await apiClient.post<Ok<AttendanceRecord> | Err>(
+    '/v1/attendance-records',
+    payload
+  )
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data
+}
+
 export async function downloadAttendanceExcel(
   params: AttendanceRecordListParams = {}
 ): Promise<void> {

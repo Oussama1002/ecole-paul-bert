@@ -155,6 +155,19 @@ export async function createPayment(payload: {
   return data.data
 }
 
+export async function createFeeAssignment(payload: {
+  student_id: number
+  school_year_id: number
+  fee_type_id: number
+  amount_due: number
+  due_date?: string | null
+  notes?: string | null
+}): Promise<FeeAssignment> {
+  const { data } = await apiClient.post<Ok<FeeAssignment> | Err>('/v1/fee-assignments', payload)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data
+}
+
 export async function downloadReceipt(paymentId: number): Promise<void> {
   const res = await apiClient.get<Blob>(`/v1/payments/${paymentId}/receipt`, {
     responseType: 'blob',
