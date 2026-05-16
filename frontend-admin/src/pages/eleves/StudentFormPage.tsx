@@ -4,6 +4,7 @@ import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import * as studentsApi from '../../api/students'
 import { useSimpleMode } from '../../contexts/SimpleModeContext'
 import { QuickStudentForm } from './QuickStudentForm'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 export function StudentFormPage() {
   const { pathname } = useLocation()
@@ -21,6 +22,7 @@ export function StudentFormPage() {
   })
 
   const [studentCode, setStudentCode] = useState('')
+  const [codeManual, setCodeManual] = useState(false)
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [gender, setGender] = useState('')
@@ -44,9 +46,23 @@ export function StudentFormPage() {
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const { data: suggestedCode, refetch: refetchCode } = useQuery({
+    queryKey: ['next-student-code'],
+    queryFn: studentsApi.fetchNextStudentCode,
+    enabled: isNew && !codeManual,
+    staleTime: 0,
+  })
+
+  useEffect(() => {
+    if (isNew && suggestedCode && !codeManual) {
+      setStudentCode(suggestedCode)
+    }
+  }, [isNew, suggestedCode, codeManual])
+
   useEffect(() => {
     if (!existing) return
     setStudentCode(existing.student_code)
+    setCodeManual(true)
     setFirstName(existing.first_name)
     setLastName(existing.last_name)
     setGender(existing.gender ?? '')
@@ -105,7 +121,7 @@ export function StudentFormPage() {
       queryClient.invalidateQueries({ queryKey: ['students'] })
       navigate('/eleves')
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => setError(getApiErrorMessage(e, 'Erreur lors de l\'enregistrement.')),
   })
 
   if (simpleMode) {
@@ -146,13 +162,28 @@ export function StudentFormPage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-xs text-slate-500">Code élève</span>
-            <input
-              required
-              value={studentCode}
-              onChange={(e) => setStudentCode(e.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            />
+            <span className="mb-1 block text-xs text-slate-500">
+              Code élève{isNew && !codeManual && ' (généré automatiquement)'}
+            </span>
+            <div className="flex gap-2">
+              <input
+                required
+                value={studentCode}
+                onChange={(e) => { setCodeManual(true); setStudentCode(e.target.value) }}
+                className="w-full rounded border border-slate-300 px-3 py-2 text-sm font-mono"
+                placeholder="EPB-2026-0001"
+              />
+              {isNew && (
+                <button
+                  type="button"
+                  title="Regénérer le code"
+                  onClick={() => { setCodeManual(false); refetchCode() }}
+                  className="shrink-0 rounded border border-slate-300 px-2 py-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                >
+                  ↻
+                </button>
+              )}
+            </div>
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-slate-500">Statut</span>
