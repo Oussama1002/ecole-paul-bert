@@ -22,6 +22,14 @@ export type Enrollment = {
   school_class?: { id: number; name: string; code: string }
 }
 
+export async function fetchNextEnrollmentNumber(): Promise<string> {
+  const { data } = await apiClient.get<Ok<{ enrollment_number: string }> | Err>(
+    '/v1/enrollments/next-number'
+  )
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data.enrollment_number
+}
+
 export async function fetchEnrollments(params: {
   student_id?: number
   school_year_id?: number

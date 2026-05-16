@@ -135,6 +135,26 @@ class EnrollmentController extends Controller
         );
     }
 
+    public function nextNumber(): JsonResponse
+    {
+        $year = (int) date('Y');
+        $prefix = 'INS-'.$year.'-';
+
+        $last = Enrollment::query()
+            ->where('enrollment_number', 'like', $prefix.'%')
+            ->orderByDesc('enrollment_number')
+            ->value('enrollment_number');
+
+        $next = 1;
+        if (is_string($last) && preg_match('/-(\d+)$/', $last, $m)) {
+            $next = (int) $m[1] + 1;
+        }
+
+        return ApiResponse::success([
+            'enrollment_number' => $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT),
+        ], 'Prochain numéro d\'inscription.');
+    }
+
     private function hasConflictingActiveEnrollment(int $studentId, int $schoolYearId): bool
     {
         return Enrollment::query()

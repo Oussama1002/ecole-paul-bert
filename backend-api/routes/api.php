@@ -154,6 +154,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:students.manage')->patch('/students/{student}/guardians/{guardian}', [GuardianController::class, 'updatePivot']);
         Route::middleware('permission:students.manage')->delete('/students/{student}/guardians/{guardian}', [GuardianController::class, 'detach']);
 
+        Route::middleware('permission:enrollments.manage')->get('/enrollments/next-number', [EnrollmentController::class, 'nextNumber']);
         Route::middleware('permission:enrollments.view')->get('/enrollments', [EnrollmentController::class, 'index']);
         Route::middleware('permission:enrollments.view')->get('/enrollments/{enrollment}', [EnrollmentController::class, 'show']);
         Route::middleware('permission:enrollments.manage')->post('/enrollments', [EnrollmentController::class, 'store']);

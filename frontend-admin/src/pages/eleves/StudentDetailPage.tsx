@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import * as attendanceApi from '../../api/attendance'
 import * as classesApi from '../../api/classes'
 import * as enrollmentsApi from '../../api/enrollments'
+import { fetchNextEnrollmentNumber } from '../../api/enrollments'
 import * as schoolYearsApi from '../../api/schoolYears'
 import * as studentsApi from '../../api/students'
 import { useAuth } from '../../contexts/AuthContext'
@@ -50,6 +51,22 @@ const STATUS_LABEL: Record<string, string> = {
   graduated: 'Diplômé',
   suspended: 'Suspendu',
   withdrawn: 'Retiré',
+}
+
+const ACADEMIC_STATUS_LABEL: Record<string, string> = {
+  enrolled: 'Inscrit',
+  re_enrolled: 'Réinscrit',
+  transferred_in: 'Transféré entrant',
+  transferred_out: 'Transféré sortant',
+  completed: 'Terminé',
+  cancelled: 'Annulé',
+}
+
+const REGISTRATION_STATUS_LABEL: Record<string, string> = {
+  draft: 'Brouillon',
+  submitted: 'Soumis',
+  validated: 'Validé',
+  rejected: 'Rejeté',
 }
 
 function ageOf(dob?: string | null): number | null {
@@ -100,6 +117,7 @@ export function StudentDetailPage() {
   const [syEnrollment, setSyEnrollment] = useState<number>(0)
   const [classId, setClassId] = useState<number>(0)
   const [enrollmentNumber, setEnrollmentNumber] = useState('')
+  const [enrollmentNumberManual, setEnrollmentNumberManual] = useState(false)
   const [enrollmentDate, setEnrollmentDate] = useState(
     new Date().toISOString().slice(0, 10)
   )
@@ -185,6 +203,28 @@ export function StudentDetailPage() {
     enabled: !Number.isNaN(numericId) && tab === 'inscription',
   })
 
+  const { data: suggestedNumber, refetch: refetchNumber } = useQuery({
+    queryKey: ['next-enrollment-number'],
+    queryFn: fetchNextEnrollmentNumber,
+    enabled: tab === 'inscription' && canEnroll && !enrollmentNumberManual,
+    staleTime: 0,
+  })
+
+  useEffect(() => {
+    if (suggestedNumber && !enrollmentNumberManual) {
+      setEnrollmentNumber(suggestedNumber)
+    }
+  }, [suggestedNumber, enrollmentNumberManual])
+
+  useEffect(() => {
+    if (tab === 'inscription' && years?.items) {
+      const current = years.items.find((y) => y.is_current)
+      if (current && syEnrollment === 0) {
+        setSyEnrollment(current.id)
+      }
+    }
+  }, [tab, years, syEnrollment])
+
   const createEnrollment = useMutation({
     mutationFn: () =>
       enrollmentsApi.createEnrollment({
@@ -202,6 +242,8 @@ export function StudentDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['student', numericId] })
       setEnrollErr(null)
       setEnrollmentNumber('')
+      setEnrollmentNumberManual(false)
+      refetchNumber()
     },
     onError: (e) =>
       setEnrollErr(getApiErrorMessage(e, "Impossible d'enregistrer l'inscription.")),
@@ -414,7 +456,9 @@ export function StudentDetailPage() {
                     </span>
                     {!simpleMode && (
                       <span className="ml-auto text-xs font-semibold text-school-inkmuted">
-                        {e.academic_status} · {e.registration_status}
+                        {ACADEMIC_STATUS_LABEL[e.academic_status] ?? e.academic_status}
+                        {' · '}
+                        {REGISTRATION_STATUS_LABEL[e.registration_status] ?? e.registration_status}
                       </span>
                     )}
                   </li>
@@ -486,12 +530,23 @@ export function StudentDetailPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="N° inscription">
-                  <input
-                    value={enrollmentNumber}
-                    onChange={(e) => setEnrollmentNumber(e.target.value)}
-                    className="school-input"
-                  />
+                <Field label="N° inscription (généré automatiquement)">
+                  <div className="flex gap-2">
+                    <input
+                      value={enrollmentNumber}
+                      onChange={(e) => { setEnrollmentNumberManual(true); setEnrollmentNumber(e.target.value) }}
+                      className="school-input font-mono"
+                      placeholder="INS-2026-0001"
+                    />
+                    <button
+                      type="button"
+                      title="Regénérer"
+                      onClick={() => { setEnrollmentNumberManual(false); refetchNumber() }}
+                      className="shrink-0 rounded-xl border-2 border-school-line px-2 text-school-inkmuted hover:bg-school-cream"
+                    >
+                      ↻
+                    </button>
+                  </div>
                 </Field>
                 <Field label="Date">
                   <input

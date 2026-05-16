@@ -6,6 +6,25 @@ import { useSimpleMode } from '../../contexts/SimpleModeContext'
 import { QuickStudentForm } from './QuickStudentForm'
 import { getApiErrorMessage } from '../../utils/apiError'
 
+const NATIONALITIES = [
+  'Marocaine', 'Française', 'Algérienne', 'Tunisienne', 'Sénégalaise',
+  'Malienne', 'Ivoirienne', 'Guinéenne', 'Camerounaise', 'Congolaise',
+  'Mauritanienne', 'Nigériane', 'Gabonaise', 'Burkinabée', 'Béninoise',
+  'Togolaise', 'Rwandaise', 'Malgache', 'Comorienne', 'Djiboutienne',
+  'Espagnole', 'Belge', 'Suisse', 'Canadienne', 'Américaine',
+  'Britannique', 'Italienne', 'Allemande', 'Portugaise', 'Néerlandaise',
+  'Libanaise', 'Syrienne', 'Égyptienne', 'Libérienne', 'Autre',
+]
+
+const VILLES_MAROC = [
+  'Casablanca', 'Rabat', 'Fès', 'Marrakech', 'Tanger', 'Agadir',
+  'Meknès', 'Oujda', 'Kenitra', 'Tétouan', 'Salé', 'Mohammedia',
+  'Khouribga', 'Béni Mellal', 'El Jadida', 'Nador', 'Settat',
+  'Safi', 'Khémisset', 'Berkane', 'Larache', 'Ksar El Kébir',
+  'Khénifra', 'Guelmim', 'Dakhla', 'Laâyoune', 'Errachidia',
+  'Ouarzazate', 'Ifrane', 'Azrou', 'Taza', 'Al Hoceïma', 'Autre',
+]
+
 export function StudentFormPage() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -253,19 +272,29 @@ export function StudentFormPage() {
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-slate-500">Nationalité</span>
-            <input
+            <select
               value={nationality}
               onChange={(e) => setNationality(e.target.value)}
               className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            />
+            >
+              <option value="">—</option>
+              {NATIONALITIES.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-slate-500">Ville</span>
-            <input
+            <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
               className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            />
+            >
+              <option value="">—</option>
+              {VILLES_MAROC.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
           </label>
           <label className="block md:col-span-2">
             <span className="mb-1 block text-xs text-slate-500">Adresse</span>
