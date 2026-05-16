@@ -3,6 +3,16 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import * as roomsApi from '../../api/rooms'
 
+function autoRoomCode(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 20)
+}
+
 const ROOM_TYPES = [
   ['classroom', 'Salle de classe'],
   ['lab', 'Laboratoire'],
@@ -29,6 +39,7 @@ export function RoomFormPage() {
 
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
+  const [codeManual, setCodeManual] = useState(false)
   const [roomType, setRoomType] = useState<string>('classroom')
   const [capacity, setCapacity] = useState('')
   const [location, setLocation] = useState('')
@@ -37,9 +48,14 @@ export function RoomFormPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!codeManual && isNew) setCode(autoRoomCode(name))
+  }, [name, codeManual, isNew])
+
+  useEffect(() => {
     if (!existing) return
     setName(existing.name)
     setCode(existing.code)
+    setCodeManual(true) // don't override code when editing
     setRoomType(existing.room_type)
     setCapacity(existing.capacity != null ? String(existing.capacity) : '')
     setLocation(existing.location ?? '')
@@ -107,12 +123,15 @@ export function RoomFormPage() {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">Code</span>
+          <span className="mb-1 block text-xs text-slate-500">
+            Code{isNew && ' (généré automatiquement)'}
+          </span>
           <input
             required
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            onChange={(e) => { setCodeManual(true); setCode(e.target.value) }}
+            className="w-full rounded border border-slate-300 px-3 py-2 text-sm bg-slate-50"
+            placeholder="Généré depuis le nom"
           />
         </label>
         <label className="block">
