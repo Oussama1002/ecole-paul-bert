@@ -30,7 +30,6 @@ export function UserFormModal({
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
   const [phone, setPhone] = useState('')
   const [status, setStatus] = useState('active')
   const [password, setPassword] = useState('')
@@ -75,7 +74,6 @@ export function UserFormModal({
     setFirstName(existing.first_name)
     setLastName(existing.last_name)
     setEmail(existing.email)
-    setUsername(existing.username ?? '')
     setPhone(existing.phone ?? '')
     setStatus(existing.status)
     setPassword('')
@@ -90,7 +88,6 @@ export function UserFormModal({
           first_name: firstName,
           last_name: lastName,
           email,
-          username: username || null,
           phone: phone || null,
           password,
           password_confirmation: passwordConfirmation,
@@ -102,7 +99,6 @@ export function UserFormModal({
         first_name: firstName,
         last_name: lastName,
         email,
-        username: username || null,
         phone: phone || null,
         status,
       }
@@ -203,16 +199,10 @@ export function UserFormModal({
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="school-input" />
             </label>
 
-            <div className="grid grid-cols-2 gap-4">
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Identifiant</span>
-                <input value={username} onChange={(e) => setUsername(e.target.value)} className="school-input" />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Téléphone</span>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="school-input" />
-              </label>
-            </div>
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Téléphone</span>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} className="school-input" />
+            </label>
 
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Statut</span>

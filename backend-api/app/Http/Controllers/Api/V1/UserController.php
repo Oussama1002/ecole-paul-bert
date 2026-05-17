@@ -79,6 +79,19 @@ class UserController extends Controller
         unset($data['password']);
         $data['status'] = $data['status'] ?? 'active';
 
+        // Username always derives from the role code (made unique with a suffix)
+        if (empty($data['username'])) {
+            $role = \App\Models\Role::query()->find($data['role_id'] ?? null);
+            $base = $role?->code ?: 'user';
+            $username = $base;
+            $n = 1;
+            while (User::query()->where('username', $username)->exists()) {
+                $n++;
+                $username = $base.$n;
+            }
+            $data['username'] = $username;
+        }
+
         $user = User::query()->create($data);
         $user->clearPermissionCache();
 
