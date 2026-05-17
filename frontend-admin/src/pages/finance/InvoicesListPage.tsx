@@ -51,6 +51,8 @@ export function InvoicesListPage() {
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<{
+    student_id: number | null
+    issue_date: string
     due_date: string
     notes: string
     discount_amount: number
@@ -146,12 +148,15 @@ export function InvoicesListPage() {
       const items = editForm.items
         .map((it) => ({ ...it, amount: Number(it.amount) }))
         .filter((it) => it.label.trim() && it.amount > 0)
+      if (items.length === 0) throw new Error('Au moins une ligne valide.')
       await financeApi.updateInvoice(editingId, {
+        student_id: editForm.student_id,
+        issue_date: editForm.issue_date || null,
         due_date: editForm.due_date || null,
         notes: editForm.notes || null,
         discount_amount: Number(editForm.discount_amount) || 0,
         tax_amount: Number(editForm.tax_amount) || 0,
-        items: items.length > 0 ? items : undefined,
+        items,
       })
     },
     onSuccess: () => {
@@ -183,6 +188,8 @@ export function InvoicesListPage() {
     setEditingId(inv.id)
     setEditError(null)
     setEditForm({
+      student_id: inv.student_id ?? null,
+      issue_date: inv.issue_date ?? '',
       due_date: inv.due_date ?? '',
       notes: '',
       discount_amount: parseFloat(inv.discount_amount) || 0,
@@ -201,6 +208,8 @@ export function InvoicesListPage() {
     if (!editDetailQuery.data || !editingId) return
     const d = editDetailQuery.data
     setEditForm({
+      student_id: d.student_id ?? null,
+      issue_date: d.issue_date ?? '',
       due_date: d.due_date ?? '',
       notes: (d as financeApi.InvoiceDetail & { notes?: string }).notes ?? '',
       discount_amount: parseFloat(d.discount_amount) || 0,
@@ -362,40 +371,56 @@ export function InvoicesListPage() {
               <button type="button" onClick={() => { setEditingId(null); setEditForm(null) }} className="text-xl leading-none text-school-inkmuted hover:text-school-ink">✕</button>
             </div>
             <form className="space-y-4 p-6" onSubmit={(e) => { e.preventDefault(); updateInvoice.mutate() }}>
-              {editDetailQuery.isLoading && <p className="text-sm text-school-inkmuted">Chargement…</p>}
+              {editDetailQuery.isLoading && <p className="text-sm text-school-inkmuted">Chargement des données…</p>}
               {editError && (
                 <p className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">{editError}</p>
               )}
               <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Élève *" className="sm:col-span-2">
+                  <SearchSelect
+                    value={editForm.student_id}
+                    onChange={(v) => setEditForm((f) => f ? { ...f, student_id: v } : f)}
+                    options={studentOptions}
+                    placeholder="Rechercher un élève"
+                    disabled={schoolYearId <= 0}
+                    isLoading={studentsQuery.isLoading}
+                    isError={studentsQuery.isError}
+                    className="mt-1"
+                  />
+                </Field>
+                <Field label="Date d'émission *">
+                  <input type="date" required value={editForm.issue_date} onChange={(e) => setEditForm((f) => f ? { ...f, issue_date: e.target.value } : f)} className="school-input" />
+                </Field>
                 <Field label="Échéance">
                   <input type="date" value={editForm.due_date} onChange={(e) => setEditForm((f) => f ? { ...f, due_date: e.target.value } : f)} className="school-input" />
                 </Field>
                 <Field label="Remise (DH)">
                   <input type="number" step="0.01" min="0" value={editForm.discount_amount || ''} onChange={(e) => setEditForm((f) => f ? { ...f, discount_amount: Number(e.target.value) } : f)} className="school-input" />
                 </Field>
+                <Field label="Taxe (DH)">
+                  <input type="number" step="0.01" min="0" value={editForm.tax_amount || ''} onChange={(e) => setEditForm((f) => f ? { ...f, tax_amount: Number(e.target.value) } : f)} className="school-input" />
+                </Field>
               </div>
 
-              {editDetailQuery.data?.status === 'draft' && (
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Lignes de facture</span>
-                    <button type="button" onClick={() => setEditForm((f) => f ? { ...f, items: [...f.items, { label: '', amount: 0 }] } : f)} className="text-xs font-bold text-school-grape hover:underline">
-                      + Ligne
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {editForm.items.map((it, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <input type="text" placeholder="Libellé" value={it.label} onChange={(e) => setEditForm((f) => { if (!f) return f; const items = [...f.items]; items[idx] = { ...items[idx], label: e.target.value }; return { ...f, items } })} className="school-input flex-1 text-sm" />
-                        <input type="number" step="0.01" min="0" placeholder="Montant" value={it.amount || ''} onChange={(e) => setEditForm((f) => { if (!f) return f; const items = [...f.items]; items[idx] = { ...items[idx], amount: Number(e.target.value) }; return { ...f, items } })} className="school-input w-28 text-sm" />
-                        {editForm.items.length > 1 && (
-                          <button type="button" onClick={() => setEditForm((f) => f ? { ...f, items: f.items.filter((_, i) => i !== idx) } : f)} className="text-sm text-school-inkmuted hover:text-[#B23A2E]">✕</button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Lignes de facture</span>
+                  <button type="button" onClick={() => setEditForm((f) => f ? { ...f, items: [...f.items, { label: '', amount: 0 }] } : f)} className="text-xs font-bold text-school-grape hover:underline">
+                    + Ligne
+                  </button>
                 </div>
-              )}
+                <div className="space-y-2">
+                  {editForm.items.map((it, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input type="text" placeholder="Libellé (ex. Mensualité Mars)" value={it.label} onChange={(e) => setEditForm((f) => { if (!f) return f; const items = [...f.items]; items[idx] = { ...items[idx], label: e.target.value }; return { ...f, items } })} className="school-input flex-1 text-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="Montant" value={it.amount || ''} onChange={(e) => setEditForm((f) => { if (!f) return f; const items = [...f.items]; items[idx] = { ...items[idx], amount: Number(e.target.value) }; return { ...f, items } })} className="school-input w-28 text-sm" />
+                      {editForm.items.length > 1 && (
+                        <button type="button" onClick={() => setEditForm((f) => f ? { ...f, items: f.items.filter((_, i) => i !== idx) } : f)} className="text-sm text-school-inkmuted hover:text-[#B23A2E]">✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <Field label="Notes">
                 <textarea value={editForm.notes} onChange={(e) => setEditForm((f) => f ? { ...f, notes: e.target.value } : f)} maxLength={2000} rows={2} className="school-input" />

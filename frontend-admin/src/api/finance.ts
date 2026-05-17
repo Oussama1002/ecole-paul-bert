@@ -426,6 +426,8 @@ export async function createInvoice(payload: {
 export async function updateInvoice(
   id: number,
   payload: {
+    student_id?: number | null
+    issue_date?: string | null
     due_date?: string | null
     notes?: string | null
     discount_amount?: number

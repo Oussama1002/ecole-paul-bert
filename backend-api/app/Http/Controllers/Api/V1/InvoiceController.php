@@ -163,6 +163,8 @@ class InvoiceController extends Controller
         }
 
         $data = $request->validate([
+            'student_id'      => ['nullable', 'integer', 'exists:students,id'],
+            'issue_date'      => ['nullable', 'date'],
             'due_date'        => ['nullable', 'date'],
             'notes'           => ['nullable', 'string', 'max:2000'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
@@ -173,22 +175,18 @@ class InvoiceController extends Controller
             'items.*.fee_assignment_id' => ['nullable', 'integer'],
         ]);
 
-        $before = $invoice->only(['due_date', 'notes', 'discount_amount', 'tax_amount', 'total_amount']);
+        $before = $invoice->only(['student_id', 'issue_date', 'due_date', 'notes', 'discount_amount', 'tax_amount', 'total_amount']);
 
         DB::beginTransaction();
         try {
-            $invoice->fill(array_filter([
-                'due_date'        => array_key_exists('due_date', $data) ? $data['due_date'] : $invoice->due_date,
-                'notes'           => array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes,
-                'discount_amount' => $data['discount_amount'] ?? $invoice->discount_amount,
-                'tax_amount'      => $data['tax_amount'] ?? $invoice->tax_amount,
-            ], fn ($v) => $v !== null || true));
-            $invoice->due_date        = array_key_exists('due_date', $data) ? $data['due_date'] : $invoice->due_date;
-            $invoice->notes           = array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes;
-            $invoice->discount_amount = $data['discount_amount'] ?? $invoice->discount_amount;
-            $invoice->tax_amount      = $data['tax_amount'] ?? $invoice->tax_amount;
+            if (array_key_exists('student_id', $data) && $data['student_id'])  $invoice->student_id      = $data['student_id'];
+            if (array_key_exists('issue_date', $data) && $data['issue_date'])  $invoice->issue_date       = $data['issue_date'];
+            $invoice->due_date        = array_key_exists('due_date', $data)        ? $data['due_date']        : $invoice->due_date;
+            $invoice->notes           = array_key_exists('notes', $data)           ? $data['notes']           : $invoice->notes;
+            $invoice->discount_amount = array_key_exists('discount_amount', $data) ? $data['discount_amount'] : $invoice->discount_amount;
+            $invoice->tax_amount      = array_key_exists('tax_amount', $data)      ? $data['tax_amount']      : $invoice->tax_amount;
 
-            if (isset($data['items']) && $invoice->status === 'draft') {
+            if (isset($data['items'])) {
                 InvoiceItem::query()->where('invoice_id', $invoice->id)->delete();
                 foreach ($data['items'] as $it) {
                     InvoiceItem::query()->create([
