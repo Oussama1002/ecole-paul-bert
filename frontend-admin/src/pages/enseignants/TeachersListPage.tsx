@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
+import { TeacherFormModal } from './TeacherFormModal'
 
 const statusLabels: Record<string, string> = {
   active: 'Actif',
@@ -40,6 +41,7 @@ export function TeachersListPage() {
   const [debounced, setDebounced] = useState('')
   const [status, setStatus] = useState('')
   const [employmentType, setEmploymentType] = useState('')
+  const [modalTeacher, setModalTeacher] = useState<number | 'new' | null>(null)
 
   const canManage = hasPermission('teachers.manage')
 
@@ -80,9 +82,13 @@ export function TeachersListPage() {
         }
         actions={
           canManage ? (
-            <Link to="/enseignants/nouveau" className="school-btn-primary">
+            <button
+              type="button"
+              onClick={() => setModalTeacher('new')}
+              className="school-btn-primary"
+            >
               + Nouvel enseignant
-            </Link>
+            </button>
           ) : null
         }
       />
@@ -204,9 +210,13 @@ export function TeachersListPage() {
                 Réessayer
               </button>
               {canManage ? (
-                <Link to="/enseignants/nouveau" className="school-btn-primary">
+                <button
+                  type="button"
+                  onClick={() => setModalTeacher('new')}
+                  className="school-btn-primary"
+                >
                   + Nouvel enseignant
-                </Link>
+                </button>
               ) : null}
             </div>
           }
@@ -280,12 +290,13 @@ export function TeachersListPage() {
                         Fiche
                       </Link>
                       {canManage && (
-                        <Link
-                          to={`/enseignants/${t.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setModalTeacher(t.id)}
                           className="text-xs font-bold text-school-skydeep hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                       )}
                       {canManage && !simpleMode && (
                         <button
@@ -334,6 +345,13 @@ export function TeachersListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {modalTeacher !== null && (
+        <TeacherFormModal
+          teacherId={modalTeacher === 'new' ? null : modalTeacher}
+          onClose={() => setModalTeacher(null)}
+        />
       )}
     </div>
   )
