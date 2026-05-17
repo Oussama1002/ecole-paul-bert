@@ -1,0 +1,217 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type FormEvent, useEffect, useState } from 'react'
+import * as usersApi from '../api/users'
+import * as rolesApi from '../api/roles'
+
+export function UserFormModal({
+  userId,
+  onClose,
+}: {
+  userId: number | null
+  onClose: () => void
+}) {
+  const isNew = userId === null
+  const queryClient = useQueryClient()
+
+  const { data: roles } = useQuery({
+    queryKey: ['roles'],
+    queryFn: rolesApi.fetchRoles,
+  })
+
+  const { data: existing, isLoading } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => usersApi.fetchUser(userId as number),
+    enabled: !isNew && userId != null,
+  })
+
+  const [roleId, setRoleId] = useState(0)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
+  const [phone, setPhone] = useState('')
+  const [status, setStatus] = useState('active')
+  const [password, setPassword] = useState('')
+  const [passwordConfirmation, setPasswordConfirmation] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!existing) return
+    setRoleId(existing.role?.id ?? 0)
+    setFirstName(existing.first_name)
+    setLastName(existing.last_name)
+    setEmail(existing.email)
+    setUsername(existing.username ?? '')
+    setPhone(existing.phone ?? '')
+    setStatus(existing.status)
+    setPassword('')
+    setPasswordConfirmation('')
+  }, [existing])
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (isNew) {
+        return usersApi.createUser({
+          role_id: roleId,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          username: username || null,
+          phone: phone || null,
+          password,
+          password_confirmation: passwordConfirmation,
+          status,
+        })
+      }
+      const payload: usersApi.UpdateUserPayload = {
+        role_id: roleId,
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        username: username || null,
+        phone: phone || null,
+        status,
+      }
+      if (password) {
+        payload.password = password
+        payload.password_confirmation = passwordConfirmation
+      }
+      return usersApi.updateUser(userId as number, payload)
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['users'] })
+      onClose()
+    },
+    onError: (e: Error) => setError(e.message),
+  })
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (isNew && (!password || password !== passwordConfirmation)) {
+      setError('Les mots de passe ne correspondent pas.')
+      return
+    }
+    if (!isNew && password && password !== passwordConfirmation) {
+      setError('Les mots de passe ne correspondent pas.')
+      return
+    }
+    save.mutate()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border-2 border-school-border/70 bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-school-line bg-white px-6 py-4">
+          <h3 className="font-display text-lg font-bold text-school-ink">
+            {isNew ? 'Nouvel utilisateur' : "Modifier l'utilisateur"}
+          </h3>
+          <button type="button" onClick={onClose} className="text-xl leading-none text-school-inkmuted hover:text-school-ink">✕</button>
+        </div>
+
+        {!isNew && isLoading ? (
+          <p className="p-6 text-sm text-school-inkmuted">Chargement…</p>
+        ) : (
+          <form onSubmit={(e) => void onSubmit(e)} className="space-y-4 p-6">
+            {error && (
+              <p className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">{error}</p>
+            )}
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Rôle *</span>
+              <select
+                required
+                value={roleId || ''}
+                onChange={(e) => setRoleId(Number(e.target.value))}
+                className="school-select"
+              >
+                <option value="">—</option>
+                {roles?.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Prénom *</span>
+                <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="school-input" />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Nom *</span>
+                <input required value={lastName} onChange={(e) => setLastName(e.target.value)} className="school-input" />
+              </label>
+            </div>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">E-mail *</span>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="school-input" />
+            </label>
+
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Identifiant</span>
+                <input value={username} onChange={(e) => setUsername(e.target.value)} className="school-input" />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Téléphone</span>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="school-input" />
+              </label>
+            </div>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Statut</span>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="school-select">
+                <option value="active">Actif</option>
+                <option value="inactive">Inactif</option>
+                <option value="suspended">Suspendu</option>
+              </select>
+            </label>
+
+            {!isNew && (
+              <p className="text-xs text-school-inkmuted">Laisser le mot de passe vide pour ne pas le changer.</p>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  {isNew ? 'Mot de passe *' : 'Nouveau mot de passe'}
+                </span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  required={isNew}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="school-input"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  {isNew ? 'Confirmation *' : 'Confirmation'}
+                </span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  required={isNew}
+                  value={passwordConfirmation}
+                  onChange={(e) => setPasswordConfirmation(e.target.value)}
+                  className="school-input"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={onClose} className="school-btn-secondary">Annuler</button>
+              <button type="submit" disabled={save.isPending} className="school-btn-primary disabled:opacity-60">
+                {save.isPending ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}

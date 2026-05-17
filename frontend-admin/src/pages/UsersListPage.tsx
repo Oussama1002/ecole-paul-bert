@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import * as rolesApi from '../api/roles'
 import * as usersApi from '../api/users'
 import { useAuth } from '../contexts/AuthContext'
+import { UserFormModal } from './UserFormModal'
 
 const statusLabels: Record<string, string> = {
   active: 'Actif',
@@ -19,6 +19,7 @@ export function UsersListPage() {
   const [searchDebounced, setSearchDebounced] = useState('')
   const [roleId, setRoleId] = useState<number | ''>('')
   const [status, setStatus] = useState<string>('')
+  const [modalUser, setModalUser] = useState<number | 'new' | null>(null)
 
   const canDeactivate = hasPermission('users.deactivate')
 
@@ -58,12 +59,13 @@ export function UsersListPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-800">Utilisateurs</h2>
         {hasPermission('users.create') && (
-          <Link
-            to="/utilisateurs/nouveau"
+          <button
+            type="button"
+            onClick={() => setModalUser('new')}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Nouvel utilisateur
-          </Link>
+          </button>
         )}
       </div>
 
@@ -172,12 +174,13 @@ export function UsersListPage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       {hasPermission('users.edit') && (
-                        <Link
-                          to={`/utilisateurs/${u.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setModalUser(u.id)}
                           className="text-indigo-600 hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                       )}
                       {canDeactivate && u.status === 'active' && (
                         <button
@@ -236,6 +239,13 @@ export function UsersListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {modalUser !== null && (
+        <UserFormModal
+          userId={modalUser === 'new' ? null : modalUser}
+          onClose={() => setModalUser(null)}
+        />
       )}
     </div>
   )
