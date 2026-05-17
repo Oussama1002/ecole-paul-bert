@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import * as usersApi from '../api/users'
 import * as rolesApi from '../api/roles'
+import * as teachersApi from '../api/teachers'
+import { SearchSelect, type SearchSelectOption } from '../components/ui/SearchSelect'
 
 export function UserFormModal({
   userId,
@@ -33,7 +35,39 @@ export function UserFormModal({
   const [status, setStatus] = useState('active')
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
+  const [teacherId, setTeacherId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const selectedRole = roles?.find((r) => r.id === roleId)
+  const isTeacherRole = selectedRole?.code === 'teacher'
+
+  const { data: teachers } = useQuery({
+    queryKey: ['user-form-teachers'],
+    queryFn: () =>
+      teachersApi.fetchTeachers({ per_page: 200, sort_by: 'last_name', sort_order: 'asc' }),
+    enabled: isTeacherRole && isNew,
+  })
+
+  const teacherOptions = useMemo<SearchSelectOption[]>(
+    () =>
+      (teachers?.items ?? []).map((t) => ({
+        value: t.id,
+        label: `${t.last_name} ${t.first_name}`,
+        hint: t.employee_code,
+      })),
+    [teachers?.items]
+  )
+
+  function pickTeacher(id: number | null) {
+    setTeacherId(id)
+    if (id == null) return
+    const t = teachers?.items.find((x) => x.id === id)
+    if (!t) return
+    setFirstName(t.first_name)
+    setLastName(t.last_name)
+    setEmail(t.email ?? '')
+    setPhone(t.phone ?? '')
+  }
 
   useEffect(() => {
     if (!existing) return
@@ -134,6 +168,24 @@ export function UserFormModal({
                 ))}
               </select>
             </label>
+
+            {isTeacherRole && isNew && (
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  Enseignant — pré-remplir depuis une fiche
+                </span>
+                <SearchSelect
+                  value={teacherId}
+                  onChange={pickTeacher}
+                  options={teacherOptions}
+                  placeholder="Choisir un enseignant…"
+                  className="mt-1"
+                />
+                <span className="mt-1 block text-xs text-school-inkmuted">
+                  Sélectionnez un enseignant pour remplir automatiquement nom, prénom, e-mail et téléphone.
+                </span>
+              </label>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <label className="block text-sm">
