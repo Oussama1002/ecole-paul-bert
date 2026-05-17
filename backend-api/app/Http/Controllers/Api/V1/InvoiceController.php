@@ -130,22 +130,26 @@ class InvoiceController extends Controller
         }
 
         $inv = $inv->fresh();
-        $this->audit->log(
-            $request->user(),
-            'invoice.created',
-            $inv,
-            null,
-            $inv->only(['student_id', 'school_year_id', 'invoice_number', 'status', 'total_amount'])
-        );
-        $actorId = (int) ($request->user()?->id ?? 0);
-        $this->notify->notifyUsersWithPermission(
-            'finance.manage',
-            'invoice.created',
-            'Nouvelle facture',
-            'Facture '.$inv->invoice_number.' — '.number_format((float) $inv->total_amount, 2, ',', ' ').' FCFA',
-            ['invoice_id' => $inv->id],
-            $actorId > 0 ? $actorId : null
-        );
+        try {
+            $this->audit->log(
+                $request->user(),
+                'invoice.created',
+                $inv,
+                null,
+                $inv->only(['student_id', 'school_year_id', 'invoice_number', 'status', 'total_amount'])
+            );
+            $actorId = (int) ($request->user()?->id ?? 0);
+            $this->notify->notifyUsersWithPermission(
+                'finance.manage',
+                'invoice.created',
+                'Nouvelle facture',
+                'Facture '.$inv->invoice_number.' — '.number_format((float) $inv->total_amount, 2, ',', ' ').' FCFA',
+                ['invoice_id' => $inv->id],
+                $actorId > 0 ? $actorId : null
+            );
+        } catch (\Throwable) {
+            // audit/notify failures must never block the invoice response
+        }
 
         return ApiResponse::success($this->toDto($inv, true), 'Facture créée.', 201);
     }
