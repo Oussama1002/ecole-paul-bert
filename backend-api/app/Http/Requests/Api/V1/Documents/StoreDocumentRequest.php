@@ -18,8 +18,13 @@ class StoreDocumentRequest extends FormRequest
         $maxKb = (int) (config('documents.upload.max_kb') ?? 10240);
         $scopes = (array) config('documents.visibility_scopes');
 
+        // Rule::mimetypes() requires Laravel 10.x — use string form for compatibility
+        $mimeRule = count($allowedMimes) > 0
+            ? 'mimetypes:'.implode(',', $allowedMimes)
+            : 'file';
+
         return [
-            'file' => ['required', 'file', 'max:'.$maxKb, Rule::mimetypes($allowedMimes)],
+            'file' => ['required', 'file', 'max:'.$maxKb, $mimeRule],
             'category' => ['nullable', 'string', 'max:50'],
             'document_type' => ['nullable', 'string', 'max:50'],
             'title' => ['nullable', 'string', 'max:255'],
