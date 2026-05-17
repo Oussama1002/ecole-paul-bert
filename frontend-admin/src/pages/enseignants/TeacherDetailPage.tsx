@@ -11,7 +11,10 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { getApiErrorMessage } from '../../utils/apiError'
+import * as scheduleApi from '../../api/schedule'
+import type { ScheduleEntry } from '../../api/teachers'
 import { TeacherFormModal } from './TeacherFormModal'
+import { TeacherPlanningModal } from './TeacherPlanningModal'
 
 type Tab = 'profil' | 'matieres' | 'classes' | 'planning' | 'documents' | 'observations'
 
@@ -84,6 +87,9 @@ export function TeacherDetailPage() {
   const tabs = simpleMode ? allTabs.filter((t) => t.simple) : allTabs
   const [tab, setTab] = useState<Tab>('profil')
   const [editOpen, setEditOpen] = useState(false)
+  const [planningModal, setPlanningModal] = useState<
+    { mode: 'new' } | { mode: 'edit'; entry: ScheduleEntry } | null
+  >(null)
   const { hasPermission } = useAuth()
   const canManage = hasPermission('teachers.manage')
   const queryClient = useQueryClient()
@@ -216,6 +222,12 @@ export function TeacherDetailPage() {
     mutationFn: (did: number) => teachersApi.deleteTeacherDocument(did),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['teacher-documents'] }),
+  })
+
+  const removeSchedule = useMutation({
+    mutationFn: (sid: number) => scheduleApi.deleteScheduleEntry(sid),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['teacher-schedule'] }),
   })
 
   if (Number.isNaN(numericId)) {
@@ -583,20 +595,31 @@ export function TeacherDetailPage() {
             title="Planning"
             iconClassName="bg-school-sunsoft text-[#8A6A00]"
             actions={
-              <select
-                value={sySchedule || ''}
-                onChange={(e) =>
-                  setSySchedule(parseInt(e.target.value, 10) || 0)
-                }
-                className="school-select"
-              >
-                <option value="">Toutes années</option>
-                {years?.items.map((y) => (
-                  <option key={y.id} value={y.id}>
-                    {y.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={sySchedule || ''}
+                  onChange={(e) =>
+                    setSySchedule(parseInt(e.target.value, 10) || 0)
+                  }
+                  className="school-select"
+                >
+                  <option value="">Toutes années</option>
+                  {years?.items.map((y) => (
+                    <option key={y.id} value={y.id}>
+                      {y.name}
+                    </option>
+                  ))}
+                </select>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => setPlanningModal({ mode: 'new' })}
+                    className="school-btn-primary whitespace-nowrap"
+                  >
+                    + Ajouter un créneau
+                  </button>
+                )}
+              </div>
             }
           />
           {!schedule?.length ? (
@@ -615,6 +638,7 @@ export function TeacherDetailPage() {
                     <th>Classe</th>
                     <th>Matière</th>
                     <th>Salle</th>
+                    {canManage && <th className="text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -631,6 +655,30 @@ export function TeacherDetailPage() {
                       <td className="text-school-inkmuted">
                         {e.room?.name ?? '—'}
                       </td>
+                      {canManage && (
+                        <td className="text-right">
+                          <div className="inline-flex flex-wrap items-center justify-end gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setPlanningModal({ mode: 'edit', entry: e })}
+                              className="text-xs font-bold text-school-skydeep hover:underline"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm('Supprimer ce créneau ?')) {
+                                  removeSchedule.mutate(e.id)
+                                }
+                              }}
+                              className="text-xs font-bold text-[#B23A2E] hover:underline"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -747,6 +795,16 @@ export function TeacherDetailPage() {
 
       {editOpen && (
         <TeacherFormModal teacherId={numericId} onClose={() => setEditOpen(false)} />
+      )}
+
+      {planningModal && (
+        <TeacherPlanningModal
+          teacherId={numericId}
+          entry={planningModal.mode === 'edit' ? planningModal.entry : null}
+          defaultSchoolYearId={sySchedule}
+          years={years?.items ?? []}
+          onClose={() => setPlanningModal(null)}
+        />
       )}
     </div>
   )
