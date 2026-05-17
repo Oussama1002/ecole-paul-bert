@@ -279,6 +279,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:finance.view')->get('/payments', [PaymentController::class, 'index']);
         Route::middleware('permission:finance.manage')->post('/payments', [PaymentController::class, 'store']);
         Route::middleware('permission:finance.view')->get('/payments/{payment}', [PaymentController::class, 'show']);
+        Route::middleware('permission:finance.manage')->patch('/payments/{payment}', [PaymentController::class, 'update']);
         Route::middleware('permission:finance.manage')->post('/payments/{payment}/cancel', [PaymentController::class, 'cancel']);
         Route::middleware('permission:finance.view')->get('/payments/{payment}/receipt', [PaymentController::class, 'receipt']);
 

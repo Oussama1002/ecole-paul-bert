@@ -213,6 +213,75 @@ class PaymentController extends Controller
         return ApiResponse::success($this->toDto($pay), 'Paiement enregistré.', 201);
     }
 
+    public function update(Request $request, Payment $payment): JsonResponse
+    {
+        if ($payment->status === 'cancelled') {
+            throw ValidationException::withMessages([
+                'status' => ['Impossible de modifier un paiement annulé.'],
+            ]);
+        }
+
+        $data = $request->validate([
+            'payment_date'          => ['nullable', 'date'],
+            'payment_method'        => ['nullable', 'string', 'in:cash,card,transfer,check'],
+            'amount'                => ['nullable', 'numeric', 'min:0.01'],
+            'transaction_reference' => ['nullable', 'string', 'max:100'],
+            'note'                  => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $before = $payment->only(['payment_date', 'payment_method', 'amount', 'transaction_reference', 'note']);
+
+        DB::beginTransaction();
+        try {
+            $oldAmount = (float) $payment->amount;
+
+            if (array_key_exists('payment_date', $data) && $data['payment_date'])   $payment->payment_date          = $data['payment_date'];
+            if (array_key_exists('payment_method', $data) && $data['payment_method']) $payment->payment_method       = $data['payment_method'];
+            if (array_key_exists('transaction_reference', $data))                   $payment->transaction_reference = $data['transaction_reference'];
+            if (array_key_exists('note', $data))                                    $payment->note                  = $data['note'];
+
+            if (array_key_exists('amount', $data) && $data['amount']) {
+                $newAmount = (float) $data['amount'];
+                $diff = $newAmount - $oldAmount;
+                $payment->amount = $newAmount;
+
+                if ($payment->invoice_id) {
+                    $inv = Invoice::query()->find($payment->invoice_id);
+                    if ($inv) {
+                        $inv->amount_paid = max(0.0, (float) $inv->amount_paid + $diff);
+                        $this->calc->recomputeInvoiceTotals($inv);
+                        $inv->save();
+                    }
+                }
+                if ($payment->fee_assignment_id) {
+                    $fa = FeeAssignment::query()->find($payment->fee_assignment_id);
+                    if ($fa) {
+                        $fa->amount_paid = max(0.0, (float) $fa->amount_paid + $diff);
+                        $this->calc->recomputeFeeAssignment($fa);
+                        $fa->save();
+                    }
+                }
+            }
+
+            $payment->save();
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('payment.update failed: '.$e->getMessage());
+            return ApiResponse::error('Erreur modification paiement.', [], 500);
+        }
+
+        try {
+            $this->audit->log($request->user(), 'payment.updated', $payment, $before,
+                $payment->only(['payment_date', 'payment_method', 'amount', 'transaction_reference', 'note']));
+        } catch (\Throwable) {}
+
+        return ApiResponse::success(
+            $this->toDto($payment->fresh(['student:id,first_name,last_name', 'invoice:id,invoice_number'])),
+            'Paiement mis à jour.'
+        );
+    }
+
     public function cancel(Request $request, Payment $payment): JsonResponse
     {
         $request->validate([

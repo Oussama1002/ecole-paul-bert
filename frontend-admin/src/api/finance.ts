@@ -155,6 +155,21 @@ export async function createPayment(payload: {
   return data.data
 }
 
+export async function updatePayment(
+  id: number,
+  payload: {
+    payment_date?: string | null
+    payment_method?: string
+    amount?: number
+    transaction_reference?: string | null
+    note?: string | null
+  }
+): Promise<Payment> {
+  const { data } = await apiClient.patch<Ok<Payment> | Err>(`/v1/payments/${id}`, payload)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data
+}
+
 export async function createFeeAssignment(payload: {
   student_id: number
   school_year_id: number
