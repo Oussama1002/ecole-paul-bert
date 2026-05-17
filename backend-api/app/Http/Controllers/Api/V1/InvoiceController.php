@@ -124,6 +124,7 @@ class InvoiceController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('invoice.store failed: '.$e->getMessage());
 
             return ApiResponse::error('Erreur création facture.', [], 500);
         }
