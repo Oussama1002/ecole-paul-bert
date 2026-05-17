@@ -281,6 +281,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:finance.manage')->post('/payments/{payment}/cancel', [PaymentController::class, 'cancel']);
         Route::middleware('permission:finance.view')->get('/payments/{payment}/receipt', [PaymentController::class, 'receipt']);
 
+        Route::middleware('permission:finance.manage')->get('/expenses/next-reference', [ExpenseController::class, 'nextReference']);
         Route::middleware('permission:finance.view')->get('/expenses', [ExpenseController::class, 'index']);
         Route::middleware('permission:finance.manage')->post('/expenses', [ExpenseController::class, 'store']);
         Route::middleware('permission:finance.view')->get('/expenses/{expense}', [ExpenseController::class, 'show']);

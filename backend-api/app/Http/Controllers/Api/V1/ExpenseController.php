@@ -66,6 +66,24 @@ class ExpenseController extends Controller
         return ApiResponse::success($this->toDto($expense, true), 'Dépense.');
     }
 
+    public function nextReference(): JsonResponse
+    {
+        $year = now()->year;
+        $prefix = 'DEP-' . $year . '-';
+
+        $last = Expense::query()
+            ->where('reference', 'like', $prefix . '%')
+            ->orderByDesc('reference')
+            ->value('reference');
+
+        $next = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
+
+        return ApiResponse::success(
+            ['reference' => $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT)],
+            'Prochaine référence.'
+        );
+    }
+
     public function store(StoreExpenseRequest $request): JsonResponse
     {
         $data = $request->validated();

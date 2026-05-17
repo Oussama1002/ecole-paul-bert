@@ -301,6 +301,12 @@ export async function fetchExpense(id: number): Promise<Expense & { documents?: 
   return data.data
 }
 
+export async function fetchNextExpenseReference(): Promise<string> {
+  const { data } = await apiClient.get<Ok<{ reference: string }> | Err>('/v1/expenses/next-reference')
+  if (!data.success) throw new Error(data.message)
+  return data.data.reference
+}
+
 export async function createExpense(payload: {
   expense_category_id: number
   expense_date: string
