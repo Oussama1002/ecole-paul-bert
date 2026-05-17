@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { TeacherFormModal } from './TeacherFormModal'
 
 type Tab = 'profil' | 'matieres' | 'classes' | 'planning' | 'documents' | 'observations'
 
@@ -82,6 +83,7 @@ export function TeacherDetailPage() {
   const { simpleMode } = useSimpleMode()
   const tabs = simpleMode ? allTabs.filter((t) => t.simple) : allTabs
   const [tab, setTab] = useState<Tab>('profil')
+  const [editOpen, setEditOpen] = useState(false)
   const { hasPermission } = useAuth()
   const canManage = hasPermission('teachers.manage')
   const queryClient = useQueryClient()
@@ -296,12 +298,13 @@ export function TeacherDetailPage() {
             </div>
           </div>
           {canManage && (
-            <Link
-              to={`/enseignants/${teacher.id}/editer`}
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
               className="rounded-2xl border-2 border-white/60 bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25"
             >
               ✏️ Modifier
-            </Link>
+            </button>
           )}
         </div>
       </section>
@@ -740,6 +743,10 @@ export function TeacherDetailPage() {
 
       {tab === 'observations' && (
         <ObservationsPanel teacherId={numericId} canManage={canManage} />
+      )}
+
+      {editOpen && (
+        <TeacherFormModal teacherId={numericId} onClose={() => setEditOpen(false)} />
       )}
     </div>
   )
