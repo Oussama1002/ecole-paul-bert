@@ -176,13 +176,19 @@ class PaymentController extends Controller
             throw $e;
         } catch (\Throwable $e) {
             DB::rollBack();
-            return ApiResponse::error('Erreur enregistrement paiement.', [], 500);
+            \Illuminate\Support\Facades\Log::error('payment.store failed: '.$e->getMessage().' — '.$e->getTraceAsString());
+            return ApiResponse::error('Erreur enregistrement paiement: '.$e->getMessage(), [], 500);
         }
 
-        // Receipt generation after commit
-        $this->receipts->generatePaymentReceiptPdf($pay);
+        // Receipt generation after commit — failures must not block the response
+        try {
+            $this->receipts->generatePaymentReceiptPdf($pay);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('payment.receipt failed: '.$e->getMessage());
+        }
 
         $pay = $pay->fresh(['student:id,first_name,last_name', 'invoice:id,invoice_number']);
+        try {
         $this->audit->log(
             $request->user(),
             'payment.created',
@@ -197,7 +203,7 @@ class PaymentController extends Controller
                 $actorId,
                 'payment.recorded',
                 'Paiement enregistré',
-                'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' FCFA',
+                'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' DH',
                 ['payment_id' => $pay->id]
             );
         }
@@ -205,10 +211,11 @@ class PaymentController extends Controller
             'notifications.view',
             'payment.recorded',
             'Nouveau paiement',
-            'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' FCFA',
+            'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' DH',
             ['payment_id' => $pay->id],
             $actorId > 0 ? $actorId : null
         );
+        } catch (\Throwable) {}
 
         return ApiResponse::success($this->toDto($pay), 'Paiement enregistré.', 201);
     }
