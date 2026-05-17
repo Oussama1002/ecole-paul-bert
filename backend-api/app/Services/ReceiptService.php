@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Document;
 use App\Models\Payment;
 use App\Support\ReportCardTemplate;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -24,10 +25,28 @@ class ReceiptService
         $fileName = "recu_paiement_{$payment->id}.pdf";
         $path = "receipts/{$fileName}";
 
-        Storage::disk('local')->put($path, $pdf->output());
+        $content = $pdf->output();
+        Storage::disk('local')->put($path, $content);
 
         $payment->receipt_pdf_path = $path;
         $payment->save();
+
+        // Register in documents table
+        try {
+            Document::updateOrCreate(
+                ['payment_id' => $payment->id, 'document_type' => 'receipt'],
+                [
+                    'category'   => 'finance',
+                    'title'      => 'Reçu paiement — '.($payment->payment_reference ?? "#{$payment->id}"),
+                    'file_name'  => $fileName,
+                    'file_path'  => $path,
+                    'mime_type'  => 'application/pdf',
+                    'file_size'  => strlen($content),
+                    'student_id' => $payment->student_id ?? null,
+                    'status'     => 'active',
+                ]
+            );
+        } catch (\Throwable) {}
     }
 }
 

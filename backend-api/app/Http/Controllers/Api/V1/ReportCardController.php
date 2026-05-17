@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ReportCards\GenerateReportCardRequest;
 use App\Http\Requests\Api\V1\ReportCards\IndexReportCardRequest;
 use App\Http\Responses\ApiResponse;
+use App\Models\Document;
 use App\Models\ReportCard;
 use App\Services\ReportCardService;
 use Illuminate\Http\JsonResponse;
@@ -106,6 +107,25 @@ class ReportCardController extends Controller
         }
 
         $name = "bulletin_{$reportCard->student_id}_{$reportCard->evaluation_period_id}.pdf";
+
+        // Register in documents table
+        try {
+            $size = Storage::disk('local')->size($reportCard->pdf_path);
+            Document::updateOrCreate(
+                ['document_type' => 'bulletin', 'student_id' => $reportCard->student_id, 'file_path' => $reportCard->pdf_path],
+                [
+                    'category'  => 'student',
+                    'title'     => 'Bulletin élève — période '.$reportCard->evaluation_period_id,
+                    'file_name' => $name,
+                    'file_path' => $reportCard->pdf_path,
+                    'mime_type' => 'application/pdf',
+                    'file_size' => $size,
+                    'status'    => 'active',
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('reportcard.document_save failed: '.$e->getMessage());
+        }
 
         return Storage::disk('local')->response($reportCard->pdf_path, $name, [
             'Content-Type' => 'application/pdf',

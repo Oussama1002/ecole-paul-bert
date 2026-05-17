@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Finance\StoreInvoiceRequest;
 use App\Http\Responses\ApiResponse;
+use App\Models\Document;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
@@ -17,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -79,10 +81,33 @@ class InvoiceController extends Controller
             'school' => ReportCardTemplate::get()['school'] ?? [],
         ])->setPaper('a4');
 
-        $name = 'facture_'.preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) $invoice->invoice_number).'.pdf';
+        $content = $pdf->output();
+        $slug    = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) $invoice->invoice_number);
+        $name    = "facture_{$slug}.pdf";
 
-        return response($pdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
+        // Persist to disk and register in documents table
+        try {
+            $path = "documents/finance/invoices/{$invoice->id}/{$name}";
+            Storage::disk('local')->put($path, $content);
+            Document::updateOrCreate(
+                ['invoice_id' => $invoice->id, 'document_type' => 'invoice'],
+                [
+                    'category'    => 'finance',
+                    'title'       => 'Facture '.($invoice->invoice_number ?? 'sans numéro'),
+                    'file_name'   => $name,
+                    'file_path'   => $path,
+                    'mime_type'   => 'application/pdf',
+                    'file_size'   => strlen($content),
+                    'student_id'  => $invoice->student_id ?? null,
+                    'status'      => 'active',
+                ]
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('invoice.document_save failed: '.$e->getMessage());
+        }
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$name.'"',
         ]);
     }

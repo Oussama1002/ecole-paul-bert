@@ -20,6 +20,7 @@ const DOC_TYPES = [
   { value: 'file', label: 'Fichier général' },
   { value: 'receipt', label: 'Reçu de paiement' },
   { value: 'invoice', label: 'Facture' },
+  { value: 'bulletin', label: 'Bulletin scolaire' },
   { value: 'contract', label: 'Contrat' },
   { value: 'certificate', label: 'Certificat / Attestation' },
   { value: 'report', label: 'Rapport' },
