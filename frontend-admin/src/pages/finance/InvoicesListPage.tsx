@@ -26,7 +26,7 @@ export function InvoicesListPage() {
   const [studentId, setStudentId] = useState<number | null>(null)
   const [status, setStatus] = useState<StatusFilter>('')
 
-  const [showForm, setShowForm] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [openInvoiceId, setOpenInvoiceId] = useState<number | null>(null)
 
   const [form, setForm] = useState({
@@ -116,7 +116,7 @@ export function InvoicesListPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] })
-      setShowForm(false)
+      setShowModal(false)
       setForm({
         student_id: null,
         status: 'issued',
@@ -160,10 +160,10 @@ export function InvoicesListPage() {
         {canManage && (
           <button
             type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm text-white hover:bg-indigo-700"
+            onClick={() => setShowModal(true)}
+            className="school-btn-primary"
           >
-            {showForm ? 'Fermer' : '+ Nouvelle facture'}
+            + Nouvelle facture
           </button>
         )}
       </div>
@@ -211,165 +211,83 @@ export function InvoicesListPage() {
         </Field>
       </div>
 
-      {showForm && canManage && (
-        <form
-          className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4"
-          onSubmit={(e) => {
-            e.preventDefault()
-            create.mutate()
-          }}
-        >
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="grid gap-3 md:grid-cols-4">
-            <Field label="Élève *">
-              <SearchSelect
-                value={form.student_id}
-                onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
-                options={studentOptions}
-                placeholder="Rechercher un élève"
-                disabled={schoolYearId <= 0}
-                isLoading={studentsQuery.isLoading}
-                isError={studentsQuery.isError}
-                className="mt-1"
-              />
-            </Field>
-            <Field label="Statut initial">
-              <select
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as 'draft' | 'issued' }))
-                }
-                className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-              >
-                <option value="issued">Émise</option>
-                <option value="draft">Brouillon</option>
-              </select>
-            </Field>
-            <Field label="Date d'émission *">
-              <input
-                type="date"
-                value={form.issue_date}
-                onChange={(e) => setForm((f) => ({ ...f, issue_date: e.target.value }))}
-                className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-              />
-            </Field>
-            <Field label="Échéance">
-              <input
-                type="date"
-                value={form.due_date}
-                onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-                className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-              />
-            </Field>
-            <Field label="Remise / Taxes">
-              <div className="mt-1 flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Remise"
-                  value={form.discount_amount || ''}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, discount_amount: Number(e.target.value) }))
-                  }
-                  className="w-1/2 rounded border border-slate-300 px-3 py-2"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Taxe"
-                  value={form.tax_amount || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, tax_amount: Number(e.target.value) }))}
-                  className="w-1/2 rounded border border-slate-300 px-3 py-2"
-                />
-              </div>
-            </Field>
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="font-medium text-slate-800">Lignes de facture</h4>
-              <button
-                type="button"
-                onClick={() =>
-                  setForm((f) => ({ ...f, items: [...f.items, { label: '', amount: 0 }] }))
-                }
-                className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-white"
-              >
-                + Ligne
-              </button>
+      {showModal && canManage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border-2 border-school-border/70 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b-2 border-school-line px-6 py-4 sticky top-0 bg-white z-10">
+              <h3 className="font-display text-lg font-bold text-school-ink">Nouvelle facture</h3>
+              <button type="button" onClick={() => setShowModal(false)} className="text-school-inkmuted hover:text-school-ink text-xl leading-none">✕</button>
             </div>
-            <div className="space-y-2">
-              {form.items.map((it, idx) => (
-                <div key={idx} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Libellé (ex. Mensualité Mars)"
-                    value={it.label}
-                    onChange={(e) =>
-                      setForm((f) => {
-                        const items = [...f.items]
-                        items[idx] = { ...items[idx], label: e.target.value }
-                        return { ...f, items }
-                      })
-                    }
-                    className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Montant"
-                    value={it.amount || ''}
-                    onChange={(e) =>
-                      setForm((f) => {
-                        const items = [...f.items]
-                        items[idx] = { ...items[idx], amount: Number(e.target.value) }
-                        return { ...f, items }
-                      })
-                    }
-                    className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
-                  />
-                  {form.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          items: f.items.filter((_, i) => i !== idx),
-                        }))
-                      }
-                      className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-white"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Field label="Notes">
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              maxLength={2000}
-              rows={2}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            />
-          </Field>
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={create.isPending}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
+            <form
+              className="space-y-4 p-6"
+              onSubmit={(e) => { e.preventDefault(); create.mutate() }}
             >
-              {create.isPending ? 'Création…' : 'Créer la facture'}
-            </button>
+              {error && (
+                <p className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">{error}</p>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Élève *" className="sm:col-span-2">
+                  <SearchSelect
+                    value={form.student_id}
+                    onChange={(v) => setForm((f) => ({ ...f, student_id: v }))}
+                    options={studentOptions}
+                    placeholder="Rechercher un élève"
+                    disabled={schoolYearId <= 0}
+                    isLoading={studentsQuery.isLoading}
+                    isError={studentsQuery.isError}
+                    className="mt-1"
+                  />
+                </Field>
+                <Field label="Statut initial">
+                  <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'draft' | 'issued' }))} className="school-select">
+                    <option value="issued">Émise</option>
+                    <option value="draft">Brouillon</option>
+                  </select>
+                </Field>
+                <Field label="Date d'émission *">
+                  <input type="date" required value={form.issue_date} onChange={(e) => setForm((f) => ({ ...f, issue_date: e.target.value }))} className="school-input" />
+                </Field>
+                <Field label="Échéance">
+                  <input type="date" value={form.due_date} onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))} className="school-input" />
+                </Field>
+                <Field label="Remise (DH)">
+                  <input type="number" step="0.01" min="0" placeholder="0" value={form.discount_amount || ''} onChange={(e) => setForm((f) => ({ ...f, discount_amount: Number(e.target.value) }))} className="school-input" />
+                </Field>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Lignes de facture</span>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, items: [...f.items, { label: '', amount: 0 }] }))} className="text-xs font-bold text-school-grape hover:underline">
+                    + Ligne
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {form.items.map((it, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input type="text" placeholder="Libellé (ex. Mensualité Mars)" value={it.label} onChange={(e) => setForm((f) => { const items = [...f.items]; items[idx] = { ...items[idx], label: e.target.value }; return { ...f, items } })} className="school-input flex-1 text-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="Montant" value={it.amount || ''} onChange={(e) => setForm((f) => { const items = [...f.items]; items[idx] = { ...items[idx], amount: Number(e.target.value) }; return { ...f, items } })} className="school-input w-28 text-sm" />
+                      {form.items.length > 1 && (
+                        <button type="button" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))} className="text-school-inkmuted hover:text-[#B23A2E] text-sm">✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Field label="Notes">
+                <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} maxLength={2000} rows={2} className="school-input" />
+              </Field>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowModal(false)} className="school-btn-secondary">Annuler</button>
+                <button type="submit" disabled={create.isPending} className="school-btn-primary disabled:opacity-60">
+                  {create.isPending ? 'Création…' : 'Créer la facture'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
       )}
 
       {schoolYearId === 0 && (
@@ -482,7 +400,7 @@ export function InvoicesListPage() {
                           {canManage ? (
                             <button
                               type="button"
-                              onClick={() => setShowForm(true)}
+                              onClick={() => setShowModal(true)}
                               className="school-btn-primary"
                             >
                               + Nouvelle facture
