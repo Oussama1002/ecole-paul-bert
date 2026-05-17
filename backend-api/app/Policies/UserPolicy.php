@@ -38,4 +38,13 @@ class UserPolicy
 
         return $actor->hasPermission('users.deactivate');
     }
+
+    public function delete(User $actor, User $target): bool
+    {
+        if ($actor->id === $target->id) {
+            return false;
+        }
+
+        return $actor->hasPermission('users.deactivate');
+    }
 }

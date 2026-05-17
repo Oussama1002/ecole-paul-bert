@@ -48,6 +48,11 @@ export function UsersListPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
 
+  const removeUser = useMutation({
+    mutationFn: (id: number) => usersApi.deleteUser(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
   function applySearch(e: React.FormEvent) {
     e.preventDefault()
     setSearchDebounced(search.trim())
@@ -204,6 +209,24 @@ export function UsersListPage() {
                           disabled={toggleStatus.isPending}
                         >
                           Activer
+                        </button>
+                      )}
+                      {canDeactivate && (
+                        <button
+                          type="button"
+                          className="text-red-600 hover:underline"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Supprimer définitivement ${u.first_name} ${u.last_name} ? Cette action est irréversible.`
+                              )
+                            ) {
+                              removeUser.mutate(u.id)
+                            }
+                          }}
+                          disabled={removeUser.isPending}
+                        >
+                          Supprimer
                         </button>
                       )}
                     </div>

@@ -93,3 +93,10 @@ export async function updateUser(
   }
   return data.data
 }
+
+export async function deleteUser(id: number): Promise<void> {
+  const { data } = await apiClient.delete<Ok<null> | Err>(`/v1/users/${id}`)
+  if (!data.success) {
+    throw new Error(data.message)
+  }
+}

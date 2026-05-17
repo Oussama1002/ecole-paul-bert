@@ -146,4 +146,24 @@ class UserController extends Controller
             'Utilisateur mis à jour.'
         );
     }
+
+    public function destroy(\Illuminate\Http\Request $request, User $user): JsonResponse
+    {
+        $this->authorize('delete', $user);
+
+        $snapshot = $user->only(['email', 'first_name', 'last_name', 'role_id', 'status', 'username']);
+
+        $user->tokens()->delete();
+        $user->delete();
+
+        $this->audit->log(
+            $request->user(),
+            'user.deleted',
+            $user,
+            $snapshot,
+            null
+        );
+
+        return ApiResponse::success(null, 'Utilisateur supprimé.');
+    }
 }

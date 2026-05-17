@@ -77,6 +77,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:users.view')->get('/users', [UserController::class, 'index']);
         Route::middleware('permission:users.create')->post('/users', [UserController::class, 'store']);
         Route::middleware('permission:users.edit')->patch('/users/{user}', [UserController::class, 'update']);
+        Route::middleware('permission:users.deactivate')->delete('/users/{user}', [UserController::class, 'destroy']);
 
         Route::middleware('permission:school_years.view')->get('/school-years', [SchoolYearController::class, 'index']);
         Route::middleware('permission:school_years.view')->get('/school-years/{schoolYear}', [SchoolYearController::class, 'show']);
