@@ -5,7 +5,6 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
-import { useSimpleMode } from '../../contexts/SimpleModeContext'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const CATEGORIES = [
@@ -31,28 +30,43 @@ const DOC_TYPES = [
 export function DocumentsPage() {
   const qc = useQueryClient()
   const { hasPermission } = useAuth()
-  const { simpleMode } = useSimpleMode()
   const canManage = hasPermission('documents.manage')
 
-  const [category, setCategory] = useState('')
-  const [type, setType] = useState('')
+  // List filters
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterType, setFilterType] = useState('')
 
+  // Upload modal state
+  const [showModal, setShowModal] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
+  const [uploadCategory, setUploadCategory] = useState('')
+  const [uploadType, setUploadType] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
+
+  // Preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewMime, setPreviewMime] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['documents', category, type],
+    queryKey: ['documents', filterCategory, filterType],
     queryFn: () =>
       docsApi.fetchDocuments({
         per_page: 100,
-        category: category || undefined,
-        document_type: type || undefined,
+        category: filterCategory || undefined,
+        document_type: filterType || undefined,
       }),
   })
+
+  const closeModal = () => {
+    setShowModal(false)
+    setFile(null)
+    setTitle('')
+    setUploadCategory('')
+    setUploadType('')
+    setUploadError(null)
+  }
 
   const upload = useMutation({
     mutationFn: async () => {
@@ -60,16 +74,14 @@ export function DocumentsPage() {
       if (!file) throw new Error('Sélectionnez un fichier.')
       await docsApi.uploadDocument({
         file,
-        category: category || undefined,
-        document_type: type || undefined,
+        category: uploadCategory || undefined,
+        document_type: uploadType || undefined,
         title: title || undefined,
       })
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['documents'] })
-      setFile(null)
-      setTitle('')
-      setUploadError(null)
+      closeModal()
     },
     onError: (e) => setUploadError(getApiErrorMessage(e, 'Upload impossible.')),
   })
@@ -111,12 +123,13 @@ export function DocumentsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-slate-800">Documents</h2>
-          <p className="text-sm text-slate-500">
-            {simpleMode
-              ? 'Ajoutez et téléchargez vos documents.'
-              : 'Upload, filtres, preview simple, téléchargement, suppression.'}
-          </p>
+          <p className="text-sm text-slate-500">Upload, filtres, aperçu, téléchargement, suppression.</p>
         </div>
+        {canManage && (
+          <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
+            + Téléverser un document
+          </button>
+        )}
       </div>
 
       {actionError && (
@@ -125,12 +138,13 @@ export function DocumentsPage() {
         </div>
       )}
 
-      <div className={`grid gap-3 rounded-lg border border-slate-200 bg-white p-4 ${simpleMode ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+      {/* Filters */}
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-3">
         <label className="block text-sm">
           <span className="text-xs text-slate-500">Catégorie</span>
           <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
           >
             <option value="">Toutes</option>
@@ -142,8 +156,8 @@ export function DocumentsPage() {
         <label className="block text-sm">
           <span className="text-xs text-slate-500">Type de document</span>
           <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
           >
             <option value="">Tous</option>
@@ -152,11 +166,11 @@ export function DocumentsPage() {
             ))}
           </select>
         </label>
-        {(category || type) && (
+        {(filterCategory || filterType) && (
           <div className="flex items-end">
             <button
               type="button"
-              onClick={() => { setCategory(''); setType('') }}
+              onClick={() => { setFilterCategory(''); setFilterType('') }}
               className="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
             >
               Réinitialiser les filtres
@@ -165,79 +179,88 @@ export function DocumentsPage() {
         )}
       </div>
 
-      {canManage && (
-        <form
-          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-6"
-          onSubmit={(e) => {
-            e.preventDefault()
-            upload.mutate()
-          }}
+      {/* Upload modal */}
+      {showModal && canManage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
         >
-          <div className="md:col-span-6">
-            <h3 className="font-medium text-slate-800">Uploader un document</h3>
-            {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border-2 border-school-border/70 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-school-line bg-white px-6 py-4">
+              <h3 className="font-display text-lg font-bold text-school-ink">Téléverser un document</h3>
+              <button type="button" onClick={closeModal} className="text-xl leading-none text-school-inkmuted hover:text-school-ink">✕</button>
+            </div>
+            <form
+              className="space-y-4 p-6"
+              onSubmit={(e) => { e.preventDefault(); upload.mutate() }}
+            >
+              {uploadError && (
+                <p className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">{uploadError}</p>
+              )}
+
+              <label className="block text-sm">
+                <span className="text-xs text-slate-500">Fichier *</span>
+                <input
+                  type="file"
+                  required
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+                {file && (
+                  <span className="mt-1 block text-xs text-school-inkmuted">{file.name} — {Math.round(file.size / 1024)} KB</span>
+                )}
+              </label>
+
+              <label className="block text-sm">
+                <span className="text-xs text-slate-500">Titre (optionnel)</span>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex. Contrat enseignant 2025"
+                  className="school-input"
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="text-xs text-slate-500">Catégorie</span>
+                  <select value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value)} className="school-select">
+                    <option value="">— choisir —</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="text-xs text-slate-500">Type</span>
+                  <select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="school-select">
+                    <option value="">— choisir —</option>
+                    {DOC_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} className="school-btn-secondary">Annuler</button>
+                <button
+                  type="submit"
+                  disabled={upload.isPending || !file}
+                  className="school-btn-primary disabled:opacity-60"
+                >
+                  {upload.isPending ? 'Envoi en cours…' : 'Téléverser'}
+                </button>
+              </div>
+            </form>
           </div>
-          <label className="block text-sm md:col-span-2">
-            <span className="text-xs text-slate-500">Fichier</span>
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2"
-            />
-          </label>
-          <label className="block text-sm md:col-span-2">
-            <span className="text-xs text-slate-500">Titre (optionnel)</span>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="text-xs text-slate-500">Catégorie</span>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            >
-              <option value="">— choisir —</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="text-xs text-slate-500">Type</span>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-            >
-              <option value="">— choisir —</option>
-              {DOC_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </label>
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              disabled={upload.isPending || !file}
-              className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
-            >
-              Uploader
-            </button>
-          </div>
-        </form>
+        </div>
       )}
 
       {isLoading && <LoadingState label="Chargement des documents…" lines={4} />}
       {isError && (
-        <ErrorState
-          error={error}
-          fallback="Impossible de charger les documents."
-          onRetry={() => void refetch()}
-        />
+        <ErrorState error={error} fallback="Impossible de charger les documents." onRetry={() => void refetch()} />
       )}
 
       {data && (
@@ -246,9 +269,8 @@ export function DocumentsPage() {
             <thead>
               <tr className="border-b border-slate-200 text-left">
                 <th className="px-4 py-3">Titre</th>
-                {!simpleMode && <th className="px-4 py-3">Catégorie</th>}
-                {!simpleMode && <th className="px-4 py-3">Type</th>}
-                {!simpleMode && <th className="px-4 py-3">Mime</th>}
+                <th className="px-4 py-3">Catégorie</th>
+                <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Taille</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -257,29 +279,22 @@ export function DocumentsPage() {
               {items.map((d) => (
                 <tr key={d.id} className="border-b border-slate-100">
                   <td className="px-4 py-3">{d.title ?? d.file_name ?? 'Document sans titre'}</td>
-                  {!simpleMode && <td className="px-4 py-3">{d.category ?? '—'}</td>}
-                  {!simpleMode && (
-                    <td className="px-4 py-3">{d.document_type ?? '—'}</td>
-                  )}
-                  {!simpleMode && <td className="px-4 py-3">{d.mime_type ?? '—'}</td>}
+                  <td className="px-4 py-3">{CATEGORIES.find((c) => c.value === d.category)?.label ?? d.category ?? '—'}</td>
+                  <td className="px-4 py-3">{DOC_TYPES.find((t) => t.value === d.document_type)?.label ?? d.document_type ?? '—'}</td>
+                  <td className="px-4 py-3">{d.file_size != null ? `${Math.round(d.file_size / 1024)} KB` : '—'}</td>
                   <td className="px-4 py-3">
-                    {d.file_size != null ? `${Math.round(d.file_size / 1024)} KB` : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      {!simpleMode && (
-                        <button
-                          type="button"
-                          onClick={() => openPreview(d)}
-                          className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
-                        >
-                          Voir
-                        </button>
-                      )}
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openPreview(d)}
+                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                      >
+                        Voir
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDownload(d.id)}
-                        className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
+                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
                       >
                         Télécharger
                       </button>
@@ -292,12 +307,10 @@ export function DocumentsPage() {
                               await docsApi.deleteDocument(d.id)
                               qc.invalidateQueries({ queryKey: ['documents'] })
                             } catch (e) {
-                              setActionError(
-                                getApiErrorMessage(e, 'Suppression du document impossible.')
-                              )
+                              setActionError(getApiErrorMessage(e, 'Suppression impossible.'))
                             }
                           }}
-                          className="rounded-md border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50"
+                          className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
                         >
                           Supprimer
                         </button>
@@ -308,22 +321,22 @@ export function DocumentsPage() {
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={simpleMode ? 3 : 6}
-                    className="px-4 py-3 text-slate-500"
-                  >
+                  <td colSpan={5} className="px-4 py-3 text-slate-500">
                     <EmptyState
                       emoji="📁"
                       title="Aucun document"
                       hint="Ajoutez un fichier pour commencer."
                       action={
-                        <button
-                          type="button"
-                          onClick={() => void refetch()}
-                          className="school-btn-secondary"
-                        >
-                          Réessayer
-                        </button>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button type="button" onClick={() => void refetch()} className="school-btn-secondary">
+                            Réessayer
+                          </button>
+                          {canManage && (
+                            <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
+                              + Téléverser un document
+                            </button>
+                          )}
+                        </div>
                       }
                     />
                   </td>
@@ -334,16 +347,13 @@ export function DocumentsPage() {
         </div>
       )}
 
+      {/* Preview modal */}
       {previewUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-4xl rounded-lg bg-white shadow-lg">
+          <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <div className="text-sm text-slate-700">Voir le document</div>
-              <button
-                type="button"
-                onClick={closePreview}
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
-              >
+              <span className="text-sm font-semibold text-slate-700">Aperçu du document</span>
+              <button type="button" onClick={closePreview} className="rounded border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50">
                 Fermer
               </button>
             </div>
@@ -354,7 +364,7 @@ export function DocumentsPage() {
                 <iframe src={previewUrl} className="h-full w-full" />
               ) : (
                 <div className="p-4 text-sm text-slate-600">
-                  Affichage non disponible pour ce type de fichier. Utilisez “Télécharger”.
+                  Affichage non disponible pour ce type de fichier. Utilisez "Télécharger".
                 </div>
               )}
             </div>
@@ -364,4 +374,3 @@ export function DocumentsPage() {
     </div>
   )
 }
-
