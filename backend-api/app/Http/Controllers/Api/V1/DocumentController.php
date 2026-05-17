@@ -101,20 +101,28 @@ class DocumentController extends Controller
             'status' => 'active',
         ]);
 
-        // Persist first to have an ID for logs and future extensions
-        $doc->save();
+        try {
+            $doc->save();
+            $this->storage->store($doc, $file);
+            $doc->save();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('document.store failed: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
+            if ($doc->exists) {
+                $doc->forceDelete();
+            }
+            return ApiResponse::error('Erreur upload: '.$e->getMessage(), [], 500);
+        }
 
-        $this->storage->store($doc, $file);
-        $doc->save();
-
-        $this->logAccess($request, $doc, 'upload');
-        $this->audit->log(
-            $request->user(),
-            'document.created',
-            $doc,
-            null,
-            $doc->only(['category', 'document_type', 'title', 'status', 'visibility_scope', 'is_confidential'])
-        );
+        try {
+            $this->logAccess($request, $doc, 'upload');
+            $this->audit->log(
+                $request->user(),
+                'document.created',
+                $doc,
+                null,
+                $doc->only(['category', 'document_type', 'title', 'status', 'visibility_scope', 'is_confidential'])
+            );
+        } catch (\Throwable) {}
 
         return ApiResponse::success($this->toDto($doc->fresh()), 'Document uploadé.', 201);
     }
