@@ -213,9 +213,11 @@ export function UserFormModal({
               </select>
             </label>
 
-            {!isNew && (
-              <p className="text-xs text-school-inkmuted">Laisser le mot de passe vide pour ne pas le changer.</p>
-            )}
+            <p className="text-xs text-school-inkmuted">
+              {isNew
+                ? 'Le mot de passe doit contenir au moins 8 caractères.'
+                : 'Laisser vide pour ne pas changer le mot de passe (8 caractères min. sinon).'}
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <label className="block text-sm">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
@@ -225,6 +227,7 @@ export function UserFormModal({
                   type="password"
                   autoComplete="new-password"
                   required={isNew}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="school-input"
