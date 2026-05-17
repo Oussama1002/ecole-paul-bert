@@ -107,7 +107,7 @@ export function PaymentsListPage() {
       financeApi.fetchInvoices({
         school_year_id: schoolYearId || undefined,
         student_id: studentId ?? undefined,
-        per_page: 200,
+        per_page: 100,
       }),
     enabled: schoolYearId > 0 && studentId !== null,
   })
@@ -128,7 +128,7 @@ export function PaymentsListPage() {
       financeApi.fetchInvoices({
         school_year_id: schoolYearId || undefined,
         student_id: formStudentId ?? undefined,
-        per_page: 200,
+        per_page: 100,
       }),
     enabled: schoolYearId > 0 && formStudentId !== null,
   })
