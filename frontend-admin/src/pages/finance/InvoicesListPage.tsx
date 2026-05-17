@@ -12,10 +12,29 @@ import { getApiErrorMessage } from '../../utils/apiError'
 
 type StatusFilter = '' | 'draft' | 'issued' | 'partial' | 'paid' | 'cancelled'
 
-type ItemDraft = {
-  label: string
-  amount: number
+type ItemDraft = { label: string; amount: number }
+
+const STATUS_FR: Record<string, string> = {
+  draft: 'Brouillon',
+  issued: 'Émise',
+  partial: 'Partielle',
+  paid: 'Payée',
+  cancelled: 'Annulée',
+  confirmed: 'Confirmé',
+  pending: 'En attente',
+  refunded: 'Remboursé',
 }
+
+const emptyForm = () => ({
+  student_id: null as number | null,
+  status: 'issued' as 'draft' | 'issued',
+  issue_date: new Date().toISOString().slice(0, 10),
+  due_date: '',
+  discount_amount: 0,
+  tax_amount: 0,
+  notes: '',
+  items: [{ label: '', amount: 0 }] as ItemDraft[],
+})
 
 export function InvoicesListPage() {
   const { hasPermission } = useAuth()
@@ -29,26 +48,24 @@ export function InvoicesListPage() {
   const [showModal, setShowModal] = useState(false)
   const [openInvoiceId, setOpenInvoiceId] = useState<number | null>(null)
 
-  const [form, setForm] = useState({
-    student_id: null as number | null,
-    status: 'issued' as 'draft' | 'issued',
-    issue_date: new Date().toISOString().slice(0, 10),
-    due_date: '',
-    discount_amount: 0,
-    tax_amount: 0,
-    notes: '',
-    items: [{ label: '', amount: 0 }] as ItemDraft[],
-  })
+  // Edit state
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState<{
+    due_date: string
+    notes: string
+    discount_amount: number
+    tax_amount: number
+    items: ItemDraft[]
+  } | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  const [form, setForm] = useState(emptyForm())
   const [error, setError] = useState<string | null>(null)
 
   const { data: years } = useQuery({
     queryKey: ['school-years-invoices'],
     queryFn: () =>
-      schoolYearsApi.fetchSchoolYears({
-        per_page: 100,
-        sort_by: 'start_date',
-        sort_order: 'desc',
-      }),
+      schoolYearsApi.fetchSchoolYears({ per_page: 100, sort_by: 'start_date', sort_order: 'desc' }),
   })
 
   useEffect(() => {
@@ -117,18 +134,32 @@ export function InvoicesListPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] })
       setShowModal(false)
-      setForm({
-        student_id: null,
-        status: 'issued',
-        issue_date: new Date().toISOString().slice(0, 10),
-        due_date: '',
-        discount_amount: 0,
-        tax_amount: 0,
-        notes: '',
-        items: [{ label: '', amount: 0 }],
-      })
+      setForm(emptyForm())
     },
     onError: (e) => setError(getApiErrorMessage(e, 'Création de facture impossible.')),
+  })
+
+  const updateInvoice = useMutation({
+    mutationFn: async () => {
+      if (!editingId || !editForm) return
+      setEditError(null)
+      const items = editForm.items
+        .map((it) => ({ ...it, amount: Number(it.amount) }))
+        .filter((it) => it.label.trim() && it.amount > 0)
+      await financeApi.updateInvoice(editingId, {
+        due_date: editForm.due_date || null,
+        notes: editForm.notes || null,
+        discount_amount: Number(editForm.discount_amount) || 0,
+        tax_amount: Number(editForm.tax_amount) || 0,
+        items: items.length > 0 ? items : undefined,
+      })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      setEditingId(null)
+      setEditForm(null)
+    },
+    onError: (e) => setEditError(getApiErrorMessage(e, 'Modification impossible.')),
   })
 
   const cancel = useMutation({
@@ -148,6 +179,39 @@ export function InvoicesListPage() {
     enabled: !!openInvoiceId,
   })
 
+  const openEdit = (inv: financeApi.Invoice) => {
+    setEditingId(inv.id)
+    setEditError(null)
+    setEditForm({
+      due_date: inv.due_date ?? '',
+      notes: '',
+      discount_amount: parseFloat(inv.discount_amount) || 0,
+      tax_amount: parseFloat(inv.tax_amount) || 0,
+      items: [{ label: '', amount: 0 }],
+    })
+  }
+
+  const editDetailQuery = useQuery({
+    queryKey: ['invoice-detail-edit', editingId],
+    queryFn: () => financeApi.fetchInvoice(editingId as number),
+    enabled: !!editingId,
+  })
+
+  useEffect(() => {
+    if (!editDetailQuery.data || !editingId) return
+    const d = editDetailQuery.data
+    setEditForm({
+      due_date: d.due_date ?? '',
+      notes: (d as financeApi.InvoiceDetail & { notes?: string }).notes ?? '',
+      discount_amount: parseFloat(d.discount_amount) || 0,
+      tax_amount: parseFloat(d.tax_amount) || 0,
+      items:
+        (d.items ?? []).length > 0
+          ? d.items!.map((it) => ({ label: it.label, amount: parseFloat(it.amount) }))
+          : [{ label: '', amount: 0 }],
+    })
+  }, [editDetailQuery.data, editingId])
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -158,16 +222,13 @@ export function InvoicesListPage() {
           </p>
         </div>
         {canManage && (
-          <button
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="school-btn-primary"
-          >
+          <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
             + Nouvelle facture
           </button>
         )}
       </div>
 
+      {/* Filters */}
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-4">
         <Field label="Année scolaire">
           <select
@@ -177,13 +238,11 @@ export function InvoicesListPage() {
           >
             <option value="">—</option>
             {years?.items.map((y) => (
-              <option key={y.id} value={y.id}>
-                {y.name}
-              </option>
+              <option key={y.id} value={y.id}>{y.name}</option>
             ))}
           </select>
         </Field>
-        <Field label="Élève (ID)">
+        <Field label="Élève">
           <SearchSelect
             value={studentId}
             onChange={setStudentId}
@@ -211,17 +270,18 @@ export function InvoicesListPage() {
         </Field>
       </div>
 
+      {/* New invoice modal */}
       {showModal && canManage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
+        >
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border-2 border-school-border/70 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b-2 border-school-line px-6 py-4 sticky top-0 bg-white z-10">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-school-line bg-white px-6 py-4">
               <h3 className="font-display text-lg font-bold text-school-ink">Nouvelle facture</h3>
-              <button type="button" onClick={() => setShowModal(false)} className="text-school-inkmuted hover:text-school-ink text-xl leading-none">✕</button>
+              <button type="button" onClick={() => setShowModal(false)} className="text-xl leading-none text-school-inkmuted hover:text-school-ink">✕</button>
             </div>
-            <form
-              className="space-y-4 p-6"
-              onSubmit={(e) => { e.preventDefault(); create.mutate() }}
-            >
+            <form className="space-y-4 p-6" onSubmit={(e) => { e.preventDefault(); create.mutate() }}>
               {error && (
                 <p className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">{error}</p>
               )}
@@ -268,7 +328,7 @@ export function InvoicesListPage() {
                       <input type="text" placeholder="Libellé (ex. Mensualité Mars)" value={it.label} onChange={(e) => setForm((f) => { const items = [...f.items]; items[idx] = { ...items[idx], label: e.target.value }; return { ...f, items } })} className="school-input flex-1 text-sm" />
                       <input type="number" step="0.01" min="0" placeholder="Montant" value={it.amount || ''} onChange={(e) => setForm((f) => { const items = [...f.items]; items[idx] = { ...items[idx], amount: Number(e.target.value) }; return { ...f, items } })} className="school-input w-28 text-sm" />
                       {form.items.length > 1 && (
-                        <button type="button" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))} className="text-school-inkmuted hover:text-[#B23A2E] text-sm">✕</button>
+                        <button type="button" onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))} className="text-sm text-school-inkmuted hover:text-[#B23A2E]">✕</button>
                       )}
                     </div>
                   ))}
@@ -283,6 +343,68 @@ export function InvoicesListPage() {
                 <button type="button" onClick={() => setShowModal(false)} className="school-btn-secondary">Annuler</button>
                 <button type="submit" disabled={create.isPending} className="school-btn-primary disabled:opacity-60">
                   {create.isPending ? 'Création…' : 'Créer la facture'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit invoice modal */}
+      {editingId && editForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setEditingId(null); setEditForm(null) } }}
+        >
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border-2 border-school-border/70 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-school-line bg-white px-6 py-4">
+              <h3 className="font-display text-lg font-bold text-school-ink">Modifier la facture</h3>
+              <button type="button" onClick={() => { setEditingId(null); setEditForm(null) }} className="text-xl leading-none text-school-inkmuted hover:text-school-ink">✕</button>
+            </div>
+            <form className="space-y-4 p-6" onSubmit={(e) => { e.preventDefault(); updateInvoice.mutate() }}>
+              {editDetailQuery.isLoading && <p className="text-sm text-school-inkmuted">Chargement…</p>}
+              {editError && (
+                <p className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">{editError}</p>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Échéance">
+                  <input type="date" value={editForm.due_date} onChange={(e) => setEditForm((f) => f ? { ...f, due_date: e.target.value } : f)} className="school-input" />
+                </Field>
+                <Field label="Remise (DH)">
+                  <input type="number" step="0.01" min="0" value={editForm.discount_amount || ''} onChange={(e) => setEditForm((f) => f ? { ...f, discount_amount: Number(e.target.value) } : f)} className="school-input" />
+                </Field>
+              </div>
+
+              {editDetailQuery.data?.status === 'draft' && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Lignes de facture</span>
+                    <button type="button" onClick={() => setEditForm((f) => f ? { ...f, items: [...f.items, { label: '', amount: 0 }] } : f)} className="text-xs font-bold text-school-grape hover:underline">
+                      + Ligne
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {editForm.items.map((it, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input type="text" placeholder="Libellé" value={it.label} onChange={(e) => setEditForm((f) => { if (!f) return f; const items = [...f.items]; items[idx] = { ...items[idx], label: e.target.value }; return { ...f, items } })} className="school-input flex-1 text-sm" />
+                        <input type="number" step="0.01" min="0" placeholder="Montant" value={it.amount || ''} onChange={(e) => setEditForm((f) => { if (!f) return f; const items = [...f.items]; items[idx] = { ...items[idx], amount: Number(e.target.value) }; return { ...f, items } })} className="school-input w-28 text-sm" />
+                        {editForm.items.length > 1 && (
+                          <button type="button" onClick={() => setEditForm((f) => f ? { ...f, items: f.items.filter((_, i) => i !== idx) } : f)} className="text-sm text-school-inkmuted hover:text-[#B23A2E]">✕</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Field label="Notes">
+                <textarea value={editForm.notes} onChange={(e) => setEditForm((f) => f ? { ...f, notes: e.target.value } : f)} maxLength={2000} rows={2} className="school-input" />
+              </Field>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => { setEditingId(null); setEditForm(null) }} className="school-btn-secondary">Annuler</button>
+                <button type="submit" disabled={updateInvoice.isPending || editDetailQuery.isLoading} className="school-btn-primary disabled:opacity-60">
+                  {updateInvoice.isPending ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
               </div>
             </form>
@@ -336,48 +458,53 @@ export function InvoicesListPage() {
                   <td className="px-4 py-3">
                     <StatusPill status={inv.status} />
                   </td>
-                  <td className="px-4 py-3 space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => setOpenInvoiceId(inv.id)}
-                      className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                    >
-                      Détail
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => financeApi.downloadInvoicePdf(inv.id)}
-                      className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                    >
-                      PDF
-                    </button>
-                    {canManage && inv.status === 'draft' && (
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm('Émettre cette facture ?')) {
-                            issue.mutate(inv.id)
-                          }
-                        }}
-                        className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
+                        onClick={() => setOpenInvoiceId(inv.id)}
+                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
                       >
-                        Émettre
+                        Détail
                       </button>
-                    )}
-                    {canManage && inv.status !== 'cancelled' && inv.status !== 'paid' && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const reason = window.prompt("Motif d'annulation (optionnel) :", '')
-                          if (reason !== null) {
-                            cancel.mutate({ id: inv.id, reason })
-                          }
-                        }}
-                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        onClick={() => financeApi.downloadInvoicePdf(inv.id)}
+                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
                       >
-                        Annuler
+                        PDF
                       </button>
-                    )}
+                      {canManage && inv.status !== 'cancelled' && inv.status !== 'paid' && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(inv)}
+                          className="rounded border border-school-grape/40 px-2 py-1 text-xs text-school-grape hover:bg-school-grape/5"
+                        >
+                          Modifier
+                        </button>
+                      )}
+                      {canManage && inv.status === 'draft' && (
+                        <button
+                          type="button"
+                          onClick={() => { if (window.confirm('Émettre cette facture ?')) issue.mutate(inv.id) }}
+                          className="rounded border border-blue-300 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
+                        >
+                          Émettre
+                        </button>
+                      )}
+                      {canManage && inv.status !== 'cancelled' && inv.status !== 'paid' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const reason = window.prompt("Motif d'annulation (optionnel) :", '')
+                            if (reason !== null) cancel.mutate({ id: inv.id, reason })
+                          }}
+                          className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          Annuler
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -390,22 +517,14 @@ export function InvoicesListPage() {
                       hint="Essayez un autre filtre ou créez une nouvelle facture."
                       action={
                         <div className="flex flex-wrap items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void refetch()}
-                            className="school-btn-secondary"
-                          >
+                          <button type="button" onClick={() => void refetch()} className="school-btn-secondary">
                             Réessayer
                           </button>
-                          {canManage ? (
-                            <button
-                              type="button"
-                              onClick={() => setShowModal(true)}
-                              className="school-btn-primary"
-                            >
+                          {canManage && (
+                            <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
                               + Nouvelle facture
                             </button>
-                          ) : null}
+                          )}
                         </div>
                       }
                     />
@@ -447,13 +566,7 @@ function InvoiceDetailModal({
           <h3 className="font-semibold text-slate-800">
             Facture {data?.invoice_number ?? 'sans numéro'}
           </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-500 hover:text-slate-800"
-          >
-            ✕
-          </button>
+          <button type="button" onClick={onClose} className="text-slate-500 hover:text-slate-800">✕</button>
         </div>
         <div className="space-y-3 px-4 py-3 text-sm">
           {loading && <p className="text-slate-500">Chargement…</p>}
@@ -468,7 +581,7 @@ function InvoiceDetailModal({
                       : data.student_name ?? 'Élève non identifié'
                   }
                 />
-                <Info label="Statut" value={data.status} />
+                <Info label="Statut" value={STATUS_FR[data.status] ?? data.status} />
                 <Info label="Émission" value={data.issue_date ?? '—'} />
                 <Info label="Échéance" value={data.due_date ?? '—'} />
                 <Info label="Total" value={data.total_amount} />
@@ -524,7 +637,7 @@ function InvoiceDetailModal({
                           <td className="py-2">{pay.payment_reference ?? 'Sans référence'}</td>
                           <td className="py-2">{pay.payment_date ?? '—'}</td>
                           <td className="py-2 text-right tabular-nums">{pay.amount}</td>
-                          <td className="py-2">{pay.status}</td>
+                          <td className="py-2">{STATUS_FR[pay.status] ?? pay.status}</td>
                           <td className="py-2 text-right">
                             <button
                               type="button"
@@ -550,7 +663,7 @@ function InvoiceDetailModal({
 }
 
 function StatusPill({ status }: { status: string }) {
-  const map: Record<string, string> = {
+  const styles: Record<string, string> = {
     draft: 'bg-slate-100 text-slate-700',
     issued: 'bg-blue-100 text-blue-700',
     partial: 'bg-amber-100 text-amber-700',
@@ -558,8 +671,8 @@ function StatusPill({ status }: { status: string }) {
     cancelled: 'bg-red-100 text-red-700',
   }
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs ${map[status] ?? 'bg-slate-100'}`}>
-      {status}
+    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${styles[status] ?? 'bg-slate-100 text-slate-600'}`}>
+      {STATUS_FR[status] ?? status}
     </span>
   )
 }

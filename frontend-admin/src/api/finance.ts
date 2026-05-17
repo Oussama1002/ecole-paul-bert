@@ -423,6 +423,21 @@ export async function createInvoice(payload: {
   return data.data
 }
 
+export async function updateInvoice(
+  id: number,
+  payload: {
+    due_date?: string | null
+    notes?: string | null
+    discount_amount?: number
+    tax_amount?: number
+    items?: InvoiceItemPayload[]
+  }
+): Promise<InvoiceDetail> {
+  const { data } = await apiClient.patch<Ok<InvoiceDetail> | Err>(`/v1/invoices/${id}`, payload)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data
+}
+
 export async function cancelInvoice(id: number, reason?: string): Promise<InvoiceDetail> {
   const { data } = await apiClient.post<Ok<InvoiceDetail> | Err>(`/v1/invoices/${id}/cancel`, {
     reason,

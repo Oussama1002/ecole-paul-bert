@@ -274,6 +274,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:finance.view')->get('/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf']);
         Route::middleware('permission:finance.manage')->post('/invoices/{invoice}/issue', [InvoiceController::class, 'issue']);
         Route::middleware('permission:finance.manage')->post('/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
+        Route::middleware('permission:finance.manage')->patch('/invoices/{invoice}', [InvoiceController::class, 'update']);
 
         Route::middleware('permission:finance.view')->get('/payments', [PaymentController::class, 'index']);
         Route::middleware('permission:finance.manage')->post('/payments', [PaymentController::class, 'store']);

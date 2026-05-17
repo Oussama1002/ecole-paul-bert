@@ -154,6 +154,74 @@ class InvoiceController extends Controller
         return ApiResponse::success($this->toDto($inv, true), 'Facture créée.', 201);
     }
 
+    public function update(Request $request, Invoice $invoice): JsonResponse
+    {
+        if ($invoice->status === 'cancelled') {
+            throw ValidationException::withMessages([
+                'status' => ['Impossible de modifier une facture annulée.'],
+            ]);
+        }
+
+        $data = $request->validate([
+            'due_date'        => ['nullable', 'date'],
+            'notes'           => ['nullable', 'string', 'max:2000'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'tax_amount'      => ['nullable', 'numeric', 'min:0'],
+            'items'           => ['nullable', 'array', 'min:1'],
+            'items.*.label'   => ['required_with:items', 'string', 'max:255'],
+            'items.*.amount'  => ['required_with:items', 'numeric', 'min:0'],
+            'items.*.fee_assignment_id' => ['nullable', 'integer'],
+        ]);
+
+        $before = $invoice->only(['due_date', 'notes', 'discount_amount', 'tax_amount', 'total_amount']);
+
+        DB::beginTransaction();
+        try {
+            $invoice->fill(array_filter([
+                'due_date'        => array_key_exists('due_date', $data) ? $data['due_date'] : $invoice->due_date,
+                'notes'           => array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes,
+                'discount_amount' => $data['discount_amount'] ?? $invoice->discount_amount,
+                'tax_amount'      => $data['tax_amount'] ?? $invoice->tax_amount,
+            ], fn ($v) => $v !== null || true));
+            $invoice->due_date        = array_key_exists('due_date', $data) ? $data['due_date'] : $invoice->due_date;
+            $invoice->notes           = array_key_exists('notes', $data) ? $data['notes'] : $invoice->notes;
+            $invoice->discount_amount = $data['discount_amount'] ?? $invoice->discount_amount;
+            $invoice->tax_amount      = $data['tax_amount'] ?? $invoice->tax_amount;
+
+            if (isset($data['items']) && $invoice->status === 'draft') {
+                InvoiceItem::query()->where('invoice_id', $invoice->id)->delete();
+                foreach ($data['items'] as $it) {
+                    InvoiceItem::query()->create([
+                        'invoice_id'        => $invoice->id,
+                        'fee_assignment_id' => $it['fee_assignment_id'] ?? null,
+                        'label'             => $it['label'],
+                        'amount'            => $it['amount'],
+                    ]);
+                }
+            }
+
+            $this->calc->recomputeInvoiceTotals($invoice);
+            $invoice->save();
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('invoice.update failed: '.$e->getMessage());
+            return ApiResponse::error('Erreur modification facture.', [], 500);
+        }
+
+        try {
+            $this->audit->log(
+                $request->user(),
+                'invoice.updated',
+                $invoice,
+                $before,
+                $invoice->only(['due_date', 'notes', 'discount_amount', 'tax_amount', 'total_amount'])
+            );
+        } catch (\Throwable) {}
+
+        return ApiResponse::success($this->toDto($invoice->fresh(), true), 'Facture mise à jour.');
+    }
+
     public function issue(Request $request, Invoice $invoice): JsonResponse
     {
         if ($invoice->status !== 'draft') {
