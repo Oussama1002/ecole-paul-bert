@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import * as simpleSettingsApi from '../../api/simpleSchoolSettings'
 
 type NavItem = { to: string; label: string; emoji: string; end?: boolean; permission?: string }
 type NavGroup = {
@@ -84,6 +86,14 @@ export function AppSidebar() {
   const { hasPermission } = useAuth()
   const { pathname } = useLocation()
 
+  const { data: schoolSettings } = useQuery({
+    queryKey: ['app-header-school'],
+    queryFn: simpleSettingsApi.fetchSimpleSchoolSettings,
+    staleTime: 5 * 60_000,
+  })
+  const logoUrl = schoolSettings?.school.logo_url ?? null
+  const schoolName = schoolSettings?.school.name?.trim() || 'Paul Bert'
+
   const canSee = (item: NavItem) =>
     !item.permission || hasPermission(item.permission)
 
@@ -105,11 +115,19 @@ export function AppSidebar() {
       {/* Logo */}
       <div className="px-4 pb-2 pt-5 text-white">
         <div className="flex items-center gap-3 rounded-2xl bg-white/15 p-3 backdrop-blur-sm">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/25 text-2xl shadow-inner" aria-hidden>
-            🎓
-          </div>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={schoolName}
+              className="h-12 w-12 shrink-0 rounded-2xl bg-white object-contain shadow-inner"
+            />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/25 text-2xl shadow-inner" aria-hidden>
+              🎓
+            </div>
+          )}
           <div className="min-w-0">
-            <p className="font-display text-lg font-extrabold leading-tight tracking-tight">Paul Bert</p>
+            <p className="font-display text-lg font-extrabold leading-tight tracking-tight">{schoolName}</p>
             <p className="text-xs font-semibold text-white/85">École · Espace équipe</p>
           </div>
         </div>
