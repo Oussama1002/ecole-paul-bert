@@ -5,6 +5,7 @@ import * as classesApi from '../../api/classes'
 import * as levelsApi from '../../api/levels'
 import * as schoolYearsApi from '../../api/schoolYears'
 import { useAuth } from '../../contexts/AuthContext'
+import { ClassFormModal } from './ClassFormModal'
 
 export function ClassesListPage() {
   const { hasPermission } = useAuth()
@@ -12,6 +13,7 @@ export function ClassesListPage() {
   const [page, setPage] = useState(1)
   const [schoolYearId, setSchoolYearId] = useState<number | ''>('')
   const [levelId, setLevelId] = useState<number | ''>('')
+  const [modalClass, setModalClass] = useState<number | 'new' | null>(null)
   const canManage = hasPermission('classes.manage')
 
   const { data: years } = useQuery({
@@ -58,12 +60,13 @@ export function ClassesListPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-800">Classes</h2>
         {canManage && (
-          <Link
-            to="/parametrage/classes/nouveau"
+          <button
+            type="button"
+            onClick={() => setModalClass('new')}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Nouvelle classe
-          </Link>
+          </button>
         )}
       </div>
 
@@ -143,12 +146,13 @@ export function ClassesListPage() {
                     </Link>
                     {canManage && (
                       <>
-                        <Link
-                          to={`/parametrage/classes/${c.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setModalClass(c.id)}
                           className="mr-3 text-xs text-slate-600 hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -191,6 +195,13 @@ export function ClassesListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {modalClass !== null && (
+        <ClassFormModal
+          classId={modalClass === 'new' ? null : modalClass}
+          onClose={() => setModalClass(null)}
+        />
       )}
     </div>
   )
