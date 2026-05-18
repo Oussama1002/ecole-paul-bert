@@ -34,7 +34,6 @@ export function ClassFormModal({
   const [levelId, setLevelId] = useState(0)
   const [schoolYearId, setSchoolYearId] = useState(0)
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [section, setSection] = useState('')
   const [maxStudents, setMaxStudents] = useState('')
   const [roomLabel, setRoomLabel] = useState('')
@@ -47,7 +46,6 @@ export function ClassFormModal({
     setLevelId(existing.level_id)
     setSchoolYearId(existing.school_year_id)
     setName(existing.name)
-    setCode(existing.code)
     setSection(existing.section ?? '')
     setMaxStudents(existing.max_students != null ? String(existing.max_students) : '')
     setRoomLabel(existing.room_label ?? '')
@@ -61,7 +59,6 @@ export function ClassFormModal({
         level_id: levelId,
         school_year_id: schoolYearId,
         name,
-        code,
         section: section || null,
         max_students: maxStudents ? parseInt(maxStudents, 10) : null,
         room_label: roomLabel || null,
@@ -124,10 +121,6 @@ export function ClassFormModal({
               <label className="block text-sm">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Nom *</span>
                 <input required value={name} onChange={(e) => setName(e.target.value)} className="school-input" />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Code (unique par année) *</span>
-                <input required value={code} onChange={(e) => setCode(e.target.value)} className="school-input" />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Section</span>

@@ -36,7 +36,7 @@ export async function fetchLevel(id: number): Promise<Level> {
 
 export async function createLevel(payload: {
   name: string
-  code: string
+  code?: string
   description?: string | null
   sort_order?: number
 }): Promise<Level> {

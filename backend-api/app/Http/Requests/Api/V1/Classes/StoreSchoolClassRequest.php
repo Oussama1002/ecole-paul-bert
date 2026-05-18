@@ -44,5 +44,24 @@ class StoreSchoolClassRequest extends FormRequest
         if (! $this->has('status')) {
             $this->merge(['status' => 'active']);
         }
+
+        // Code is auto-generated from the name (unique per school year, hidden from the form)
+        if (! $this->filled('code') && $this->filled('name')) {
+            $schoolYearId = $this->input('school_year_id');
+            $base = strtoupper(\Illuminate\Support\Str::slug((string) $this->input('name'))) ?: 'CLS';
+            $base = substr($base, 0, 40);
+            $code = $base;
+            $n = 1;
+            while (
+                \App\Models\SchoolClass::query()
+                    ->where('school_year_id', $schoolYearId)
+                    ->where('code', $code)
+                    ->exists()
+            ) {
+                $n++;
+                $code = $base.'-'.$n;
+            }
+            $this->merge(['code' => $code]);
+        }
     }
 }

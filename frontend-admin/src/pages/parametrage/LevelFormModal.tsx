@@ -19,7 +19,6 @@ export function LevelFormModal({
   })
 
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [sortOrder, setSortOrder] = useState(1)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +26,6 @@ export function LevelFormModal({
   useEffect(() => {
     if (!existing) return
     setName(existing.name)
-    setCode(existing.code)
     setDescription(existing.description ?? '')
     setSortOrder(existing.sort_order)
   }, [existing])
@@ -36,7 +34,6 @@ export function LevelFormModal({
     mutationFn: async () => {
       const payload = {
         name,
-        code,
         description: description || null,
         sort_order: sortOrder,
       }
@@ -77,10 +74,6 @@ export function LevelFormModal({
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Nom *</span>
               <input required value={name} onChange={(e) => setName(e.target.value)} className="school-input" />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Code *</span>
-              <input required value={code} onChange={(e) => setCode(e.target.value)} className="school-input" />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Description</span>

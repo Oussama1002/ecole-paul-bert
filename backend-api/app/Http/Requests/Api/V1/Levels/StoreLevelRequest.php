@@ -29,5 +29,18 @@ class StoreLevelRequest extends FormRequest
         if (! $this->has('sort_order')) {
             $this->merge(['sort_order' => 1]);
         }
+
+        // Code is auto-generated from the name (unique, hidden from the form)
+        if (! $this->filled('code') && $this->filled('name')) {
+            $base = strtoupper(\Illuminate\Support\Str::slug((string) $this->input('name'))) ?: 'NIV';
+            $base = substr($base, 0, 40);
+            $code = $base;
+            $n = 1;
+            while (\App\Models\Level::query()->where('code', $code)->exists()) {
+                $n++;
+                $code = $base.'-'.$n;
+            }
+            $this->merge(['code' => $code]);
+        }
     }
 }

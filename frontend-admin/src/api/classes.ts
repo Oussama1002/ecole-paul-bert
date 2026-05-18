@@ -60,7 +60,7 @@ export type ClassPayload = {
   level_id: number
   school_year_id: number
   name: string
-  code: string
+  code?: string
   section?: string | null
   max_students?: number | null
   room_label?: string | null
