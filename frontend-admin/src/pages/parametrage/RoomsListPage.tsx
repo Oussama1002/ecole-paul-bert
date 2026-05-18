@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import * as roomsApi from '../../api/rooms'
 import { useAuth } from '../../contexts/AuthContext'
+import { RoomFormModal } from './RoomFormModal'
 
 const typeLabels: Record<string, string> = {
   classroom: 'Classe',
@@ -20,6 +20,7 @@ export function RoomsListPage() {
   const [page, setPage] = useState(1)
   const [roomType, setRoomType] = useState('')
   const [status, setStatus] = useState('')
+  const [modalRoom, setModalRoom] = useState<number | 'new' | null>(null)
   const canManage = hasPermission('rooms.manage')
 
   const { data, isLoading, isError, error } = useQuery({
@@ -45,12 +46,13 @@ export function RoomsListPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-800">Salles</h2>
         {canManage && (
-          <Link
-            to="/parametrage/salles/nouveau"
+          <button
+            type="button"
+            onClick={() => setModalRoom('new')}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Nouvelle salle
-          </Link>
+          </button>
         )}
       </div>
 
@@ -122,12 +124,13 @@ export function RoomsListPage() {
                   <td className="px-4 py-2 text-right">
                     {canManage && (
                       <>
-                        <Link
-                          to={`/parametrage/salles/${r.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setModalRoom(r.id)}
                           className="mr-3 text-xs text-indigo-600 hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -170,6 +173,13 @@ export function RoomsListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {modalRoom !== null && (
+        <RoomFormModal
+          roomId={modalRoom === 'new' ? null : modalRoom}
+          onClose={() => setModalRoom(null)}
+        />
       )}
     </div>
   )

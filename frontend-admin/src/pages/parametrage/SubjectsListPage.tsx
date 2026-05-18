@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import * as levelsApi from '../../api/levels'
 import * as subjectsApi from '../../api/subjects'
 import { useAuth } from '../../contexts/AuthContext'
+import { SubjectFormModal } from './SubjectFormModal'
 
 export function SubjectsListPage() {
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [levelId, setLevelId] = useState<number | ''>('')
+  const [modalSubject, setModalSubject] = useState<number | 'new' | null>(null)
   const canManage = hasPermission('subjects.manage')
 
   const { data: levels } = useQuery({
@@ -40,12 +41,13 @@ export function SubjectsListPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-800">Matières</h2>
         {canManage && (
-          <Link
-            to="/parametrage/matieres/nouveau"
+          <button
+            type="button"
+            onClick={() => setModalSubject('new')}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Nouvelle matière
-          </Link>
+          </button>
         )}
       </div>
 
@@ -99,12 +101,13 @@ export function SubjectsListPage() {
                   <td className="px-4 py-2 text-right">
                     {canManage && (
                       <>
-                        <Link
-                          to={`/parametrage/matieres/${s.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setModalSubject(s.id)}
                           className="mr-3 text-xs text-indigo-600 hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -147,6 +150,13 @@ export function SubjectsListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {modalSubject !== null && (
+        <SubjectFormModal
+          subjectId={modalSubject === 'new' ? null : modalSubject}
+          onClose={() => setModalSubject(null)}
+        />
       )}
     </div>
   )
