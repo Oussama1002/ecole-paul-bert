@@ -1,17 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import * as announcementsApi from '../../api/announcements'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSimpleMode } from '../../contexts/SimpleModeContext'
+import { AnnouncementFormModal } from './AnnouncementFormModal'
 
 export function AnnouncementsListPage() {
   const { hasPermission } = useAuth()
   const { simpleMode } = useSimpleMode()
   const qc = useQueryClient()
   const canManage = hasPermission('announcements.manage')
+  const [modalAnnouncement, setModalAnnouncement] = useState<number | 'new' | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['announcements'],
@@ -38,12 +40,13 @@ export function AnnouncementsListPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-slate-800">Annonces</h2>
         {canManage ? (
-          <Link
-            to="/communications/annonces/nouveau"
+          <button
+            type="button"
+            onClick={() => setModalAnnouncement('new')}
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Nouvelle annonce
-          </Link>
+          </button>
         ) : null}
       </div>
       {isLoading && <LoadingState label="Chargement des annonces…" lines={3} />}
@@ -82,12 +85,13 @@ export function AnnouncementsListPage() {
                 {canManage ? (
                   <td className="px-4 py-2">
                     <div className="flex flex-wrap gap-2">
-                      <Link
-                        to={`/communications/annonces/${a.id}/editer`}
+                      <button
+                        type="button"
+                        onClick={() => setModalAnnouncement(a.id)}
                         className="text-indigo-600 hover:underline"
                       >
                         Modifier
-                      </Link>
+                      </button>
                       {!simpleMode && a.status !== 'published' ? (
                         <button
                           type="button"
@@ -135,14 +139,25 @@ export function AnnouncementsListPage() {
             hint="Créez votre première annonce pour informer élèves, parents et enseignants."
             action={
               canManage ? (
-                <Link to="/communications/annonces/nouveau" className="school-btn-primary">
+                <button
+                  type="button"
+                  onClick={() => setModalAnnouncement('new')}
+                  className="school-btn-primary"
+                >
                   Créer une annonce
-                </Link>
+                </button>
               ) : null
             }
           />
         ) : null}
       </div>
+
+      {modalAnnouncement !== null && (
+        <AnnouncementFormModal
+          announcementId={modalAnnouncement === 'new' ? null : modalAnnouncement}
+          onClose={() => setModalAnnouncement(null)}
+        />
+      )}
     </div>
   )
 }
