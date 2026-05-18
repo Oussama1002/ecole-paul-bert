@@ -101,7 +101,8 @@ export async function uploadSchoolLogo(file: File): Promise<SimpleSchoolSettings
   fd.append('logo', file)
   const { data } = await apiClient.post<Ok<SimpleSchoolSettings> | Err>(
     '/v1/simple-school-settings/logo',
-    fd
+    fd,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
   )
   if (!data.success) {
     throw new Error(messageFromFailedApiPayload(data))
