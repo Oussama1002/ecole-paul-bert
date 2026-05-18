@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSimpleMode } from '../../contexts/SimpleModeContext'
 import * as notificationsApi from '../../api/notifications'
+import * as simpleSettingsApi from '../../api/simpleSchoolSettings'
 import { formatSchoolDate } from '../ui/SchoolDate'
 
 function timeAgo(iso: string | null): string {
@@ -36,6 +37,16 @@ export function AppHeader() {
     refetchInterval: 60_000,
     enabled: Boolean(user) && canNotif,
   })
+
+  const { data: schoolSettings } = useQuery({
+    queryKey: ['app-header-school'],
+    queryFn: simpleSettingsApi.fetchSimpleSchoolSettings,
+    enabled: Boolean(user),
+    staleTime: 5 * 60_000,
+  })
+
+  const logoUrl = schoolSettings?.school.logo_url ?? null
+  const schoolName = schoolSettings?.school.name?.trim() || 'École Paul Bert'
 
   const { data: notifList, isLoading: notifLoading } = useQuery({
     queryKey: ['notifications-popup'],
@@ -78,15 +89,23 @@ export function AppHeader() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-school-border/60 bg-school-paper/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:px-6">
       <div className="flex items-center gap-3">
-        <span
-          className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-school-bubblegum via-school-grape to-school-sky text-xl text-white shadow-school sm:flex"
-          aria-hidden
-        >
-          🎓
-        </span>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={schoolName}
+            className="hidden h-11 w-11 rounded-2xl border border-school-border/60 bg-white object-contain shadow-school sm:block"
+          />
+        ) : (
+          <span
+            className="hidden h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-school-bubblegum via-school-grape to-school-sky text-xl text-white shadow-school sm:flex"
+            aria-hidden
+          >
+            🎓
+          </span>
+        )}
         <div>
           <h1 className="font-display text-lg font-bold text-school-ink sm:text-xl">
-            École Paul Bert
+            {schoolName}
           </h1>
           <p className="text-xs font-medium capitalize text-school-inkmuted">
             <span aria-hidden className="mr-1">📅</span>
