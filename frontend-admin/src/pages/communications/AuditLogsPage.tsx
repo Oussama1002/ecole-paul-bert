@@ -5,6 +5,90 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 
+const MODULE_FR: Record<string, string> = {
+  announcement: 'Annonce',
+  document: 'Document',
+  evaluation_period: "Période d'évaluation",
+  grades: 'Notes',
+  invoice: 'Facture',
+  payment: 'Paiement',
+  settings: 'Réglages',
+  student: 'Élève',
+  teacher: 'Enseignant',
+  user: 'Utilisateur',
+}
+
+const VERB_FR: Record<string, string> = {
+  created: 'Création',
+  updated: 'Modification',
+  deleted: 'Suppression',
+  archived: 'Archivage',
+  downloaded: 'Téléchargement',
+  published: 'Publication',
+  cancelled: 'Annulation',
+  issued: 'Émission',
+  recorded: 'Enregistrement',
+  role_changed: 'Changement de rôle',
+  locked_period_changed: 'Verrouillage de période',
+}
+
+// Badge colour by verb category
+const VERB_STYLE: Record<string, string> = {
+  created: 'bg-green-100 text-green-700',
+  recorded: 'bg-green-100 text-green-700',
+  issued: 'bg-green-100 text-green-700',
+  published: 'bg-green-100 text-green-700',
+  updated: 'bg-blue-100 text-blue-700',
+  role_changed: 'bg-blue-100 text-blue-700',
+  locked_period_changed: 'bg-blue-100 text-blue-700',
+  deleted: 'bg-red-100 text-red-700',
+  cancelled: 'bg-red-100 text-red-700',
+  archived: 'bg-amber-100 text-amber-700',
+  downloaded: 'bg-slate-100 text-slate-600',
+}
+
+const SUBJECT_FR: Record<string, string> = {
+  Invoice: 'Facture',
+  Payment: 'Paiement',
+  User: 'Utilisateur',
+  Student: 'Élève',
+  Teacher: 'Enseignant',
+  Document: 'Document',
+  Announcement: 'Annonce',
+  Expense: 'Dépense',
+  EvaluationPeriod: "Période d'évaluation",
+  SchoolClass: 'Classe',
+  Level: 'Niveau',
+}
+
+const prettify = (raw: string) =>
+  raw.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+
+function parseAction(code: string): { module: string; verb: string } {
+  const dot = code.indexOf('.')
+  if (dot === -1) return { module: prettify(code), verb: '' }
+  const moduleKey = code.slice(0, dot)
+  const verbKey = code.slice(dot + 1)
+  return {
+    module: MODULE_FR[moduleKey] ?? prettify(moduleKey),
+    verb: VERB_FR[verbKey] ?? prettify(verbKey),
+  }
+}
+
+function ActionBadge({ code }: { code: string }) {
+  const { module, verb } = parseAction(code)
+  const verbKey = code.slice(code.indexOf('.') + 1)
+  const style = VERB_STYLE[verbKey] ?? 'bg-slate-100 text-slate-600'
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${style}`}>
+        {verb || module}
+      </span>
+      {verb ? <span className="text-sm text-slate-700">{module}</span> : null}
+    </span>
+  )
+}
+
 export function AuditLogsPage() {
   const [action, setAction] = useState('')
 
@@ -19,7 +103,7 @@ export function AuditLogsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-800">Journal d’audit</h2>
+      <h2 className="text-xl font-semibold text-slate-800">Journal d'audit</h2>
       <label className="flex max-w-md items-center gap-2 text-sm">
         <span className="text-slate-600">Filtrer action</span>
         <input
@@ -55,9 +139,16 @@ export function AuditLogsPage() {
                     ? `${row.user.first_name} ${row.user.last_name}`
                     : '—'}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs">{row.action}</td>
-                <td className="px-3 py-2 text-xs text-slate-600">
-                  {row.subject_type ? row.subject_type.split('\\').pop() : '—'}
+                <td className="px-3 py-2">
+                  <ActionBadge code={row.action} />
+                </td>
+                <td className="px-3 py-2 text-slate-600">
+                  {row.subject_type
+                    ? (() => {
+                        const name = row.subject_type.split('\\').pop() ?? ''
+                        return SUBJECT_FR[name] ?? name
+                      })()
+                    : '—'}
                 </td>
               </tr>
             ))}
