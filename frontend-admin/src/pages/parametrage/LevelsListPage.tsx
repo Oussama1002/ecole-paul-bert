@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import * as levelsApi from '../../api/levels'
 import { useAuth } from '../../contexts/AuthContext'
+import { LevelFormModal } from './LevelFormModal'
 
 export function LevelsListPage() {
   const { hasPermission } = useAuth()
@@ -10,6 +10,7 @@ export function LevelsListPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
+  const [modalLevel, setModalLevel] = useState<number | 'new' | null>(null)
   const canManage = hasPermission('levels.manage')
 
   const { data, isLoading, isError, error } = useQuery({
@@ -40,12 +41,13 @@ export function LevelsListPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-800">Niveaux</h2>
         {canManage && (
-          <Link
-            to="/parametrage/niveaux/nouveau"
+          <button
+            type="button"
+            onClick={() => setModalLevel('new')}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Nouveau niveau
-          </Link>
+          </button>
         )}
       </div>
 
@@ -97,12 +99,13 @@ export function LevelsListPage() {
                   <td className="px-4 py-2 text-right">
                     {canManage && (
                       <>
-                        <Link
-                          to={`/parametrage/niveaux/${l.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setModalLevel(l.id)}
                           className="mr-3 text-xs text-indigo-600 hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -145,6 +148,13 @@ export function LevelsListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {modalLevel !== null && (
+        <LevelFormModal
+          levelId={modalLevel === 'new' ? null : modalLevel}
+          onClose={() => setModalLevel(null)}
+        />
       )}
     </div>
   )
