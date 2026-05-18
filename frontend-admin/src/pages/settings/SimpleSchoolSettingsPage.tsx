@@ -42,6 +42,7 @@ export function SimpleSchoolSettingsPage() {
   const [incomeLines, setIncomeLines] = useState('')
   const [expenseLines, setExpenseLines] = useState('')
   const [formErr, setFormErr] = useState<string | null>(null)
+  const [formOk, setFormOk] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [logoErr, setLogoErr] = useState<string | null>(null)
 
@@ -76,9 +77,11 @@ export function SimpleSchoolSettingsPage() {
     onSuccess: () => {
       setFormErr(null)
       setFieldErrors({})
+      setFormOk('Les réglages ont été enregistrés avec succès.')
       void queryClient.invalidateQueries({ queryKey: ['simple-school-settings'] })
     },
     onError: (e) => {
+      setFormOk(null)
       setFormErr(getApiErrorMessage(e, 'Enregistrement impossible.'))
       setFieldErrors(getApiFieldErrors(e))
     },
@@ -99,6 +102,8 @@ export function SimpleSchoolSettingsPage() {
     e.preventDefault()
     if (!canEdit) return
     setFieldErrors({})
+    setFormErr(null)
+    setFormOk(null)
     save.mutate()
   }
 
@@ -484,7 +489,16 @@ export function SimpleSchoolSettingsPage() {
           </Field>
         </section>
 
-        {formErr && <p className="text-sm font-semibold text-[#B23A2E]">{formErr}</p>}
+        {formErr && (
+          <div className="rounded-2xl border border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">
+            ✕ {formErr}
+          </div>
+        )}
+        {formOk && (
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            ✓ {formOk}
+          </div>
+        )}
 
         {canEdit && (
           <div className="flex justify-end">
