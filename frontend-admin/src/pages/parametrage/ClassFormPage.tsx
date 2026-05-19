@@ -38,7 +38,6 @@ export function ClassFormPage() {
   const [levelId, setLevelId] = useState(0)
   const [schoolYearId, setSchoolYearId] = useState(0)
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [section, setSection] = useState('')
   const [maxStudents, setMaxStudents] = useState('')
   const [roomLabel, setRoomLabel] = useState('')
@@ -51,7 +50,6 @@ export function ClassFormPage() {
     setLevelId(existing.level_id)
     setSchoolYearId(existing.school_year_id)
     setName(existing.name)
-    setCode(existing.code)
     setSection(existing.section ?? '')
     setMaxStudents(
       existing.max_students != null ? String(existing.max_students) : ''
@@ -69,7 +67,6 @@ export function ClassFormPage() {
         level_id: levelId,
         school_year_id: schoolYearId,
         name,
-        code,
         section: section || null,
         max_students: maxStudents ? parseInt(maxStudents, 10) : null,
         room_label: roomLabel || null,
@@ -153,15 +150,6 @@ export function ClassFormPage() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">Code (unique par année)</span>
-          <input
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           />
         </label>

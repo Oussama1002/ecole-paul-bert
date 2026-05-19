@@ -18,7 +18,6 @@ export function LevelFormPage() {
   })
 
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [sortOrder, setSortOrder] = useState(1)
   const [error, setError] = useState<string | null>(null)
@@ -26,27 +25,21 @@ export function LevelFormPage() {
   useEffect(() => {
     if (!existing) return
     setName(existing.name)
-    setCode(existing.code)
     setDescription(existing.description ?? '')
     setSortOrder(existing.sort_order)
   }, [existing])
 
   const save = useMutation({
     mutationFn: async () => {
-      if (isNew) {
-        return levelsApi.createLevel({
-          name,
-          code,
-          description: description || null,
-          sort_order: sortOrder,
-        })
-      }
-      return levelsApi.updateLevel(id, {
+      const payload = {
         name,
-        code,
         description: description || null,
         sort_order: sortOrder,
-      })
+      }
+      if (isNew) {
+        return levelsApi.createLevel(payload)
+      }
+      return levelsApi.updateLevel(id, payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['levels'] })
@@ -88,15 +81,6 @@ export function LevelFormPage() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">Code</span>
-          <input
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           />
         </label>
