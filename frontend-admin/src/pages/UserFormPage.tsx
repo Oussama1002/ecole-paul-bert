@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import * as usersApi from '../api/users'
 import * as rolesApi from '../api/roles'
+import { getApiErrorMessage, getApiFieldErrors } from '../utils/apiError'
 
 export function UserFormPage() {
   const { pathname } = useLocation()
@@ -35,6 +36,7 @@ export function UserFormPage() {
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     if (!existing) {
@@ -54,17 +56,20 @@ export function UserFormPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (isNew) {
-        return usersApi.createUser({
+        const payload: usersApi.CreateUserPayload = {
           role_id: roleId,
           first_name: firstName,
           last_name: lastName,
-          email,
-          username: username || null,
+          email: email.trim(),
           phone: phone || null,
           password,
           password_confirmation: passwordConfirmation,
           status,
-        })
+        }
+        if (username.trim()) {
+          payload.username = username.trim()
+        }
+        return usersApi.createUser(payload)
       }
       const payload: usersApi.UpdateUserPayload = {
         role_id: roleId,
@@ -85,12 +90,28 @@ export function UserFormPage() {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
       navigate('/utilisateurs')
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: unknown) => {
+      setFieldErrors(getApiFieldErrors(e))
+      setError(getApiErrorMessage(e, 'Erreur lors de l’enregistrement.'))
+    },
   })
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
+    if (!roleId) {
+      setError('Choisissez un rôle.')
+      return
+    }
+    if (!email.trim()) {
+      setError('L’e-mail est obligatoire.')
+      return
+    }
+    if (isNew && password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
     if (isNew && (!password || password !== passwordConfirmation)) {
       setError('Les mots de passe ne correspondent pas.')
       return
@@ -178,9 +199,24 @@ export function UserFormPage() {
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (fieldErrors.email) {
+                setFieldErrors((prev) => {
+                  const next = { ...prev }
+                  delete next.email
+                  return next
+                })
+              }
+            }}
             className="w-full rounded border border-slate-300 px-3 py-2"
+            aria-invalid={Boolean(fieldErrors.email?.[0])}
           />
+          {fieldErrors.email?.[0] ? (
+            <span className="mt-1 block text-sm text-red-600">
+              {fieldErrors.email[0]}
+            </span>
+          ) : null}
         </label>
 
         <label className="block">
@@ -224,6 +260,7 @@ export function UserFormPage() {
                 type="password"
                 autoComplete="new-password"
                 required={isNew}
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded border border-slate-300 px-3 py-2"

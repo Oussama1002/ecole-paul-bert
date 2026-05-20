@@ -4,6 +4,7 @@ import * as usersApi from '../api/users'
 import * as rolesApi from '../api/roles'
 import * as teachersApi from '../api/teachers'
 import { SearchSelect, type SearchSelectOption } from '../components/ui/SearchSelect'
+import { getApiErrorMessage, getApiFieldErrors } from '../utils/apiError'
 
 export function UserFormModal({
   userId,
@@ -36,6 +37,7 @@ export function UserFormModal({
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [teacherId, setTeacherId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   const selectedRole = roles?.find((r) => r.id === roleId)
   const isTeacherRole = selectedRole?.code === 'teacher'
@@ -49,11 +51,13 @@ export function UserFormModal({
 
   const teacherOptions = useMemo<SearchSelectOption[]>(
     () =>
-      (teachers?.items ?? []).map((t) => ({
-        value: t.id,
-        label: `${t.last_name} ${t.first_name}`,
-        hint: t.employee_code,
-      })),
+      (teachers?.items ?? [])
+        .filter((t) => t.user_id == null)
+        .map((t) => ({
+          value: t.id,
+          label: `${t.last_name} ${t.first_name}`,
+          hint: t.employee_code,
+        })),
     [teachers?.items]
   )
 
@@ -62,6 +66,11 @@ export function UserFormModal({
     if (id == null) return
     const t = teachers?.items.find((x) => x.id === id)
     if (!t) return
+    if (t.user_id != null) {
+      setError('Cet enseignant a déjà un compte utilisateur.')
+      return
+    }
+    setError(null)
     setFirstName(t.first_name)
     setLastName(t.last_name)
     setEmail(t.email ?? '')
@@ -85,9 +94,10 @@ export function UserFormModal({
       if (isNew) {
         return usersApi.createUser({
           role_id: roleId,
+          teacher_id: isTeacherRole && teacherId ? teacherId : null,
           first_name: firstName,
           last_name: lastName,
-          email,
+          email: email.trim(),
           phone: phone || null,
           password,
           password_confirmation: passwordConfirmation,
@@ -112,12 +122,28 @@ export function UserFormModal({
       void queryClient.invalidateQueries({ queryKey: ['users'] })
       onClose()
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: unknown) => {
+      setFieldErrors(getApiFieldErrors(e))
+      setError(getApiErrorMessage(e, 'Impossible d’enregistrer l’utilisateur.'))
+    },
   })
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
+    if (!roleId) {
+      setError('Choisissez un rôle.')
+      return
+    }
+    if (!email.trim()) {
+      setError('L’e-mail est obligatoire.')
+      return
+    }
+    if (isNew && password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
     if (isNew && (!password || password !== passwordConfirmation)) {
       setError('Les mots de passe ne correspondent pas.')
       return
@@ -196,7 +222,28 @@ export function UserFormModal({
 
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">E-mail *</span>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="school-input" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (fieldErrors.email) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev }
+                      delete next.email
+                      return next
+                    })
+                  }
+                }}
+                className="school-input"
+                aria-invalid={Boolean(fieldErrors.email?.[0])}
+              />
+              {fieldErrors.email?.[0] ? (
+                <span className="mt-1 block text-xs font-semibold text-[#B23A2E]">
+                  {fieldErrors.email[0]}
+                </span>
+              ) : null}
             </label>
 
             <label className="block text-sm">

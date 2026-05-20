@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { getApiErrorMessage, messageFromFailedApiPayload } from '../utils/apiError'
 import type { AuthUser } from '../types/api'
 
 type Ok<T> = { success: true; message: string; data: T }
@@ -46,6 +47,7 @@ export async function fetchUser(id: number): Promise<AuthUser> {
 
 export type CreateUserPayload = {
   role_id: number
+  teacher_id?: number | null
   first_name: string
   last_name: string
   email: string
@@ -57,14 +59,24 @@ export type CreateUserPayload = {
   gender?: string | null
 }
 
+function throwUserApiError(e: unknown): never {
+  throw new Error(
+    getApiErrorMessage(e, 'Impossible d’enregistrer l’utilisateur.')
+  )
+}
+
 export async function createUser(
   payload: CreateUserPayload
 ): Promise<AuthUser> {
-  const { data } = await apiClient.post<Ok<AuthUser> | Err>('/v1/users', payload)
-  if (!data.success) {
-    throw new Error(data.message)
+  try {
+    const { data } = await apiClient.post<Ok<AuthUser> | Err>('/v1/users', payload)
+    if (!data.success) {
+      throw new Error(messageFromFailedApiPayload(data))
+    }
+    return data.data
+  } catch (e) {
+    throwUserApiError(e)
   }
-  return data.data
 }
 
 export type UpdateUserPayload = {
@@ -84,14 +96,18 @@ export async function updateUser(
   id: number,
   payload: UpdateUserPayload
 ): Promise<AuthUser> {
-  const { data } = await apiClient.patch<Ok<AuthUser> | Err>(
-    `/v1/users/${id}`,
-    payload
-  )
-  if (!data.success) {
-    throw new Error(data.message)
+  try {
+    const { data } = await apiClient.patch<Ok<AuthUser> | Err>(
+      `/v1/users/${id}`,
+      payload
+    )
+    if (!data.success) {
+      throw new Error(messageFromFailedApiPayload(data))
+    }
+    return data.data
+  } catch (e) {
+    throwUserApiError(e)
   }
-  return data.data
 }
 
 export async function deleteUser(id: number): Promise<void> {

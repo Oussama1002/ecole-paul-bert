@@ -27,16 +27,24 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
                 $errors = $e->errors();
-                $first = null;
-                foreach ($errors as $messages) {
-                    if (is_array($messages) && isset($messages[0]) && is_string($messages[0])) {
-                        $first = trim($messages[0]);
+                $message = 'Certains champs sont invalides.';
+                foreach (['email', 'username', 'password', 'role_id', 'teacher_id'] as $field) {
+                    if (! empty($errors[$field][0]) && is_string($errors[$field][0])) {
+                        $message = trim($errors[$field][0]);
                         break;
+                    }
+                }
+                if ($message === 'Certains champs sont invalides.') {
+                    foreach ($errors as $messages) {
+                        if (is_array($messages) && isset($messages[0]) && is_string($messages[0])) {
+                            $message = trim($messages[0]);
+                            break;
+                        }
                     }
                 }
                 return response()->json([
                     'success' => false,
-                    'message' => $first ?: 'Certains champs sont invalides.',
+                    'message' => $message,
                     'errors' => $errors ?: (object) [],
                 ], $e->status);
             }
