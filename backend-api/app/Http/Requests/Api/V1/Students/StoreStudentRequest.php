@@ -55,5 +55,45 @@ class StoreStudentRequest extends FormRequest
         if (! $this->has('status')) {
             $this->merge(['status' => 'pending']);
         }
+
+        // Auto-generate a unique student_code if missing or already taken
+        $current = $this->input('student_code');
+        $needsGen = ! is_string($current) || trim($current) === '';
+        if (! $needsGen) {
+            $taken = \App\Models\Student::query()
+                ->whereNull('deleted_at')
+                ->where('student_code', $current)
+                ->exists();
+            $needsGen = $taken;
+        }
+        if ($needsGen) {
+            $year = now()->year;
+            $prefix = 'ELE-'.$year.'-';
+            do {
+                $code = $prefix.str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT);
+            } while (
+                \App\Models\Student::query()
+                    ->whereNull('deleted_at')
+                    ->where('student_code', $code)
+                    ->exists()
+            );
+            $this->merge(['student_code' => $code]);
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'student_code.required' => 'Le matricule est obligatoire.',
+            'student_code.unique' => 'Ce matricule est déjà utilisé par un autre élève.',
+            'first_name.required' => 'Le prénom est obligatoire.',
+            'last_name.required' => 'Le nom est obligatoire.',
+            'date_of_birth.required' => 'La date de naissance est obligatoire.',
+            'date_of_birth.before' => 'La date de naissance doit être antérieure à aujourd’hui.',
+            'gender.in' => 'Le genre est invalide.',
+        ];
     }
 }
