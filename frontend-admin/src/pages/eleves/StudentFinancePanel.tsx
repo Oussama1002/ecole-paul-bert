@@ -2,7 +2,6 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { type FormEvent, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as financeApi from '../../api/finance'
-import { SectionTitle } from '../../components/ui/SectionTitle'
 import { getApiErrorMessage } from '../../utils/apiError'
 import {
   FEE_ASSIGNMENT_STATUS_LABELS,
@@ -11,6 +10,8 @@ import {
   PAYMENT_METHOD_LABELS,
   formatMad,
 } from '../../utils/studentFinanceLabels'
+
+type FinanceView = 'fees' | 'payments'
 
 const PAYMENT_METHODS = [
   ['cash', 'Espèces'],
@@ -49,6 +50,8 @@ export function StudentFinancePanel({
   canManage: boolean
   hasEnrollment: boolean
 }) {
+  const [view, setView] = useState<FinanceView | null>(null)
+
   const [newFeeTypeId, setNewFeeTypeId] = useState(0)
   const [newFeeAmount, setNewFeeAmount] = useState('')
   const [newFeeDueDate, setNewFeeDueDate] = useState('')
@@ -64,31 +67,29 @@ export function StudentFinancePanel({
   const { data: feeAssignments, refetch: refetchFees } = useQuery({
     queryKey: ['fee-assignments-student', studentId],
     queryFn: () => financeApi.fetchFeeAssignments({ student_id: studentId, per_page: 50 }),
+    enabled: view === 'fees' || view === 'payments',
   })
 
   const { data: paymentsData, refetch: refetchPayments } = useQuery({
     queryKey: ['payments-student', studentId],
     queryFn: () => financeApi.fetchPayments({ student_id: studentId, per_page: 50 }),
+    enabled: view === 'payments',
   })
 
   const { data: feeTypes } = useQuery({
     queryKey: ['fee-types-active'],
     queryFn: () => financeApi.fetchFeeTypes({ is_active: true, per_page: 100 }),
-    enabled: canManage,
+    enabled: view === 'fees' && canManage,
   })
 
   const totals = useMemo(() => {
     const items = feeAssignments?.items ?? []
-    let due = 0
-    let paid = 0
     let balance = 0
     for (const f of items) {
       if (f.status === 'cancelled') continue
-      due += parseFloat(f.amount_due) || 0
-      paid += parseFloat(f.amount_paid) || 0
       balance += parseFloat(f.balance) || 0
     }
-    return { due, paid, balance }
+    return balance
   }, [feeAssignments?.items])
 
   const payableFees = useMemo(
@@ -143,9 +144,7 @@ export function StudentFinancePanel({
   function onFeeTypeChange(typeId: number) {
     setNewFeeTypeId(typeId)
     const ft = feeTypes?.items.find((t) => t.id === typeId)
-    if (ft?.default_amount) {
-      setNewFeeAmount(ft.default_amount)
-    }
+    if (ft?.default_amount) setNewFeeAmount(ft.default_amount)
   }
 
   function onPayFeeChange(feeId: number) {
@@ -162,47 +161,46 @@ export function StudentFinancePanel({
     )
   }
 
+  const btnBase =
+    'flex-1 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition-colors'
+  const btnActive = 'border-school-grape bg-school-grape text-white shadow-school'
+  const btnIdle =
+    'border-school-line bg-white text-school-ink hover:border-school-grape/40 hover:bg-school-grape/5'
+
   return (
-    <div className="space-y-5">
-      {canManage && (
+    <div className="space-y-4">
+      {totals > 0 && (
         <p className="text-sm text-school-inkmuted">
-          Configurez d&apos;abord les types de frais (inscription, mensualité, transport…)
-          dans{' '}
-          <Link to="/finance/types-de-frais" className="font-semibold text-school-grape underline">
-            Finance → Types de frais
-          </Link>
-          , puis assignez-les à l&apos;élève ci-dessous.
+          Reste à payer :{' '}
+          <span className="font-bold tabular-nums text-[#B23A2E]">{formatMad(totals)}</span>
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border-2 border-school-line bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">À payer</p>
-          <p className="mt-1 font-display text-xl font-bold tabular-nums text-school-ink">
-            {formatMad(totals.due)}
-          </p>
-        </div>
-        <div className="rounded-2xl border-2 border-school-line bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">Déjà payé</p>
-          <p className="mt-1 font-display text-xl font-bold tabular-nums text-school-leafdeep">
-            {formatMad(totals.paid)}
-          </p>
-        </div>
-        <div className="rounded-2xl border-2 border-school-coral/30 bg-school-coral/5 px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">Reste à payer</p>
-          <p className="mt-1 font-display text-xl font-bold tabular-nums text-[#B23A2E]">
-            {formatMad(totals.balance)}
-          </p>
-        </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => setView('fees')}
+          className={`${btnBase} ${view === 'fees' ? btnActive : btnIdle}`}
+        >
+          💼 Frais scolaires
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('payments')}
+          className={`${btnBase} ${view === 'payments' ? btnActive : btnIdle}`}
+        >
+          💰 Paiements
+        </button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="school-section space-y-3">
-          <SectionTitle
-            emoji="📋"
-            title="Ce que l'élève doit payer"
-            iconClassName="bg-school-sunsoft text-[#8A6A00]"
-          />
+      {view === null && (
+        <p className="text-center text-sm text-school-inkmuted py-6">
+          Choisissez Frais scolaires ou Paiements.
+        </p>
+      )}
+
+      {view === 'fees' && (
+        <section className="school-section space-y-4">
           {feeAssignments?.items.length ? (
             <ul className="space-y-2">
               {feeAssignments.items.map((f) => {
@@ -218,9 +216,7 @@ export function StudentFinancePanel({
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="font-semibold text-school-ink">{name}</p>
-                        {freq && (
-                          <p className="text-xs text-school-inkmuted">{freq}</p>
-                        )}
+                        {freq && <p className="text-xs text-school-inkmuted">{freq}</p>}
                         {f.due_date && (
                           <p className="text-xs text-school-inkmuted">
                             Échéance : {formatDate(f.due_date)}
@@ -258,12 +254,10 @@ export function StudentFinancePanel({
               })}
             </ul>
           ) : (
-            <p className="text-sm text-school-inkmuted">
-              Aucun frais configuré pour cet élève. Assignez inscription, mensualité, transport…
-            </p>
+            <p className="text-sm text-school-inkmuted">Aucun frais pour cet élève.</p>
           )}
 
-          {canManage && (
+          {canManage ? (
             <form
               onSubmit={(e: FormEvent) => {
                 e.preventDefault()
@@ -274,18 +268,15 @@ export function StudentFinancePanel({
                 }
                 addFeeAssignment.mutate()
               }}
-              className="border-t-2 border-school-line pt-3 space-y-2"
+              className="space-y-3 border-t-2 border-school-line pt-4"
             >
-              <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">
-                Ajouter un frais à payer
-              </p>
               {newFeeErr && <p className="text-xs text-red-600">{newFeeErr}</p>}
               <Field label="Type (inscription, mensuel, transport…)">
                 <select
                   required
                   value={newFeeTypeId || ''}
                   onChange={(e) => onFeeTypeChange(Number(e.target.value))}
-                  className="school-select text-sm"
+                  className="school-select"
                 >
                   <option value="">— Choisir —</option>
                   {feeTypes?.items.map((ft) => (
@@ -296,7 +287,7 @@ export function StudentFinancePanel({
                   ))}
                 </select>
               </Field>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Montant dû (MAD)">
                   <input
                     required
@@ -320,20 +311,23 @@ export function StudentFinancePanel({
               <button
                 type="submit"
                 disabled={addFeeAssignment.isPending}
-                className="school-btn-primary text-sm disabled:opacity-60"
+                className="school-btn-primary w-full sm:w-auto disabled:opacity-60"
               >
-                {addFeeAssignment.isPending ? 'Ajout…' : 'Ajouter à la fiche'}
+                {addFeeAssignment.isPending ? 'Enregistrement…' : 'Enregistrer le frais'}
               </button>
+              <p className="text-xs text-school-inkmuted">
+                Types de frais :{' '}
+                <Link to="/finance/types-de-frais" className="font-semibold text-school-grape underline">
+                  Paramétrage
+                </Link>
+              </p>
             </form>
-          )}
+          ) : null}
         </section>
+      )}
 
-        <section className="school-section space-y-3">
-          <SectionTitle
-            emoji="💰"
-            title="Paiements reçus"
-            iconClassName="bg-school-leaf/15 text-school-leafdeep"
-          />
+      {view === 'payments' && (
+        <section className="school-section space-y-4">
           {paymentsData?.items.filter((p) => p.status !== 'cancelled').length ? (
             <ul className="space-y-2 text-sm">
               {paymentsData.items
@@ -371,10 +365,10 @@ export function StudentFinancePanel({
                 ))}
             </ul>
           ) : (
-            <p className="text-sm text-school-inkmuted">Aucun paiement enregistré pour cet élève.</p>
+            <p className="text-sm text-school-inkmuted">Aucun paiement enregistré.</p>
           )}
 
-          {canManage && (
+          {canManage ? (
             <form
               onSubmit={(e: FormEvent) => {
                 e.preventDefault()
@@ -389,15 +383,12 @@ export function StudentFinancePanel({
                 }
                 addPayment.mutate()
               }}
-              className="border-t-2 border-school-line pt-3 space-y-2"
+              className="space-y-3 border-t-2 border-school-line pt-4"
             >
-              <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">
-                Enregistrer un paiement
-              </p>
               {newPayErr && <p className="text-xs text-red-600">{newPayErr}</p>}
               {payableFees.length === 0 ? (
-                <p className="text-xs text-school-inkmuted">
-                  Ajoutez d&apos;abord un frais « à payer » ou tous les soldes sont réglés.
+                <p className="text-sm text-school-inkmuted">
+                  Ajoutez d&apos;abord un frais scolaire (bouton Frais scolaires).
                 </p>
               ) : (
                 <>
@@ -406,7 +397,7 @@ export function StudentFinancePanel({
                       required
                       value={newPayFeeId || ''}
                       onChange={(e) => onPayFeeChange(Number(e.target.value))}
-                      className="school-select text-sm"
+                      className="school-select"
                     >
                       <option value="">— Choisir —</option>
                       {payableFees.map((f) => (
@@ -417,7 +408,7 @@ export function StudentFinancePanel({
                       ))}
                     </select>
                   </Field>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Montant reçu (MAD)">
                       <input
                         required
@@ -457,22 +448,22 @@ export function StudentFinancePanel({
                       value={newPayNote}
                       onChange={(e) => setNewPayNote(e.target.value)}
                       className="school-input"
-                      placeholder="Ex. Paiement janvier, acompte…"
+                      placeholder="Ex. Paiement janvier…"
                     />
                   </Field>
                   <button
                     type="submit"
                     disabled={addPayment.isPending}
-                    className="school-btn-primary text-sm disabled:opacity-60"
+                    className="school-btn-primary w-full sm:w-auto disabled:opacity-60"
                   >
                     {addPayment.isPending ? 'Enregistrement…' : 'Enregistrer le paiement'}
                   </button>
                 </>
               )}
             </form>
-          )}
+          ) : null}
         </section>
-      </div>
+      )}
     </div>
   )
 }
