@@ -125,11 +125,6 @@ export function StudentsListPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
   })
 
-  const remove = useMutation({
-    mutationFn: (id: number) => studentsApi.deleteStudent(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
-  })
-
   const exportParams = {
     search: debounced || undefined,
     status: status || undefined,
