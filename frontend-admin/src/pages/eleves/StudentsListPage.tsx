@@ -24,6 +24,7 @@ const statusLabels: Record<string, string> = {
   graduated: 'Diplômé',
   suspended: 'Suspendu',
   withdrawn: 'Retiré',
+  archived: 'Archivé',
 }
 
 const statusPillClass: Record<string, string> = {
@@ -33,6 +34,7 @@ const statusPillClass: Record<string, string> = {
   graduated: 'school-pill-grape',
   suspended: 'school-pill-coral',
   withdrawn: 'school-pill-muted',
+  archived: 'school-pill-muted',
 }
 
 export function StudentsListPage() {
@@ -111,6 +113,16 @@ export function StudentsListPage() {
         sort_by: 'last_name',
         sort_order: 'asc',
       }),
+  })
+
+  const archive = useMutation({
+    mutationFn: (id: number) => studentsApi.updateStudent(id, { status: 'archived' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
+  })
+
+  const forceDelete = useMutation({
+    mutationFn: (id: number) => studentsApi.forceDeleteStudent(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
   })
 
   const remove = useMutation({
@@ -475,21 +487,39 @@ export function StudentsListPage() {
                           >
                             Modifier
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  'Archiver cet élève (suppression logique) ?'
-                                )
-                              ) {
-                                remove.mutate(s.id)
-                              }
-                            }}
-                            className="text-xs font-bold text-[#B23A2E] hover:underline"
-                          >
-                            Archiver
-                          </button>
+                          {s.status !== 'archived' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    "Archiver cet élève ? Il reste dans la base mais n’apparaît plus dans la liste par défaut."
+                                  )
+                                ) {
+                                  archive.mutate(s.id)
+                                }
+                              }}
+                              className="text-xs font-bold text-amber-700 hover:underline"
+                            >
+                              Archiver
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Supprimer définitivement ${s.first_name} ${s.last_name} ? Cette action est irréversible.`
+                                  )
+                                ) {
+                                  forceDelete.mutate(s.id)
+                                }
+                              }}
+                              className="text-xs font-bold text-[#B23A2E] hover:underline"
+                            >
+                              Supprimer définitivement
+                            </button>
+                          )}
                         </>
                       )}
                     </div>

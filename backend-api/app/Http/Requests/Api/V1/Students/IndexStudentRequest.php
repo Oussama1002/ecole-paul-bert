@@ -20,7 +20,7 @@ class IndexStudentRequest extends FormRequest
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'status' => ['sometimes', 'nullable', 'string', 'in:pending,active,transferred,graduated,suspended,withdrawn'],
+            'status' => ['sometimes', 'nullable', 'string', 'in:pending,active,transferred,graduated,suspended,withdrawn,archived'],
             'school_year_id' => ['sometimes', 'nullable', 'integer', 'exists:school_years,id'],
             'level_id' => ['sometimes', 'nullable', 'integer', 'exists:levels,id'],
             'class_id' => ['sometimes', 'nullable', 'integer', 'exists:classes,id'],

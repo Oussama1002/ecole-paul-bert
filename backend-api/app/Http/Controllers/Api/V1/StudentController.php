@@ -45,6 +45,9 @@ class StudentController extends Controller
 
         if ($status = $request->validated('status')) {
             $query->where('status', $status);
+        } else {
+            // Archived students are hidden by default — visible only when explicitly filtered
+            $query->where('status', '!=', 'archived');
         }
 
         $schoolYearId = $request->validated('school_year_id');
@@ -190,6 +193,32 @@ class StudentController extends Controller
         );
 
         return ApiResponse::success(null, 'Élève archivé (suppression logique).');
+    }
+
+    public function forceDestroy(Request $request, Student $student): JsonResponse
+    {
+        if ($student->status !== 'archived') {
+            return ApiResponse::error(
+                "Seuls les élèves archivés peuvent être supprimés définitivement.",
+                [],
+                422
+            );
+        }
+
+        $before = $student->only(['id', 'student_code', 'first_name', 'last_name', 'status']);
+        $student->forceDelete();
+
+        try {
+            $this->audit->log(
+                $request->user(),
+                'student.force_deleted',
+                null,
+                $before,
+                ['permanently_deleted' => true]
+            );
+        } catch (\Throwable) {}
+
+        return ApiResponse::success(null, 'Élève supprimé définitivement.');
     }
 
     public function history(Student $student): JsonResponse
@@ -376,6 +405,9 @@ class StudentController extends Controller
         }
         if ($status = $request->validated('status')) {
             $query->where('status', $status);
+        } else {
+            // Archived students are hidden by default — visible only when explicitly filtered
+            $query->where('status', '!=', 'archived');
         }
 
         $schoolYearId = $request->validated('school_year_id');
@@ -435,6 +467,9 @@ class StudentController extends Controller
         }
         if ($status = $request->validated('status')) {
             $query->where('status', $status);
+        } else {
+            // Archived students are hidden by default — visible only when explicitly filtered
+            $query->where('status', '!=', 'archived');
         }
 
         $schoolYearId = $request->validated('school_year_id');

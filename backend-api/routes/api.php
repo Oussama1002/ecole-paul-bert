@@ -145,6 +145,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:students.view')->get('/students/{student}', [StudentController::class, 'show']);
         Route::middleware('permission:students.manage')->patch('/students/{student}', [StudentController::class, 'update']);
         Route::middleware('permission:students.manage')->delete('/students/{student}', [StudentController::class, 'destroy']);
+        Route::middleware('permission:students.manage')->delete('/students/{student}/force', [StudentController::class, 'forceDestroy']);
 
         Route::middleware('permission:guardians.view')->get('/guardians', [GuardianController::class, 'index']);
         Route::middleware('permission:guardians.view')->get('/guardians/{guardian}', [GuardianController::class, 'show']);

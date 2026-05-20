@@ -34,7 +34,7 @@ class StoreStudentRequest extends FormRequest
             'nationality' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string'],
             'city' => ['nullable', 'string', 'max:100'],
-            'status' => ['sometimes', Rule::in(['pending', 'active', 'transferred', 'graduated', 'suspended', 'withdrawn'])],
+            'status' => ['sometimes', Rule::in(['pending', 'active', 'transferred', 'graduated', 'suspended', 'withdrawn', 'archived'])],
             'admission_date' => ['nullable', 'date'],
             'registration_date' => ['nullable', 'date'],
             'previous_school' => ['nullable', 'string', 'max:255'],

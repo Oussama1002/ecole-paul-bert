@@ -36,10 +36,12 @@ const allTabs: TabDef[] = [
 const STATUS_PILL: Record<string, string> = {
   pending: 'school-pill-sun', active: 'school-pill-green', transferred: 'school-pill-sky',
   graduated: 'school-pill-grape', suspended: 'school-pill-coral', withdrawn: 'school-pill-muted',
+  archived: 'school-pill-muted',
 }
 const STATUS_LABEL: Record<string, string> = {
   pending: 'En attente', active: 'Actif', transferred: 'Transféré',
   graduated: 'Diplômé', suspended: 'Suspendu', withdrawn: 'Retiré',
+  archived: 'Archivé',
 }
 const ACADEMIC_STATUS_LABEL: Record<string, string> = {
   enrolled: 'Inscrit', re_enrolled: 'Réinscrit', transferred_in: 'Transféré entrant',

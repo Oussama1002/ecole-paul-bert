@@ -125,6 +125,14 @@ export async function deleteStudent(id: number): Promise<void> {
   if (!data.success) throw new Error(messageFromFailedApiPayload(data))
 }
 
+/** Permanently delete an archived student (DB row removed). */
+export async function forceDeleteStudent(id: number): Promise<void> {
+  const { data } = await apiClient.delete<Ok<null> | Err>(
+    `/v1/students/${id}/force`
+  )
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+}
+
 export type StudentHistoryData = {
   enrollments: unknown[]
   class_assignments: unknown[]

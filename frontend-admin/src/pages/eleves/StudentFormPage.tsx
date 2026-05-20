@@ -217,6 +217,7 @@ export function StudentFormPage() {
               <option value="graduated">Diplômé</option>
               <option value="suspended">Suspendu</option>
               <option value="withdrawn">Retiré</option>
+              <option value="archived">Archivé</option>
             </select>
           </label>
           <label className="block">

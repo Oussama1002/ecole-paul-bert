@@ -38,7 +38,7 @@ class UpdateStudentRequest extends FormRequest
             'nationality' => ['sometimes', 'nullable', 'string', 'max:100'],
             'address' => ['sometimes', 'nullable', 'string'],
             'city' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'status' => ['sometimes', Rule::in(['pending', 'active', 'transferred', 'graduated', 'suspended', 'withdrawn'])],
+            'status' => ['sometimes', Rule::in(['pending', 'active', 'transferred', 'graduated', 'suspended', 'withdrawn', 'archived'])],
             'admission_date' => ['sometimes', 'nullable', 'date'],
             'registration_date' => ['sometimes', 'nullable', 'date'],
             'previous_school' => ['sometimes', 'nullable', 'string', 'max:255'],
