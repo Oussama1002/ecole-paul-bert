@@ -7,6 +7,12 @@ import { LoadingState } from '../../components/ui/LoadingState'
 
 const MODULE_FR: Record<string, string> = {
   announcement: 'Annonce',
+  auth: 'Authentification',
+  access: 'Consultation',
+  create: 'Création (API)',
+  update: 'Modification (API)',
+  destroy: 'Suppression (API)',
+  request: 'Requête API',
   document: 'Document',
   evaluation_period: "Période d'évaluation",
   grades: 'Notes',
@@ -30,6 +36,12 @@ const VERB_FR: Record<string, string> = {
   recorded: 'Enregistrement',
   role_changed: 'Changement de rôle',
   locked_period_changed: 'Verrouillage de période',
+  login: 'Connexion',
+  logout: 'Déconnexion',
+  login_failed: 'Échec connexion',
+  login_denied: 'Connexion refusée',
+  profile_updated: 'Profil mis à jour',
+  password_changed: 'Mot de passe changé',
 }
 
 // Badge colour by verb category
@@ -146,9 +158,14 @@ export function AuditLogsPage() {
                   {row.subject_type
                     ? (() => {
                         const name = row.subject_type.split('\\').pop() ?? ''
-                        return SUBJECT_FR[name] ?? name
+                        const label = SUBJECT_FR[name] ?? name
+                        return row.subject_id != null
+                          ? `${label} #${row.subject_id}`
+                          : label
                       })()
-                    : '—'}
+                    : typeof row.new_values?.path === 'string'
+                      ? row.new_values.path
+                      : '—'}
                 </td>
               </tr>
             ))}

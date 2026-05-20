@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\Auth\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
+    public function __construct(private AuditLogger $audit) {}
+
     public function login(LoginRequest $request): JsonResponse
     {
         $login = trim((string) $request->validated('email'));
@@ -29,10 +32,28 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! Hash::check($request->validated('password'), $user->password_hash)) {
+            $this->audit->log(
+                null,
+                'auth.login_failed',
+                null,
+                null,
+                ['login' => $login],
+                $request
+            );
+
             return ApiResponse::error('Identifiants invalides.', [], 401);
         }
 
         if ($user->status !== 'active') {
+            $this->audit->log(
+                $user,
+                'auth.login_denied',
+                $user,
+                null,
+                ['reason' => 'inactive'],
+                $request
+            );
+
             return ApiResponse::error('Ce compte n\'est pas actif.', [], 403);
         }
 
@@ -41,6 +62,18 @@ class AuthController extends Controller
         $user->load(['role.permissions', 'userRolePermissions.permission']);
 
         $token = $user->createToken('api')->plainTextToken;
+
+        $this->audit->log(
+            $user,
+            'auth.login',
+            $user,
+            null,
+            [
+                'email' => $user->email,
+                'role' => $user->role?->code,
+            ],
+            $request
+        );
 
         return ApiResponse::success([
             'user' => (new UserResource($user->load('role')))->resolve(),
@@ -52,7 +85,11 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()?->currentAccessToken()?->delete();
+        $user = $request->user();
+        if ($user) {
+            $this->audit->log($user, 'auth.logout', $user, null, null, $request);
+        }
+        $user?->currentAccessToken()?->delete();
 
         return ApiResponse::success(null, 'Déconnexion réussie.');
     }
@@ -72,8 +109,18 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        $before = $user->only(['first_name', 'last_name', 'email', 'phone', 'username']);
         $user->fill($request->validated());
         $user->save();
+
+        $this->audit->log(
+            $user,
+            'auth.profile_updated',
+            $user,
+            $before,
+            $user->only(['first_name', 'last_name', 'email', 'phone', 'username']),
+            $request
+        );
 
         return ApiResponse::success([
             'user' => (new UserResource($user->fresh()->load('role')))->resolve(),
@@ -94,6 +141,8 @@ class AuthController extends Controller
 
         $user->password_hash = Hash::make($request->validated('password'));
         $user->save();
+
+        $this->audit->log($user, 'auth.password_changed', $user, null, null, $request);
 
         $currentId = $user->currentAccessToken()?->id;
         if ($currentId) {

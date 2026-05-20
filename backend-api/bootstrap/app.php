@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\EnsurePermission::class,
             'block_unready_portal_roles' => \App\Http\Middleware\BlockUnreadyPortalRoles::class,
+            'audit.activity' => \App\Http\Middleware\AuditApiActivity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

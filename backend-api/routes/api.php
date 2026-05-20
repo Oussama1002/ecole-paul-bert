@@ -55,7 +55,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])
         ->middleware('throttle:forgot-password');
 
-    Route::middleware(['auth:sanctum', 'throttle:api', 'block_unready_portal_roles'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:api', 'block_unready_portal_roles', 'audit.activity'])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::patch('/auth/profile', [AuthController::class, 'updateProfile']);
