@@ -21,7 +21,7 @@ function timeAgo(iso: string | null): string {
   return d.toLocaleDateString('fr-FR')
 }
 
-export function AppHeader() {
+export function AppHeader({ onMenuClick }: { onMenuClick?: () => void } = {}) {
   const { user, logout, hasPermission } = useAuth()
   const { simpleMode, canToggle, setSimpleMode } = useSimpleMode()
   const queryClient = useQueryClient()
@@ -87,8 +87,18 @@ export function AppHeader() {
   }, [])
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-school-border/60 bg-school-paper/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:px-6">
-      <div className="flex items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-school-border/60 bg-school-paper/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Ouvrir le menu"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-school-border/80 bg-white text-xl text-school-ink shadow-sm hover:bg-school-mist/40 lg:hidden"
+          >
+            ☰
+          </button>
+        )}
         {logoUrl ? (
           <img
             src={logoUrl}
@@ -103,11 +113,11 @@ export function AppHeader() {
             🎓
           </span>
         )}
-        <div>
-          <h1 className="font-display text-lg font-bold text-school-ink sm:text-xl">
+        <div className="min-w-0">
+          <h1 className="truncate font-display text-base font-bold text-school-ink sm:text-xl">
             {schoolName}
           </h1>
-          <p className="text-xs font-medium capitalize text-school-inkmuted">
+          <p className="hidden text-xs font-medium capitalize text-school-inkmuted sm:block">
             <span aria-hidden className="mr-1">📅</span>
             {today}
           </p>
@@ -116,7 +126,7 @@ export function AppHeader() {
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {canToggle ? (
           <div
-            className="inline-flex items-center gap-1 rounded-full border border-school-lilac/50 bg-white p-1 text-xs font-bold shadow-sm"
+            className="hidden md:inline-flex items-center gap-1 rounded-full border border-school-lilac/50 bg-white p-1 text-xs font-bold shadow-sm"
             role="group"
             aria-label="Choisir le mode d'affichage"
           >
@@ -151,7 +161,7 @@ export function AppHeader() {
           </div>
         ) : null}
         {user && (
-          <div className="flex items-center gap-2 rounded-2xl border border-school-border/80 bg-white px-3 py-1.5 shadow-sm">
+          <div className="hidden lg:flex items-center gap-2 rounded-2xl border border-school-border/80 bg-white px-3 py-1.5 shadow-sm">
             <span className="text-sm font-medium text-school-ink">
               {user.first_name} {user.last_name}
             </span>
@@ -272,7 +282,7 @@ export function AppHeader() {
             aria-haspopup="menu"
             aria-expanded={openMenu}
           >
-            👤 Profil
+            👤<span className="ml-1 hidden sm:inline">Profil</span>
           </button>
           {openMenu ? (
             <div className="absolute right-0 z-20 mt-2 w-44 rounded-xl border border-school-border bg-white p-1 shadow-lg">
