@@ -45,7 +45,7 @@ export async function fetchSubject(id: number): Promise<Subject> {
 export async function createSubject(payload: {
   level_id?: number | null
   name: string
-  code: string
+  code?: string
   description?: string | null
   coefficient?: number
   is_optional?: boolean

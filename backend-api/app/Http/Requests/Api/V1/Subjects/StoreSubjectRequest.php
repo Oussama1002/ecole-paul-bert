@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Subjects;
 
+use App\Models\Subject;
+use App\Support\PaulBertSubjectCode;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSubjectRequest extends FormRequest
@@ -34,5 +36,14 @@ class StoreSubjectRequest extends FormRequest
             'status' => $this->input('status', 'active'),
             'is_optional' => $this->boolean('is_optional'),
         ]);
+
+        if (! $this->filled('code') && $this->filled('name')) {
+            $this->merge([
+                'code' => PaulBertSubjectCode::fromName(
+                    (string) $this->input('name'),
+                    fn (string $code) => Subject::query()->where('code', $code)->exists()
+                ),
+            ]);
+        }
     }
 }

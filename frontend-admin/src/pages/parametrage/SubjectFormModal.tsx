@@ -26,7 +26,6 @@ export function SubjectFormModal({
 
   const [levelId, setLevelId] = useState<number | ''>('')
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [coefficient, setCoefficient] = useState('1')
   const [isOptional, setIsOptional] = useState(false)
@@ -37,7 +36,6 @@ export function SubjectFormModal({
     if (!existing) return
     setLevelId(existing.level_id ?? '')
     setName(existing.name)
-    setCode(existing.code)
     setDescription(existing.description ?? '')
     setCoefficient(String(existing.coefficient))
     setIsOptional(existing.is_optional)
@@ -48,7 +46,6 @@ export function SubjectFormModal({
     mutationFn: async () => {
       const base = {
         name,
-        code,
         description: description || null,
         coefficient: parseFloat(coefficient) || 1,
         is_optional: isOptional,
@@ -92,10 +89,6 @@ export function SubjectFormModal({
               <label className="block text-sm sm:col-span-2">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Nom *</span>
                 <input required value={name} onChange={(e) => setName(e.target.value)} className="school-input" />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Code *</span>
-                <input required value={code} onChange={(e) => setCode(e.target.value)} className="school-input" />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Coefficient</span>

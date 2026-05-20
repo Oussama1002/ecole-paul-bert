@@ -26,7 +26,6 @@ export function SubjectFormPage() {
 
   const [levelId, setLevelId] = useState<number | ''>('')
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [coefficient, setCoefficient] = useState('1')
   const [isOptional, setIsOptional] = useState(false)
@@ -37,7 +36,6 @@ export function SubjectFormPage() {
     if (!existing) return
     setLevelId(existing.level_id ?? '')
     setName(existing.name)
-    setCode(existing.code)
     setDescription(existing.description ?? '')
     setCoefficient(String(existing.coefficient))
     setIsOptional(existing.is_optional)
@@ -48,7 +46,6 @@ export function SubjectFormPage() {
     mutationFn: async () => {
       const base = {
         name,
-        code,
         description: description || null,
         coefficient: parseFloat(coefficient) || 1,
         is_optional: isOptional,
@@ -117,15 +114,6 @@ export function SubjectFormPage() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">Code</span>
-          <input
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           />
         </label>
