@@ -5,8 +5,7 @@ import { SimpleModeProvider } from './contexts/SimpleModeContext'
 import { AdminLayout } from './layouts/AdminLayout'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { DashboardPage } from './pages/DashboardPage'
-import { SimpleDashboardPage } from './pages/SimpleDashboardPage'
+import { HomePage } from './routes/HomePage'
 import { useSimpleMode } from './contexts/SimpleModeContext'
 import { ForbiddenPage } from './pages/ForbiddenPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
@@ -61,11 +60,6 @@ import {
   RequirePermission,
 } from './routes/RequirePermission'
 
-function DashboardHome() {
-  const { simpleMode } = useSimpleMode()
-  return simpleMode ? <SimpleDashboardPage /> : <DashboardPage />
-}
-
 function AttendanceMarkingHome() {
   const { simpleMode } = useSimpleMode()
   return simpleMode ? <SimpleAttendancePage /> : <AttendanceQuickClassPage />
@@ -107,7 +101,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<DashboardHome />} />
+              <Route index element={<HomePage />} />
               <Route path="ecole/parametres" element={<SimpleSchoolSettingsPage />} />
               <Route
                 path="ecole/parametres/niveaux"

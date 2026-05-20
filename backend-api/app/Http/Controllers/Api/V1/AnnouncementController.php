@@ -8,8 +8,10 @@ use App\Http\Requests\Api\V1\Announcements\StoreAnnouncementRequest;
 use App\Http\Requests\Api\V1\Announcements\UpdateAnnouncementRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\Announcement;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\SystemNotificationDispatcher;
+use App\Services\TeacherScopeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Schema;
 
@@ -17,14 +19,22 @@ class AnnouncementController extends Controller
 {
     public function __construct(
         private AuditLogger $audit,
-        private SystemNotificationDispatcher $notify
+        private SystemNotificationDispatcher $notify,
+        private TeacherScopeService $teacherScope
     ) {}
 
     public function index(IndexAnnouncementRequest $request): JsonResponse
     {
         $q = Announcement::query()->orderByDesc('id');
 
-        if ($s = $request->validated('status')) {
+        /** @var User|null $user */
+        $user = $request->user();
+        $portalReader = $user && $this->teacherScope->isStrictTeacher($user);
+
+        if ($portalReader && Schema::hasColumn('announcements', 'status')) {
+            $q->where('status', 'published');
+            $q->whereIn('audience_type', ['all', 'teachers', 'staff']);
+        } elseif ($s = $request->validated('status')) {
             if (Schema::hasColumn('announcements', 'status')) {
                 $q->where('status', $s);
             }
@@ -50,9 +60,27 @@ class AnnouncementController extends Controller
         ], 'Annonces.');
     }
 
-    public function show(Announcement $announcement): JsonResponse
+    public function show(Announcement $announcement, \Illuminate\Http\Request $request): JsonResponse
     {
+        $this->assertAnnouncementReadable($request->user(), $announcement);
+
         return ApiResponse::success($this->toDto($announcement), 'Annonce.');
+    }
+
+    private function assertAnnouncementReadable(?User $user, Announcement $announcement): void
+    {
+        if (! $user || ! $this->teacherScope->isStrictTeacher($user)) {
+            return;
+        }
+        if (! Schema::hasColumn('announcements', 'status')) {
+            return;
+        }
+        if ($announcement->status !== 'published') {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Annonce non publiée.');
+        }
+        if (! in_array($announcement->audience_type, ['all', 'teachers', 'staff'], true)) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Annonce non destinée aux enseignants.');
+        }
     }
 
     public function store(StoreAnnouncementRequest $request): JsonResponse

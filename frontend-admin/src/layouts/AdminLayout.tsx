@@ -1,23 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet } from 'react-router-dom'
-import * as schoolYearsApi from '../api/schoolYears'
 import { AppFooter } from '../components/layout/AppFooter'
 import { AppHeader } from '../components/layout/AppHeader'
 import { AppSidebar } from '../components/layout/AppSidebar'
 import { SimpleSidebar } from '../components/layout/SimpleSidebar'
+import { TeacherSidebar } from '../components/layout/TeacherSidebar'
+import { useAuth } from '../contexts/AuthContext'
 import { useSimpleMode } from '../contexts/SimpleModeContext'
+import { useCurrentSchoolYear } from '../hooks/useCurrentSchoolYear'
+import { isTeacherRole } from '../utils/roles'
 
 function NoSchoolYearBanner() {
   const { simpleMode } = useSimpleMode()
-  const { data, isLoading } = useQuery({
-    queryKey: ['school-year-guard'],
-    queryFn: () => schoolYearsApi.fetchSchoolYears({ per_page: 5, is_current: true }),
-    staleTime: 2 * 60 * 1000,
-  })
+  const { hasPermission } = useAuth()
+  const { isLoading, hasCurrentYear } = useCurrentSchoolYear()
 
-  if (isLoading) return null
-  const hasCurrent = data?.items.some((y) => y.is_current)
-  if (hasCurrent) return null
+  if (isLoading || hasCurrentYear) return null
+  if (!hasPermission('school_years.manage') && !hasPermission('school_years.view')) {
+    return null
+  }
 
   const configPath = simpleMode ? '/ecole/parametres' : '/parametrage/annees-scolaires'
 
@@ -37,10 +37,18 @@ function NoSchoolYearBanner() {
 
 export function AdminLayout() {
   const { simpleMode } = useSimpleMode()
+  const { user } = useAuth()
+  const isTeacher = isTeacherRole(user?.role?.code)
 
   return (
     <div className="school-page-bg flex min-h-screen font-sans text-school-ink">
-      {simpleMode ? <SimpleSidebar /> : <AppSidebar />}
+      {isTeacher ? (
+        <TeacherSidebar />
+      ) : simpleMode ? (
+        <SimpleSidebar />
+      ) : (
+        <AppSidebar />
+      )}
       <div className="flex min-h-screen flex-1 flex-col">
         <AppHeader />
         <NoSchoolYearBanner />

@@ -1,60 +1,53 @@
+import { useQuery } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { useCurrentSchoolYear } from '../../hooks/useCurrentSchoolYear'
+import * as simpleSettingsApi from '../../api/simpleSchoolSettings'
 import { navEmoji } from './navMeta'
 
-type NavItem = { to: string; label: string; end?: boolean; permission?: string }
+type NavItem = {
+  to: string
+  label: string
+  end?: boolean
+  permission?: string
+}
 
-/**
- * Simple-mode sidebar: only the essentials for a primary-school director.
- * Advanced settings (paramétrage, audit, emploi du temps, etc.) are hidden.
- *
- * Visual identity:
- *  - rainbow header (school-sidebar gradient) with mascot
- *  - rounded "card" nav items with colorful icon bubbles
- *  - footer "année scolaire" chip so the team always sees the current year
- */
-const simpleNav: NavItem[] = [
-  { to: '/', label: 'Accueil', end: true },
-  { to: '/ecole/parametres', label: 'École' },
-  { to: '/eleves', label: 'Élèves', permission: 'students.view' },
-  { to: '/assiduite/marquage', label: 'Absences', permission: 'attendance.view' },
-  { to: '/bulletins', label: 'Bulletins', permission: 'report_cards.view' },
-  { to: '/finance', label: 'Caisse', permission: 'finance.view' },
-  { to: '/finance/bilan', label: 'Bilan', permission: 'finance.view' },
-  { to: '/enseignants', label: 'Enseignants', permission: 'teachers.view' },
+const teacherNav: NavItem[] = [
+  { to: '/emploi-du-temps', label: 'Emploi du temps', end: true },
   { to: '/communications/annonces', label: 'Annonces', permission: 'announcements.view' },
+  { to: '/eleves', label: 'Élèves', permission: 'students.view' },
 ]
 
 const linkBase =
   'group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition-all duration-200'
 
-export function SimpleSidebar() {
+export function TeacherSidebar() {
   const { hasPermission } = useAuth()
 
-  const items = simpleNav.filter(
+  const items = teacherNav.filter(
     (item) => !item.permission || hasPermission(item.permission)
   )
 
-  const { name: currentYearName } = useCurrentSchoolYear()
+  const { data: settings } = useQuery({
+    queryKey: ['teacher-sidebar-school'],
+    queryFn: simpleSettingsApi.fetchSimpleSchoolSettings,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const currentYear = settings?.current_school_year
 
   return (
     <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-white/20 bg-school-sidebar shadow-school-lg">
       <div className="px-4 pb-3 pt-6 text-white">
         <div className="flex items-center gap-3 rounded-3xl bg-white/20 p-3 backdrop-blur-sm">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/30 text-2xl shadow-inner animate-wiggle-soft"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/30 text-2xl shadow-inner"
             aria-hidden
           >
-            🎓
+            👩‍🏫
           </div>
           <div className="min-w-0">
-            <p className="font-display text-lg font-bold leading-tight">
-              Paul Bert
-            </p>
-            <p className="text-[11px] font-semibold text-white/85">
-              Mode simple
-            </p>
+            <p className="font-display text-lg font-bold leading-tight">Paul Bert</p>
+            <p className="text-[11px] font-semibold text-white/85">Espace enseignant</p>
           </div>
         </div>
       </div>
@@ -90,7 +83,7 @@ export function SimpleSidebar() {
               Année scolaire
             </p>
             <p className="mt-0.5 font-display text-sm font-bold text-school-grape">
-              {currentYearName ?? '—'}
+              {currentYear?.name ?? '—'}
             </p>
           </div>
         </div>

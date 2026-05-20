@@ -8,6 +8,8 @@ import * as schoolYearsApi from '../../api/schoolYears'
 import * as subjectsApi from '../../api/subjects'
 import * as teachersApi from '../../api/teachers'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrentSchoolYear } from '../../hooks/useCurrentSchoolYear'
+import { isTeacherRole } from '../../utils/roles'
 
 const DOW = [
   'monday',
@@ -38,8 +40,11 @@ function mondayDateString(d: Date): string {
 }
 
 export function ScheduleWeeklyPage() {
-  const { hasPermission } = useAuth()
+  const { user, hasPermission } = useAuth()
   const canManage = hasPermission('schedule.manage')
+  const isTeacher = isTeacherRole(user?.role?.code)
+  const canListYears = hasPermission('school_years.view')
+  const { id: currentYearId, name: currentYearName } = useCurrentSchoolYear()
   const queryClient = useQueryClient()
 
   const [weekStart, setWeekStart] = useState(() => mondayDateString(new Date()))
@@ -74,14 +79,20 @@ export function ScheduleWeeklyPage() {
         sort_by: 'start_date',
         sort_order: 'desc',
       }),
+    enabled: canListYears,
   })
 
   useEffect(() => {
-    if (schoolYearId <= 0 && years?.items?.length) {
+    if (schoolYearId > 0) return
+    if (canListYears && years?.items?.length) {
       const cur = years.items.find((y) => y.is_current)
-      setSchoolYearId(cur?.id ?? years.items[0].id)
+      if (cur) setSchoolYearId(cur.id)
+      return
     }
-  }, [years, schoolYearId])
+    if (!canListYears && currentYearId) {
+      setSchoolYearId(currentYearId)
+    }
+  }, [years, schoolYearId, canListYears, currentYearId])
 
   const { data: weekly, isLoading } = useQuery({
     queryKey: [
@@ -253,7 +264,9 @@ export function ScheduleWeeklyPage() {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-slate-800">Emploi du temps</h2>
+        <h2 className="text-xl font-semibold text-slate-800">
+          {isTeacher ? 'Mon emploi du temps' : 'Emploi du temps'}
+        </h2>
         {canManage && (
           <button
             type="button"
@@ -268,18 +281,24 @@ export function ScheduleWeeklyPage() {
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <div>
           <label className="block text-xs text-slate-500">Année scolaire</label>
-          <select
-            value={schoolYearId || ''}
-            onChange={(e) => setSchoolYearId(parseInt(e.target.value, 10) || 0)}
-            className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value={0}>—</option>
-            {years?.items.map((y) => (
-              <option key={y.id} value={y.id}>
-                {y.name}
-              </option>
-            ))}
-          </select>
+          {canListYears ? (
+            <select
+              value={schoolYearId || ''}
+              onChange={(e) => setSchoolYearId(parseInt(e.target.value, 10) || 0)}
+              className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value={0}>—</option>
+              {years?.items.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm font-medium text-slate-700">
+              {currentYearName ?? '—'}
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-xs text-slate-500">Semaine (lundi)</label>
@@ -321,21 +340,23 @@ export function ScheduleWeeklyPage() {
             ))}
           </select>
         </div>
-        <div>
-          <label className="block text-xs text-slate-500">Enseignant</label>
-          <select
-            value={filterTeacherId || ''}
-            onChange={(e) => setFilterTeacherId(parseInt(e.target.value, 10) || 0)}
-            className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value={0}>Tous</option>
-            {teachers?.items.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.last_name} {t.first_name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!isTeacher ? (
+          <div>
+            <label className="block text-xs text-slate-500">Enseignant</label>
+            <select
+              value={filterTeacherId || ''}
+              onChange={(e) => setFilterTeacherId(parseInt(e.target.value, 10) || 0)}
+              className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value={0}>Tous</option>
+              {teachers?.items.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.last_name} {t.first_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div>
           <label className="block text-xs text-slate-500">Salle</label>
           <select

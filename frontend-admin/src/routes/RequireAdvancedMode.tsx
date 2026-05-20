@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { useSimpleMode } from '../contexts/SimpleModeContext'
+import { isTeacherRole } from '../utils/roles'
 
 /**
  * Route guard for pages that only make sense in advanced mode.
@@ -13,8 +15,10 @@ import { useSimpleMode } from '../contexts/SimpleModeContext'
  * do. This is purely a UX simplification layer.
  */
 export function RequireAdvancedMode({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const { simpleMode, ready } = useSimpleMode()
   const location = useLocation()
+  const isTeacher = isTeacherRole(user?.role?.code)
 
   if (!ready) {
     return (
@@ -24,7 +28,7 @@ export function RequireAdvancedMode({ children }: { children: ReactNode }) {
     )
   }
 
-  if (simpleMode) {
+  if (simpleMode && !isTeacher) {
     return <Navigate to="/" replace state={{ from: location, reason: 'simple_mode' }} />
   }
 

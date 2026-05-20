@@ -15,7 +15,7 @@ type AuthContextValue = {
   user: AuthUser | null
   permissionCodes: string[]
   ready: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<authApi.LoginData>
   logout: () => Promise<void>
   refreshMe: () => Promise<void>
   hasPermission: (code: string) => boolean
@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       const data = await authApi.login({ email, password })
       applySession(data)
+      return data
     },
     [applySession]
   )

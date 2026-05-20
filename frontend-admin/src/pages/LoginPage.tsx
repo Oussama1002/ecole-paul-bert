@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { SchoolLoginIllustration } from '../components/brand/SchoolLoginIllustration'
 import { useAuth } from '../contexts/AuthContext'
+import { isTeacherRole } from '../utils/roles'
 
 export function LoginPage() {
   const { user, ready, login } = useAuth()
@@ -16,7 +17,10 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   if (ready && user) {
-    return <Navigate to={from ?? '/'} replace />
+    const home = isTeacherRole(user.role?.code)
+      ? '/emploi-du-temps'
+      : (from ?? '/')
+    return <Navigate to={home} replace />
   }
 
   async function onSubmit(e: FormEvent) {
@@ -24,8 +28,11 @@ export function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      await login(email, password)
-      navigate(from ?? '/', { replace: true })
+      const session = await login(email, password)
+      const home = isTeacherRole(session.user.role?.code)
+        ? '/emploi-du-temps'
+        : (from ?? '/')
+      navigate(home, { replace: true })
     } catch (err) {
       setError(
         err instanceof Error
