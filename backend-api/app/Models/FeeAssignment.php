@@ -42,4 +42,9 @@ class FeeAssignment extends Model
     {
         return $this->belongsTo(Student::class);
     }
+
+    public function feeType(): BelongsTo
+    {
+        return $this->belongsTo(FeeType::class, 'fee_type_id');
+    }
 }

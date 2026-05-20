@@ -7,7 +7,6 @@ import * as documentsApi from '../../api/documents'
 import * as enrollmentsApi from '../../api/enrollments'
 import { fetchNextEnrollmentNumber } from '../../api/enrollments'
 import * as evaluationPeriodsApi from '../../api/evaluationPeriods'
-import * as financeApi from '../../api/finance'
 import * as gradesApi from '../../api/grades'
 import * as schoolYearsApi from '../../api/schoolYears'
 import * as studentsApi from '../../api/students'
@@ -19,6 +18,7 @@ import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { StudentEditModal } from './StudentEditModal'
+import { StudentFinancePanel } from './StudentFinancePanel'
 
 type Tab = 'infos' | 'inscription' | 'historique' | 'documents' | 'notes' | 'absences' | 'finance'
 type TabDef = { id: Tab; label: string; emoji: string; simple: boolean }
@@ -30,7 +30,7 @@ const allTabs: TabDef[] = [
   { id: 'documents',   label: 'Documents',         emoji: '📁',  simple: true  },
   { id: 'notes',       label: 'Notes',             emoji: '📊',  simple: false },
   { id: 'absences',    label: 'Absences',          emoji: '🗓️', simple: true  },
-  { id: 'finance',     label: 'Finance',           emoji: '💰',  simple: false },
+  { id: 'finance',     label: 'Finance',           emoji: '💰',  simple: true  },
 ]
 
 const STATUS_PILL: Record<string, string> = {
@@ -55,11 +55,6 @@ const DOC_TYPES = [
   ['attestation', 'Attestation'], ['medical', 'Document médical'],
   ['identite', 'Pièce d\'identité'], ['photo', 'Photo'], ['autre', 'Autre'],
 ]
-const PAYMENT_METHODS = [
-  ['cash', 'Espèces'], ['cheque', 'Chèque'], ['virement', 'Virement bancaire'],
-  ['carte', 'Carte bancaire'], ['mobile', 'Paiement mobile'],
-]
-
 function ageOf(dob?: string | null): number | null {
   if (!dob) return null
   const d = new Date(dob)
@@ -134,17 +129,6 @@ export function StudentDetailPage() {
   const [editGradeId, setEditGradeId] = useState<number | null>(null)
   const [editGradeScore, setEditGradeScore] = useState('')
   const [editGradeErr, setEditGradeErr] = useState<string | null>(null)
-
-  // ── Finance state ──────────────────────────────────────────────────────────
-  const [newPayAmount, setNewPayAmount] = useState('')
-  const [newPayDate, setNewPayDate] = useState(new Date().toISOString().slice(0, 10))
-  const [newPayMethod, setNewPayMethod] = useState('cash')
-  const [newPayNote, setNewPayNote] = useState('')
-  const [newPayErr, setNewPayErr] = useState<string | null>(null)
-  const [newFeeTypeId, setNewFeeTypeId] = useState<number>(0)
-  const [newFeeAmount, setNewFeeAmount] = useState('')
-  const [newFeeDueDate, setNewFeeDueDate] = useState('')
-  const [newFeeErr, setNewFeeErr] = useState<string | null>(null)
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: student, isLoading, isError, error } = useQuery({
@@ -242,25 +226,6 @@ export function StudentDetailPage() {
     enabled: tab === 'notes' && !!currentEnrollment?.school_year_id,
   })
 
-  // Finance tab
-  const { data: feeAssignments, refetch: refetchFees } = useQuery({
-    queryKey: ['fee-assignments-student', numericId],
-    queryFn: () => financeApi.fetchFeeAssignments({ student_id: numericId, per_page: 50 }),
-    enabled: !Number.isNaN(numericId) && tab === 'finance',
-  })
-
-  const { data: paymentsData, refetch: refetchPayments } = useQuery({
-    queryKey: ['payments-student', numericId],
-    queryFn: () => financeApi.fetchPayments({ student_id: numericId, per_page: 50 }),
-    enabled: !Number.isNaN(numericId) && tab === 'finance',
-  })
-
-  const { data: feeTypes } = useQuery({
-    queryKey: ['fee-types-active'],
-    queryFn: () => financeApi.fetchFeeTypes({ is_active: true, per_page: 100 }),
-    enabled: tab === 'finance' && canFinance,
-  })
-
   // ── Mutations ──────────────────────────────────────────────────────────────
   const createEnrollment = useMutation({
     mutationFn: () => enrollmentsApi.createEnrollment({
@@ -328,37 +293,6 @@ export function StudentDetailPage() {
     mutationFn: () => gradesApi.updateGrade(editGradeId!, { score: parseFloat(editGradeScore) }),
     onSuccess: () => { void refetchGrades(); setEditGradeId(null); setEditGradeErr(null) },
     onError: (e) => setEditGradeErr(getApiErrorMessage(e, 'Impossible de modifier la note.')),
-  })
-
-  const addPayment = useMutation({
-    mutationFn: () => financeApi.createPayment({
-      student_id: numericId,
-      school_year_id: currentEnrollment?.school_year_id ?? 0,
-      payment_date: newPayDate,
-      amount: parseFloat(newPayAmount),
-      payment_method: newPayMethod,
-      note: newPayNote || null,
-    }),
-    onSuccess: () => {
-      void refetchPayments(); void refetchFees()
-      setNewPayAmount(''); setNewPayNote(''); setNewPayErr(null)
-    },
-    onError: (e) => setNewPayErr(getApiErrorMessage(e, 'Impossible d\'enregistrer le paiement.')),
-  })
-
-  const addFeeAssignment = useMutation({
-    mutationFn: () => financeApi.createFeeAssignment({
-      student_id: numericId,
-      school_year_id: currentEnrollment?.school_year_id ?? 0,
-      fee_type_id: newFeeTypeId,
-      amount_due: parseFloat(newFeeAmount),
-      due_date: newFeeDueDate || null,
-    }),
-    onSuccess: () => {
-      void refetchFees()
-      setNewFeeAmount(''); setNewFeeDueDate(''); setNewFeeErr(null)
-    },
-    onError: (e) => setNewFeeErr(getApiErrorMessage(e, 'Impossible d\'assigner les frais.')),
   })
 
   // ── Guards ─────────────────────────────────────────────────────────────────
@@ -765,103 +699,16 @@ export function StudentDetailPage() {
       )}
 
       {/* ── FINANCE ───────────────────────────────────────────────────────── */}
-      {tab === 'finance' && (
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Fee assignments */}
-            <section className="school-section space-y-3">
-              <SectionTitle emoji="💼" title="Frais scolaires" iconClassName="bg-school-sunsoft text-[#8A6A00]" />
-              {feeAssignments?.items.length ? (
-                <ul className="space-y-2 text-sm">
-                  {feeAssignments.items.map((f) => (
-                    <li key={f.id} className="flex items-center justify-between rounded-2xl border-2 border-school-line bg-white px-4 py-2.5">
-                      <span className="font-semibold text-school-ink flex-1">{(f as unknown as { fee_type?: { name?: string } }).fee_type?.name ?? `Frais #${f.id}`}</span>
-                      <span className="school-pill-sky">{f.status}</span>
-                      <span className="font-bold tabular-nums text-school-ink ml-2">Dû: {f.balance}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="text-sm text-school-inkmuted">Aucun frais assigné.</p>}
-
-              {canFinance && currentEnrollment && (
-                <form onSubmit={(e) => {
-                  e.preventDefault(); setNewFeeErr(null)
-                  if (!newFeeTypeId || !newFeeAmount) { setNewFeeErr('Sélectionnez un type de frais et indiquez le montant.'); return }
-                  addFeeAssignment.mutate()
-                }} className="border-t-2 border-school-line pt-3 space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">Assigner des frais</p>
-                  {newFeeErr && <p className="text-xs text-red-600">{newFeeErr}</p>}
-                  <Field label="Type de frais">
-                    <select required value={newFeeTypeId || ''} onChange={(e) => setNewFeeTypeId(Number(e.target.value))} className="school-select text-sm">
-                      <option value="">—</option>
-                      {feeTypes?.items.map((ft) => <option key={ft.id} value={ft.id}>{ft.name}</option>)}
-                    </select>
-                  </Field>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Field label="Montant dû (MAD)">
-                      <input required type="number" min={0} step={0.01} value={newFeeAmount} onChange={(e) => setNewFeeAmount(e.target.value)} className="school-input" placeholder="1500.00" />
-                    </Field>
-                    <Field label="Date limite">
-                      <input type="date" value={newFeeDueDate} onChange={(e) => setNewFeeDueDate(e.target.value)} className="school-input" />
-                    </Field>
-                  </div>
-                  <button type="submit" disabled={addFeeAssignment.isPending} className="school-btn-primary text-sm disabled:opacity-60">
-                    {addFeeAssignment.isPending ? 'Assignation…' : 'Assigner'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            {/* Payments */}
-            <section className="school-section space-y-3">
-              <SectionTitle emoji="💰" title="Paiements" iconClassName="bg-school-leaf/15 text-school-leafdeep" />
-              {paymentsData?.items.length ? (
-                <ul className="space-y-2 text-sm">
-                  {paymentsData.items.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between rounded-2xl border-2 border-school-line bg-white px-4 py-2.5">
-                      <span className="text-school-inkmuted">{formatDate(p.payment_date)}</span>
-                      <span className="school-chip text-xs">{PAYMENT_METHODS.find(([k]) => k === p.payment_method)?.[1] ?? p.payment_method}</span>
-                      <span className="font-bold tabular-nums text-school-leafdeep">+{p.amount} MAD</span>
-                      {p.has_receipt && (
-                        <button type="button" onClick={() => financeApi.downloadReceipt(p.id)} className="text-xs font-bold text-school-grape hover:underline ml-1">Reçu</button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="text-sm text-school-inkmuted">Aucun paiement.</p>}
-
-              {canFinance && currentEnrollment && (
-                <form onSubmit={(e) => {
-                  e.preventDefault(); setNewPayErr(null)
-                  if (!newPayAmount) { setNewPayErr('Indiquez le montant.'); return }
-                  addPayment.mutate()
-                }} className="border-t-2 border-school-line pt-3 space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">Enregistrer un paiement</p>
-                  {newPayErr && <p className="text-xs text-red-600">{newPayErr}</p>}
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Field label="Montant (MAD)">
-                      <input required type="number" min={0.01} step={0.01} value={newPayAmount} onChange={(e) => setNewPayAmount(e.target.value)} className="school-input" placeholder="500.00" />
-                    </Field>
-                    <Field label="Date">
-                      <input required type="date" value={newPayDate} onChange={(e) => setNewPayDate(e.target.value)} className="school-input" />
-                    </Field>
-                  </div>
-                  <Field label="Mode de paiement">
-                    <select value={newPayMethod} onChange={(e) => setNewPayMethod(e.target.value)} className="school-select">
-                      {PAYMENT_METHODS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Note (optionnel)">
-                    <input value={newPayNote} onChange={(e) => setNewPayNote(e.target.value)} className="school-input" placeholder="Paiement partiel, avance…" />
-                  </Field>
-                  <button type="submit" disabled={addPayment.isPending} className="school-btn-primary text-sm disabled:opacity-60">
-                    {addPayment.isPending ? 'Enregistrement…' : 'Enregistrer le paiement'}
-                  </button>
-                </form>
-              )}
-            </section>
-          </div>
-        </div>
+      {tab === 'finance' && canFinance && (
+        <StudentFinancePanel
+          studentId={numericId}
+          schoolYearId={currentEnrollment?.school_year_id}
+          canManage={canFinance}
+          hasEnrollment={!!currentEnrollment}
+        />
+      )}
+      {tab === 'finance' && !canFinance && (
+        <p className="text-sm text-school-inkmuted">Vous n&apos;avez pas accès à la gestion financière.</p>
       )}
 
       {editOpen && (

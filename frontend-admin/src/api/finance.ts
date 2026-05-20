@@ -27,6 +27,35 @@ export async function fetchFeeTypes(params: {
   return data.data
 }
 
+export async function createFeeType(payload: {
+  name: string
+  code: string
+  frequency: 'once' | 'monthly' | 'term' | 'yearly'
+  default_amount?: number
+  is_active?: boolean
+  description?: string | null
+}): Promise<FeeType> {
+  const { data } = await apiClient.post<Ok<FeeType> | Err>('/v1/fee-types', payload)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data
+}
+
+export async function updateFeeType(
+  id: number,
+  payload: Partial<{
+    name: string
+    code: string
+    frequency: 'once' | 'monthly' | 'term' | 'yearly'
+    default_amount: number
+    is_active: boolean
+    description: string | null
+  }>
+): Promise<FeeType> {
+  const { data } = await apiClient.patch<Ok<FeeType> | Err>(`/v1/fee-types/${id}`, payload)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+  return data.data
+}
+
 export type ExpenseCategory = {
   id: number
   name: string
@@ -48,11 +77,20 @@ export async function fetchExpenseCategories(params: {
   return data.data
 }
 
+export type FeeTypeSummary = {
+  id: number
+  name: string
+  code: string
+  frequency: string
+  default_amount: string
+}
+
 export type FeeAssignment = {
   id: number
   student_id: number
   school_year_id: number
   fee_type_id: number
+  fee_type?: FeeTypeSummary | null
   amount_due: string
   discount_amount: string
   scholarship_amount: string
@@ -60,6 +98,7 @@ export type FeeAssignment = {
   balance: string
   status: string
   due_date: string | null
+  notes?: string | null
 }
 
 export async function fetchFeeAssignments(params: {
@@ -116,7 +155,9 @@ export type Payment = {
   invoice_id: number | null
   invoice_number?: string | null
   fee_assignment_id: number | null
+  fee_type_name?: string | null
   payment_reference: string | null
+  note?: string | null
   payment_date: string
   amount: string
   payment_method: string

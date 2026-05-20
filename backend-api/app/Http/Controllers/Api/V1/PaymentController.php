@@ -40,7 +40,11 @@ class PaymentController extends Controller
         ]);
 
         $q = Payment::query()
-            ->with(['student:id,first_name,last_name', 'invoice:id,invoice_number'])
+            ->with([
+                'student:id,first_name,last_name',
+                'invoice:id,invoice_number',
+                'feeAssignment.feeType:id,name,code',
+            ])
             ->orderByDesc('payment_date');
         foreach (['student_id', 'school_year_id', 'invoice_id'] as $k) {
             if ($request->filled($k)) {
@@ -66,7 +70,11 @@ class PaymentController extends Controller
 
     public function show(Payment $payment): JsonResponse
     {
-        $payment->loadMissing(['student:id,first_name,last_name', 'invoice:id,invoice_number']);
+        $payment->loadMissing([
+            'student:id,first_name,last_name',
+            'invoice:id,invoice_number',
+            'feeAssignment.feeType:id,name,code',
+        ]);
 
         return ApiResponse::success($this->toDto($payment), 'Paiement.');
     }
@@ -368,6 +376,11 @@ class PaymentController extends Controller
         $invoice = $pay->relationLoaded('invoice')
             ? $pay->invoice
             : ($pay->invoice_id ? $pay->invoice()->first(['id', 'invoice_number']) : null);
+        $feeAssignment = $pay->relationLoaded('feeAssignment')
+            ? $pay->feeAssignment
+            : ($pay->fee_assignment_id ? $pay->feeAssignment()->with('feeType:id,name,code')->first() : null);
+        $feeTypeName = $feeAssignment?->feeType?->name;
+
         return [
             'id' => $pay->id,
             'student_id' => (int) $pay->student_id,
@@ -378,6 +391,7 @@ class PaymentController extends Controller
             'invoice_id' => $pay->invoice_id ? (int) $pay->invoice_id : null,
             'invoice_number' => $invoice?->invoice_number,
             'fee_assignment_id' => $pay->fee_assignment_id ? (int) $pay->fee_assignment_id : null,
+            'fee_type_name' => $feeTypeName,
             'payment_reference' => $pay->payment_reference,
             'payment_date' => $pay->payment_date?->format('Y-m-d'),
             'amount' => (string) $pay->amount,

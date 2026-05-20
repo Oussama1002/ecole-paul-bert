@@ -45,6 +45,7 @@ import { PaymentsListPage } from './pages/finance/PaymentsListPage'
 import { ExpensesListPage } from './pages/finance/ExpensesListPage'
 import { InvoicesListPage } from './pages/finance/InvoicesListPage'
 import { FinanceBilanPage } from './pages/finance/FinanceBilanPage'
+import { FeeTypesPage } from './pages/finance/FeeTypesPage'
 import { DocumentsPage } from './pages/documents/DocumentsPage'
 import { AnnouncementFormPage } from './pages/communications/AnnouncementFormPage'
 import { AnnouncementsListPage } from './pages/communications/AnnouncementsListPage'
@@ -280,6 +281,14 @@ export default function App() {
                 element={
                   <RequirePermission permission="finance.view">
                     <FinanceBilanPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="finance/types-de-frais"
+                element={
+                  <RequirePermission permission="finance.view">
+                    <FeeTypesPage />
                   </RequirePermission>
                 }
               />

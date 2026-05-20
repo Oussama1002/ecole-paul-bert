@@ -27,7 +27,7 @@ class FeeAssignmentController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $q = FeeAssignment::query()->orderByDesc('created_at');
+        $q = FeeAssignment::query()->with('feeType:id,name,code,frequency,amount')->orderByDesc('created_at');
         foreach (['student_id', 'school_year_id'] as $k) {
             if ($request->filled($k)) {
                 $q->where($k, (int) $request->input($k));
@@ -52,6 +52,8 @@ class FeeAssignmentController extends Controller
 
     public function show(FeeAssignment $feeAssignment): JsonResponse
     {
+        $feeAssignment->loadMissing('feeType:id,name,code,frequency,amount');
+
         return ApiResponse::success($this->toDto($feeAssignment), 'Affectation.');
     }
 
@@ -104,11 +106,23 @@ class FeeAssignmentController extends Controller
      */
     private function toDto(FeeAssignment $fa): array
     {
+        $feeType = $fa->relationLoaded('feeType') ? $fa->feeType : null;
+
         return [
             'id' => $fa->id,
             'student_id' => (int) $fa->student_id,
             'school_year_id' => (int) $fa->school_year_id,
             'fee_type_id' => (int) $fa->fee_type_id,
+            'fee_type' => $feeType ? [
+                'id' => $feeType->id,
+                'name' => $feeType->name,
+                'code' => $feeType->code,
+                'frequency' => match ((string) $feeType->frequency) {
+                    'one_time' => 'once',
+                    default => (string) $feeType->frequency,
+                },
+                'default_amount' => (string) $feeType->amount,
+            ] : null,
             'amount_due' => (string) $fa->amount_due,
             'discount_amount' => (string) $fa->discount_amount,
             'scholarship_amount' => (string) $fa->scholarship_amount,

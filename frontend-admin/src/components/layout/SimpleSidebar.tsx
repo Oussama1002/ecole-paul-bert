@@ -21,6 +21,7 @@ const simpleNav: NavItem[] = [
   { to: '/assiduite/marquage', label: 'Absences', permission: 'attendance.view' },
   { to: '/bulletins', label: 'Bulletins', permission: 'report_cards.view' },
   { to: '/finance', label: 'Caisse', permission: 'finance.view' },
+  { to: '/finance/types-de-frais', label: 'Types de frais', permission: 'finance.view' },
   { to: '/finance/bilan', label: 'Bilan', permission: 'finance.view' },
   { to: '/enseignants', label: 'Enseignants', permission: 'teachers.view' },
   { to: '/communications/annonces', label: 'Annonces', permission: 'announcements.view' },

@@ -32,8 +32,9 @@ const groups: NavGroup[] = [
     emoji: '💰',
     permission: 'finance.view',
     items: [
-      { to: '/finance/bilan',      label: 'Bilan',     emoji: '📊', permission: 'finance.view' },
-      { to: '/finance/paiements',  label: 'Paiements', emoji: '💳', permission: 'finance.view' },
+      { to: '/finance/bilan',           label: 'Bilan',          emoji: '📊', permission: 'finance.view' },
+      { to: '/finance/types-de-frais', label: 'Types de frais', emoji: '💼', permission: 'finance.view' },
+      { to: '/finance/paiements',       label: 'Paiements',      emoji: '💳', permission: 'finance.view' },
       { to: '/finance/factures',   label: 'Factures',  emoji: '📑', permission: 'finance.view' },
       { to: '/finance/depenses',   label: 'Dépenses',  emoji: '🧾', permission: 'finance.view' },
     ],
