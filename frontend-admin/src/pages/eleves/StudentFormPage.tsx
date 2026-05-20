@@ -50,7 +50,7 @@ export function StudentFormPage() {
   const [nationality, setNationality] = useState('')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
-  const [status, setStatus] = useState('pending')
+  const [status, setStatus] = useState('active')
   const [admissionDate, setAdmissionDate] = useState('')
   const [registrationDate, setRegistrationDate] = useState('')
   const [previousSchool, setPreviousSchool] = useState('')

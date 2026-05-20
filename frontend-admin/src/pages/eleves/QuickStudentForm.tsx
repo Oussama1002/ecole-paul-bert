@@ -19,7 +19,7 @@ import { getApiErrorMessage } from '../../utils/apiError'
  *
  * Target UX: create a new student in under 1 minute, fully usable on a
  * tablet. The advanced fields (status, gender, nationalité, médical…) still
- * exist server-side; they simply default to `null` / `pending` until a user
+ * exist server-side; they simply default to `null` / `active` until a user
  * switches to advanced mode and fills them in.
  */
 export function QuickStudentForm({

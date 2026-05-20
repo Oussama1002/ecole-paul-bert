@@ -222,9 +222,11 @@ class StudentController extends Controller
         $student->save();
         $changes = $student->getChanges();
         if ($changes !== []) {
-            $action = (array_key_exists('status', $changes) && (string) $changes['status'] === 'withdrawn')
-                ? 'student.withdrawn'
-                : 'student.updated';
+            $action = match (true) {
+                array_key_exists('status', $changes) && (string) $changes['status'] === 'withdrawn' => 'student.withdrawn',
+                array_key_exists('status', $changes) && (string) $changes['status'] === 'archived' => 'student.archived',
+                default => 'student.updated',
+            };
             $this->audit->log(
                 $request->user(),
                 $action,

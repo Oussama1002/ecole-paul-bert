@@ -69,7 +69,7 @@ class StoreStudentRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         if (! $this->has('status')) {
-            $this->merge(['status' => 'pending']);
+            $this->merge(['status' => 'active']);
         }
 
         // Auto-generate a unique student_code if missing or already taken
