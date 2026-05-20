@@ -7,6 +7,16 @@ import * as studentsApi from '../../api/students'
 import { useCurrentSchoolYear } from '../../hooks/useCurrentSchoolYear'
 import { getApiErrorMessage } from '../../utils/apiError'
 
+const STUDENT_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'pending', label: 'En attente' },
+  { value: 'active', label: 'Actif' },
+  { value: 'transferred', label: 'Transféré' },
+  { value: 'graduated', label: 'Diplômé' },
+  { value: 'suspended', label: 'Suspendu' },
+  { value: 'withdrawn', label: 'Retiré' },
+  { value: 'archived', label: 'Archivé' },
+]
+
 /**
  * Simple-mode student form.
  *
@@ -45,7 +55,12 @@ export function QuickStudentForm({
   const [phone3, setPhone3] = useState(existing?.parent_phone_3 ?? '')
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
   const [classId, setClassId] = useState<number>(0)
+  const [status, setStatus] = useState(existing?.status ?? 'active')
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (existing?.status) setStatus(existing.status)
+  }, [existing?.status])
 
   const { id: defaultYearId } = useCurrentSchoolYear()
 
@@ -112,6 +127,7 @@ export function QuickStudentForm({
       if (studentId == null) {
         throw new Error('Identifiant élève manquant.')
       }
+      payload.status = status
       return studentsApi.updateStudent(studentId, payload)
     },
     onSuccess: (student) => {
@@ -251,6 +267,25 @@ export function QuickStudentForm({
                 className="school-input"
               />
             </label>
+
+            {!isNew ? (
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  Statut
+                </span>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="school-select"
+                >
+                  {STUDENT_STATUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
 
             <label className="block">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
