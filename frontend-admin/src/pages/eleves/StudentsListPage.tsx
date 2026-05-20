@@ -15,6 +15,7 @@ import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { QuickStudentForm } from './QuickStudentForm'
+import { StudentEditModal } from './StudentEditModal'
 
 const statusLabels: Record<string, string> = {
   pending: 'En attente',
@@ -48,6 +49,7 @@ export function StudentsListPage() {
   const [classId, setClassId] = useState<number | ''>('')
   const [importMsg, setImportMsg] = useState<string | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
+  const [editStudentId, setEditStudentId] = useState<number | null>(null)
 
   const canManage = hasPermission('students.manage')
   const canExport = hasPermission('students.export')
@@ -466,12 +468,13 @@ export function StudentsListPage() {
                       </Link>
                       {canManage && (
                         <>
-                          <Link
-                            to={`/eleves/${s.id}/editer`}
+                          <button
+                            type="button"
+                            onClick={() => setEditStudentId(s.id)}
                             className="text-xs font-bold text-school-skydeep hover:underline"
                           >
                             Modifier
-                          </Link>
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -519,6 +522,13 @@ export function StudentsListPage() {
             </div>
           )}
         </div>
+      )}
+
+      {editStudentId !== null && (
+        <StudentEditModal
+          studentId={editStudentId}
+          onClose={() => setEditStudentId(null)}
+        />
       )}
     </div>
   )

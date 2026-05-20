@@ -78,17 +78,19 @@ export function QuickStudentForm({
     onSuccess: (student) => {
       queryClient.invalidateQueries({ queryKey: ['students'] })
       queryClient.invalidateQueries({ queryKey: ['next-student-code'] })
-      if (onClose) {
+      queryClient.invalidateQueries({ queryKey: ['student', student.id] })
+      // Always navigate to the new student's detail page so the user has a clear
+      // confirmation — even when the form is opened in a modal. For an edit,
+      // close the modal in place (or return to the list when not modal).
+      if (isNew) {
+        onClose?.()
+        navigate(`/eleves/${student.id}`, {
+          state: { flash: `Élève ${student.first_name} ${student.last_name} enregistré.` },
+        })
+      } else if (onClose) {
         onClose()
       } else {
-        const target = isNew ? `/eleves/${student.id}` : '/eleves'
-        navigate(target, {
-          state: {
-            flash: isNew
-              ? `Élève ${student.first_name} ${student.last_name} enregistré.`
-              : 'Fiche mise à jour.',
-          },
-        })
+        navigate('/eleves', { state: { flash: 'Fiche mise à jour.' } })
       }
     },
     onError: (e) =>

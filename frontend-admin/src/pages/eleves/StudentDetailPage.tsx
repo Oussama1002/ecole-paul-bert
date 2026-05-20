@@ -18,6 +18,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { StudentEditModal } from './StudentEditModal'
 
 type Tab = 'infos' | 'inscription' | 'historique' | 'documents' | 'notes' | 'absences' | 'finance'
 type TabDef = { id: Tab; label: string; emoji: string; simple: boolean }
@@ -80,6 +81,7 @@ export function StudentDetailPage() {
   const { simpleMode } = useSimpleMode()
   const tabs = simpleMode ? allTabs.filter((t) => t.simple) : allTabs
   const [tab, setTab] = useState<Tab>('infos')
+  const [editOpen, setEditOpen] = useState(false)
   const { hasPermission } = useAuth()
   const canManage   = hasPermission('students.manage')
   const canEnroll   = hasPermission('enrollments.manage')
@@ -410,9 +412,13 @@ export function StudentDetailPage() {
             </div>
           </div>
           {canManage && (
-            <Link to={`/eleves/${student.id}/editer`} className="rounded-2xl border-2 border-white/60 bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25">
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="rounded-2xl border-2 border-white/60 bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25"
+            >
               ✏️ Modifier
-            </Link>
+            </button>
           )}
         </div>
       </section>
@@ -854,6 +860,13 @@ export function StudentDetailPage() {
             </section>
           </div>
         </div>
+      )}
+
+      {editOpen && (
+        <StudentEditModal
+          studentId={numericId}
+          onClose={() => setEditOpen(false)}
+        />
       )}
     </div>
   )
