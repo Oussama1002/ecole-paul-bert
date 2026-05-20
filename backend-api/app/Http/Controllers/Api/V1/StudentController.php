@@ -13,14 +13,18 @@ use App\Http\Responses\ApiResponse;
 use App\Models\AttendanceRecord;
 use App\Models\Document;
 use App\Models\FeeAssignment;
+use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\Payment;
+use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Services\AuditLogger;
 use App\Services\StudentImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -54,20 +58,7 @@ class StudentController extends Controller
         $classId = $request->validated('class_id');
         $levelId = $request->validated('level_id');
 
-        if ($classId || $levelId || $schoolYearId) {
-            $query->whereHas('enrollments', function ($q) use ($classId, $levelId, $schoolYearId) {
-                if ($schoolYearId) {
-                    $q->where('school_year_id', $schoolYearId);
-                }
-                if ($classId) {
-                    $q->where('class_id', $classId);
-                }
-                if ($levelId) {
-                    $q->whereHas('schoolClass', fn ($c) => $c->where('level_id', $levelId));
-                }
-                $q->whereIn('academic_status', ['enrolled', 're_enrolled', 'transferred_in']);
-            });
-        }
+        $this->applyListEnrollmentFilter($query, $schoolYearId, $classId, $levelId);
 
         $query->orderBy($request->validated('sort_by'), $request->validated('sort_order'));
 
@@ -110,20 +101,92 @@ class StudentController extends Controller
 
     public function store(StoreStudentRequest $request): JsonResponse
     {
-        $student = Student::query()->create($request->validated());
+        $data = $request->validated();
+        $schoolYearId = isset($data['school_year_id']) ? (int) $data['school_year_id'] : null;
+        $classId = isset($data['class_id']) ? (int) $data['class_id'] : null;
+        unset($data['school_year_id'], $data['class_id']);
+
+        $student = DB::transaction(function () use ($request, $data, $schoolYearId, $classId) {
+            if ($schoolYearId && $classId) {
+                $data['status'] = 'active';
+            }
+
+            $student = Student::query()->create($data);
+
+            if ($schoolYearId && $classId) {
+                $class = SchoolClass::query()->findOrFail($classId);
+                if ((int) $class->school_year_id !== $schoolYearId) {
+                    throw ValidationException::withMessages([
+                        'class_id' => ['La classe sélectionnée n’appartient pas à cette année scolaire.'],
+                    ]);
+                }
+
+                $enrollment = Enrollment::query()->create([
+                    'student_id' => $student->id,
+                    'school_year_id' => $schoolYearId,
+                    'class_id' => $classId,
+                    'enrollment_number' => $this->nextEnrollmentNumber(),
+                    'enrollment_date' => now()->toDateString(),
+                    'academic_status' => 'enrolled',
+                    'admission_type' => 'new',
+                    'registration_status' => 'validated',
+                    'created_by' => $request->user()?->id,
+                ]);
+
+                $this->audit->log(
+                    $request->user(),
+                    'enrollment.created',
+                    $enrollment,
+                    null,
+                    [
+                        'student_id' => $student->id,
+                        'school_year_id' => $schoolYearId,
+                        'class_id' => $classId,
+                    ],
+                    $request
+                );
+            }
+
+            return $student;
+        });
+
         $this->audit->log(
             $request->user(),
             'student.created',
             $student,
             null,
-            $student->only(['student_code', 'first_name', 'last_name', 'status', 'date_of_birth'])
+            $student->only(['student_code', 'first_name', 'last_name', 'status', 'date_of_birth']),
+            $request
         );
+
+        $student->load([
+            'enrollments.schoolClass.level',
+            'enrollments.schoolYear',
+        ]);
 
         return ApiResponse::success(
             (new StudentResource($student))->resolve(),
             'Élève créé.',
             201
         );
+    }
+
+    private function nextEnrollmentNumber(): string
+    {
+        $year = (int) date('Y');
+        $prefix = 'INS-'.$year.'-';
+
+        $last = Enrollment::query()
+            ->where('enrollment_number', 'like', $prefix.'%')
+            ->orderByDesc('enrollment_number')
+            ->value('enrollment_number');
+
+        $next = 1;
+        if (is_string($last) && preg_match('/-(\d+)$/', $last, $m)) {
+            $next = (int) $m[1] + 1;
+        }
+
+        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -414,20 +477,7 @@ class StudentController extends Controller
         $classId = $request->validated('class_id');
         $levelId = $request->validated('level_id');
 
-        if ($classId || $levelId || $schoolYearId) {
-            $query->whereHas('enrollments', function ($q) use ($classId, $levelId, $schoolYearId) {
-                if ($schoolYearId) {
-                    $q->where('school_year_id', $schoolYearId);
-                }
-                if ($classId) {
-                    $q->where('class_id', $classId);
-                }
-                if ($levelId) {
-                    $q->whereHas('schoolClass', fn ($c) => $c->where('level_id', $levelId));
-                }
-                $q->whereIn('academic_status', ['enrolled', 're_enrolled', 'transferred_in']);
-            });
-        }
+        $this->applyListEnrollmentFilter($query, $schoolYearId, $classId, $levelId);
 
         $filename = 'eleves_'.date('Y-m-d_His').'.csv';
         $baseQuery = clone $query;
@@ -476,20 +526,7 @@ class StudentController extends Controller
         $classId = $request->validated('class_id');
         $levelId = $request->validated('level_id');
 
-        if ($classId || $levelId || $schoolYearId) {
-            $query->whereHas('enrollments', function ($q) use ($classId, $levelId, $schoolYearId) {
-                if ($schoolYearId) {
-                    $q->where('school_year_id', $schoolYearId);
-                }
-                if ($classId) {
-                    $q->where('class_id', $classId);
-                }
-                if ($levelId) {
-                    $q->whereHas('schoolClass', fn ($c) => $c->where('level_id', $levelId));
-                }
-                $q->whereIn('academic_status', ['enrolled', 're_enrolled', 'transferred_in']);
-            });
-        }
+        $this->applyListEnrollmentFilter($query, $schoolYearId, $classId, $levelId);
 
         $baseQuery = clone $query;
         $filename = 'eleves_'.date('Y-m-d_His').'.xlsx';
@@ -529,5 +566,35 @@ class StudentController extends Controller
         }
 
         return ApiResponse::success($result, 'Import terminé.');
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Student>  $query
+     */
+    private function applyListEnrollmentFilter(
+        $query,
+        ?int $schoolYearId,
+        ?int $classId,
+        ?int $levelId
+    ): void {
+        if (! $classId && ! $levelId && ! $schoolYearId) {
+            return;
+        }
+
+        $query->where(function ($outer) use ($classId, $levelId, $schoolYearId) {
+            $outer->whereDoesntHave('enrollments')
+                ->orWhereHas('enrollments', function ($q) use ($classId, $levelId, $schoolYearId) {
+                    if ($schoolYearId) {
+                        $q->where('school_year_id', $schoolYearId);
+                    }
+                    if ($classId) {
+                        $q->where('class_id', $classId);
+                    }
+                    if ($levelId) {
+                        $q->whereHas('schoolClass', fn ($c) => $c->where('level_id', $levelId));
+                    }
+                    $q->whereIn('academic_status', ['enrolled', 're_enrolled', 'transferred_in']);
+                });
+        });
     }
 }

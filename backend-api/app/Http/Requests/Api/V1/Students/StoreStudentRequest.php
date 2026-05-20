@@ -47,7 +47,23 @@ class StoreStudentRequest extends FormRequest
             'parent_phone_2' => ['nullable', 'string', 'max:30'],
             'parent_phone_3' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string'],
+            'school_year_id' => ['nullable', 'integer', 'exists:school_years,id'],
+            'class_id' => ['nullable', 'integer', 'exists:classes,id'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $hasYear = $this->filled('school_year_id');
+            $hasClass = $this->filled('class_id');
+            if ($hasYear xor $hasClass) {
+                $validator->errors()->add(
+                    'class_id',
+                    'Sélectionnez l’année scolaire et la classe pour inscrire l’élève.'
+                );
+            }
+        });
     }
 
     protected function prepareForValidation(): void

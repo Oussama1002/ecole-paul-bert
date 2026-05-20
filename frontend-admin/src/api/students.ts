@@ -89,6 +89,8 @@ export type StudentPayload = {
   parent_phone_2?: string | null
   parent_phone_3?: string | null
   notes?: string | null
+  school_year_id?: number
+  class_id?: number
 }
 
 export async function fetchNextStudentCode(): Promise<string> {

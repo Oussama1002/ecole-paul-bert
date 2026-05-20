@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import * as classesApi from '../../api/classes'
+import * as schoolYearsApi from '../../api/schoolYears'
 import * as studentsApi from '../../api/students'
+import { useCurrentSchoolYear } from '../../hooks/useCurrentSchoolYear'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 /**
@@ -40,7 +43,39 @@ export function QuickStudentForm({
   const [phone1, setPhone1] = useState(existing?.parent_phone_1 ?? '')
   const [phone2, setPhone2] = useState(existing?.parent_phone_2 ?? '')
   const [phone3, setPhone3] = useState(existing?.parent_phone_3 ?? '')
+  const [schoolYearId, setSchoolYearId] = useState<number>(0)
+  const [classId, setClassId] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
+
+  const { id: defaultYearId } = useCurrentSchoolYear()
+
+  const { data: years } = useQuery({
+    queryKey: ['school-years-all'],
+    queryFn: () =>
+      schoolYearsApi.fetchSchoolYears({
+        per_page: 100,
+        sort_by: 'start_date',
+        sort_order: 'desc',
+      }),
+    enabled: isNew,
+  })
+
+  useEffect(() => {
+    if (!isNew || schoolYearId > 0 || !defaultYearId) return
+    setSchoolYearId(defaultYearId)
+  }, [isNew, schoolYearId, defaultYearId])
+
+  const { data: classes } = useQuery({
+    queryKey: ['classes-student-form', schoolYearId],
+    queryFn: () =>
+      classesApi.fetchClasses({
+        per_page: 100,
+        school_year_id: schoolYearId,
+        sort_by: 'name',
+        sort_order: 'asc',
+      }),
+    enabled: isNew && schoolYearId > 0,
+  })
 
   const { data: suggested } = useQuery({
     queryKey: ['next-student-code'],
@@ -68,6 +103,10 @@ export function QuickStudentForm({
         parent_phone_3: phone3.trim() || null,
       }
       if (isNew) {
+        if (schoolYearId > 0 && classId > 0) {
+          payload.school_year_id = schoolYearId
+          payload.class_id = classId
+        }
         return studentsApi.createStudent(payload)
       }
       if (studentId == null) {
@@ -82,8 +121,12 @@ export function QuickStudentForm({
       // Always navigate to the new student's detail page so the user has a clear
       // confirmation — even when the form is opened in a modal. For an edit,
       // close the modal in place (or return to the list when not modal).
-      if (isNew) {
-        onClose?.()
+      if (isNew && onClose) {
+        onClose()
+        navigate('/eleves', {
+          state: { flash: `Élève ${student.first_name} ${student.last_name} enregistré.` },
+        })
+      } else if (isNew) {
         navigate(`/eleves/${student.id}`, {
           state: { flash: `Élève ${student.first_name} ${student.last_name} enregistré.` },
         })
@@ -143,6 +186,10 @@ export function QuickStudentForm({
           }
           if (!phone1.trim() && !phone2.trim() && !phone3.trim()) {
             setError('Indiquez au moins un téléphone parent.')
+            return
+          }
+          if (isNew && (!schoolYearId || !classId)) {
+            setError('Choisissez l’année scolaire et la classe pour afficher l’élève dans la liste.')
             return
           }
           save.mutate()
@@ -231,6 +278,64 @@ export function QuickStudentForm({
             </label>
           </div>
         </section>
+
+        {isNew ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-school-lilac/30 text-lg">
+                🏫
+              </span>
+              <h3 className="font-display text-lg font-semibold text-school-ink">
+                Inscription (année en cours)
+              </h3>
+            </div>
+            <p className="text-sm text-school-inkmuted">
+              Obligatoire pour que l’élève apparaisse dans la liste filtrée par année.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  Année scolaire *
+                </span>
+                <select
+                  required
+                  value={schoolYearId || ''}
+                  onChange={(e) => {
+                    setSchoolYearId(Number(e.target.value) || 0)
+                    setClassId(0)
+                  }}
+                  className="school-select"
+                >
+                  <option value="">—</option>
+                  {years?.items.map((y) => (
+                    <option key={y.id} value={y.id}>
+                      {y.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  Classe *
+                </span>
+                <select
+                  required
+                  value={classId || ''}
+                  onChange={(e) => setClassId(Number(e.target.value) || 0)}
+                  className="school-select"
+                  disabled={schoolYearId <= 0}
+                >
+                  <option value="">—</option>
+                  {classes?.items.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+        ) : null}
 
         <section className="space-y-4">
           <div className="flex items-center gap-3">
