@@ -80,6 +80,7 @@ class FeeTypeController extends Controller
                 default => $freq,
             },
             'default_amount' => (string) $ft->amount,
+            'start_date' => $ft->start_date?->format('Y-m-d'),
             'is_active' => $ft->status === 'active',
             'description' => $ft->description,
         ];
@@ -92,7 +93,7 @@ class FeeTypeController extends Controller
     private function mapValidatedToRow(array $data, bool $partial = false): array
     {
         $row = [];
-        foreach (['name', 'code', 'description'] as $k) {
+        foreach (['name', 'code', 'description', 'start_date'] as $k) {
             if (array_key_exists($k, $data)) {
                 $row[$k] = $data[$k];
             }

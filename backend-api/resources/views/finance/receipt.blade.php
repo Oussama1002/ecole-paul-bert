@@ -59,7 +59,7 @@
     <h2 style="font-size:14px; margin-top: 18px;">Détails</h2>
     <table>
         <tbody>
-        <tr><th>Facture</th><td>{{ $payment->invoice_id ? ('#'.$payment->invoice_id) : '—' }}</td></tr>
+        <tr><th>Facture</th><td>{{ $payment->invoice?->invoice_number ?? ($payment->invoice_id ? '#'.$payment->invoice_id : '—') }}</td></tr>
         <tr><th>Affectation frais</th><td>{{ $payment->fee_assignment_id ? ('#'.$payment->fee_assignment_id) : '—' }}</td></tr>
         <tr><th>Réf. transaction</th><td>{{ $payment->transaction_reference ?? '—' }}</td></tr>
         <tr><th>Note</th><td class="word-break">{{ $payment->note ?? '—' }}</td></tr>

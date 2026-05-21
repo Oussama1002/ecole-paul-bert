@@ -7,6 +7,8 @@ use App\Http\Requests\Api\V1\Finance\StoreFeeAssignmentRequest;
 use App\Http\Requests\Api\V1\Finance\UpdateFeeAssignmentRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\FeeAssignment;
+use App\Models\FeeType;
+use App\Services\FeePaymentDueDateService;
 use App\Services\FinanceCalculatorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +17,8 @@ use Illuminate\Validation\ValidationException;
 class FeeAssignmentController extends Controller
 {
     public function __construct(
-        private FinanceCalculatorService $calc
+        private FinanceCalculatorService $calc,
+        private FeePaymentDueDateService $dueDates
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -62,6 +65,13 @@ class FeeAssignmentController extends Controller
         $data = $request->validated();
         $data['created_by'] = $request->user()?->id;
         $data['amount_paid'] = 0;
+
+        if (empty($data['due_date'])) {
+            $feeType = FeeType::query()->find((int) $data['fee_type_id']);
+            if ($feeType?->start_date !== null) {
+                $data['due_date'] = $feeType->start_date->format('Y-m-d');
+            }
+        }
 
         $fa = FeeAssignment::query()->create($data);
         $this->calc->recomputeFeeAssignment($fa);
@@ -130,6 +140,7 @@ class FeeAssignmentController extends Controller
             'balance' => (string) $fa->balance,
             'status' => $fa->status,
             'due_date' => $fa->due_date?->format('Y-m-d'),
+            'next_due_date' => $this->dueDates->nextPaymentDate($fa)?->format('Y-m-d'),
             'notes' => $fa->notes,
             'cancelled_at' => $fa->cancelled_at?->toIso8601String(),
         ];

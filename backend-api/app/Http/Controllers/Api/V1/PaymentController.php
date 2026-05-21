@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Finance\StorePaymentRequest;
 use App\Http\Responses\ApiResponse;
+use App\Models\Document;
 use App\Models\FeeAssignment;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\AuditLogger;
+use App\Services\DocumentStorageService;
 use App\Services\FinanceCalculatorService;
 use App\Services\FinanceNumberService;
+use App\Services\PaymentInvoiceService;
 use App\Services\ReceiptService;
 use App\Services\SystemNotificationDispatcher;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +28,8 @@ class PaymentController extends Controller
         private FinanceCalculatorService $calc,
         private FinanceNumberService $numbers,
         private ReceiptService $receipts,
+        private PaymentInvoiceService $paymentInvoices,
+        private DocumentStorageService $documentStorage,
         private AuditLogger $audit,
         private SystemNotificationDispatcher $notify
     ) {}
@@ -82,100 +87,73 @@ class PaymentController extends Controller
     public function store(StorePaymentRequest $request): JsonResponse
     {
         $data = $request->validated();
-
-        if (empty($data['invoice_id']) && empty($data['fee_assignment_id'])) {
-            throw ValidationException::withMessages([
-                'invoice_id' => ['Sélectionnez une facture ou une affectation de frais à régler.'],
-            ]);
-        }
-        if (! empty($data['invoice_id']) && ! empty($data['fee_assignment_id'])) {
-            throw ValidationException::withMessages([
-                'invoice_id' => ['Choisissez une seule cible de paiement (facture ou affectation).'],
-            ]);
-        }
+        $data['payment_method'] = $this->normalizePaymentMethod((string) $data['payment_method']);
 
         $amount = (float) ($data['amount'] ?? 0);
-        $invoice = null;
-        $feeAssignment = null;
-        if (! empty($data['invoice_id'])) {
-            /** @var Invoice $invoice */
-            $invoice = Invoice::query()->findOrFail((int) $data['invoice_id']);
-            if ($invoice->status === 'cancelled') {
-                throw ValidationException::withMessages([
-                    'invoice_id' => ['Cette facture est annulée et ne peut pas recevoir de paiement.'],
-                ]);
-            }
-            if ((int) $invoice->student_id !== (int) $data['student_id']) {
-                throw ValidationException::withMessages([
-                    'student_id' => ['La facture sélectionnée n’appartient pas à cet élève.'],
-                ]);
-            }
-            if ((int) $invoice->school_year_id !== (int) $data['school_year_id']) {
-                throw ValidationException::withMessages([
-                    'school_year_id' => ['La facture sélectionnée ne correspond pas à l’année scolaire choisie.'],
-                ]);
-            }
-            if ((float) $invoice->amount_due <= 0.0) {
-                throw ValidationException::withMessages([
-                    'invoice_id' => ['Cette facture est déjà soldée.'],
-                ]);
-            }
-            if ($amount > (float) $invoice->amount_due) {
-                throw ValidationException::withMessages([
-                    'amount' => ['Le montant dépasse le reste à payer de cette facture.'],
-                ]);
-            }
+
+        /** @var FeeAssignment $feeAssignment */
+        $feeAssignment = FeeAssignment::query()
+            ->with('feeType:id,name,code')
+            ->findOrFail((int) $data['fee_assignment_id']);
+
+        if ($feeAssignment->status === 'cancelled') {
+            throw ValidationException::withMessages([
+                'fee_assignment_id' => ['Cette affectation est annulée et ne peut pas recevoir de paiement.'],
+            ]);
         }
-        if (! empty($data['fee_assignment_id'])) {
-            /** @var FeeAssignment $feeAssignment */
-            $feeAssignment = FeeAssignment::query()->findOrFail((int) $data['fee_assignment_id']);
-            if ($feeAssignment->status === 'cancelled') {
-                throw ValidationException::withMessages([
-                    'fee_assignment_id' => ['Cette affectation est annulée et ne peut pas recevoir de paiement.'],
-                ]);
-            }
-            if ((int) $feeAssignment->student_id !== (int) $data['student_id']) {
-                throw ValidationException::withMessages([
-                    'student_id' => ['Cette affectation de frais n’appartient pas à cet élève.'],
-                ]);
-            }
-            if ((int) $feeAssignment->school_year_id !== (int) $data['school_year_id']) {
-                throw ValidationException::withMessages([
-                    'school_year_id' => ['Cette affectation ne correspond pas à l’année scolaire choisie.'],
-                ]);
-            }
-            if ((float) $feeAssignment->balance <= 0.0) {
-                throw ValidationException::withMessages([
-                    'fee_assignment_id' => ['Cette affectation est déjà soldée.'],
-                ]);
-            }
-            if ($amount > (float) $feeAssignment->balance) {
-                throw ValidationException::withMessages([
-                    'amount' => ['Le montant dépasse le solde restant de cette affectation.'],
-                ]);
-            }
+        if ((int) $feeAssignment->student_id !== (int) $data['student_id']) {
+            throw ValidationException::withMessages([
+                'student_id' => ['Cette affectation de frais n’appartient pas à cet élève.'],
+            ]);
         }
+        if ((int) $feeAssignment->school_year_id !== (int) $data['school_year_id']) {
+            throw ValidationException::withMessages([
+                'school_year_id' => ['Cette affectation ne correspond pas à l’année scolaire choisie.'],
+            ]);
+        }
+        if ((float) $feeAssignment->balance <= 0.0) {
+            throw ValidationException::withMessages([
+                'fee_assignment_id' => ['Cette affectation est déjà soldée.'],
+            ]);
+        }
+        if ($amount > (float) $feeAssignment->balance) {
+            throw ValidationException::withMessages([
+                'amount' => ['Le montant dépasse le solde restant de cette affectation.'],
+            ]);
+        }
+
+        $this->validatePaymentMethodExtras($request, $data);
 
         $data['received_by'] = $request->user()?->id;
         $data['status'] = 'confirmed';
+        unset($data['proof']);
 
         DB::beginTransaction();
         try {
+            $invoice = $this->paymentInvoices->createForFeePayment(
+                $feeAssignment,
+                $amount,
+                (string) $data['payment_date'],
+                $request->user()?->id
+            );
+
+            $data['invoice_id'] = $invoice->id;
+
             /** @var Payment $pay */
             $pay = Payment::query()->create($data);
             $pay->payment_reference = $this->numbers->paymentReference($pay);
             $pay->save();
 
-            if ($invoice) {
-                $invoice->amount_paid = (float) $invoice->amount_paid + (float) $pay->amount;
-                $this->calc->recomputeInvoiceTotals($invoice);
-                $invoice->save();
-            }
+            $invoice->amount_paid = (float) $invoice->amount_paid + (float) $pay->amount;
+            $this->calc->recomputeInvoiceTotals($invoice);
+            $invoice->save();
 
-            if ($feeAssignment) {
-                $feeAssignment->amount_paid = (float) $feeAssignment->amount_paid + (float) $pay->amount;
-                $this->calc->recomputeFeeAssignment($feeAssignment);
-                $feeAssignment->save();
+            $feeAssignment->amount_paid = (float) $feeAssignment->amount_paid + (float) $pay->amount;
+            $this->calc->recomputeFeeAssignment($feeAssignment);
+            $feeAssignment->save();
+
+            if ($request->hasFile('proof')) {
+                $this->storePaymentProof($pay, $request->file('proof'), $request->user()?->id);
             }
 
             DB::commit();
@@ -401,7 +379,63 @@ class PaymentController extends Controller
             'note' => $pay->note,
             'cancelled_at' => $pay->cancelled_at?->toIso8601String(),
             'has_receipt' => (bool) $pay->receipt_pdf_path,
+            'has_proof' => Document::query()
+                ->where('payment_id', $pay->id)
+                ->where('document_type', 'payment_proof')
+                ->exists(),
         ];
+    }
+
+    private function normalizePaymentMethod(string $method): string
+    {
+        return match (strtolower(trim($method))) {
+            'cheque', 'chèque' => 'check',
+            'virement' => 'transfer',
+            default => strtolower(trim($method)),
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function validatePaymentMethodExtras(StorePaymentRequest $request, array $data): void
+    {
+        $method = (string) ($data['payment_method'] ?? '');
+
+        if ($method === 'check') {
+            if (empty(trim((string) ($data['transaction_reference'] ?? '')))) {
+                throw ValidationException::withMessages([
+                    'transaction_reference' => ['Indiquez le numéro de chèque.'],
+                ]);
+            }
+            if (! $request->hasFile('proof')) {
+                throw ValidationException::withMessages([
+                    'proof' => ['Joignez une photo ou un scan du chèque.'],
+                ]);
+            }
+        }
+
+        if ($method === 'transfer' && ! $request->hasFile('proof')) {
+            throw ValidationException::withMessages([
+                'proof' => ['Joignez le reçu ou la preuve de virement.'],
+            ]);
+        }
+    }
+
+    private function storePaymentProof(Payment $payment, \Illuminate\Http\UploadedFile $file, ?int $uploadedBy): void
+    {
+        $doc = new Document([
+            'document_type' => 'payment_proof',
+            'category' => 'finance',
+            'title' => 'Justificatif paiement — '.($payment->payment_reference ?? "#{$payment->id}"),
+            'payment_id' => $payment->id,
+            'student_id' => $payment->student_id,
+            'uploaded_by' => $uploadedBy,
+            'status' => 'active',
+        ]);
+        $doc->save();
+        $this->documentStorage->store($doc, $file);
+        $doc->save();
     }
 }
 

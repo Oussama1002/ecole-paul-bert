@@ -17,6 +17,7 @@ class StoreFeeTypeRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'code' => ['required', 'string', 'max:50', 'unique:fee_types,code'],
             'frequency' => ['required', 'in:once,monthly,term,yearly'],
+            'start_date' => ['required', 'date'],
             'default_amount' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'description' => ['nullable', 'string', 'max:2000'],

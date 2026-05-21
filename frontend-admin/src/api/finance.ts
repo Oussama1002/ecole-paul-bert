@@ -11,6 +11,7 @@ export type FeeType = {
   code: string
   frequency: string
   default_amount: string
+  start_date: string | null
   is_active: boolean
   description: string | null
 }
@@ -31,6 +32,7 @@ export async function createFeeType(payload: {
   name: string
   code: string
   frequency: 'once' | 'monthly' | 'term' | 'yearly'
+  start_date?: string | null
   default_amount?: number
   is_active?: boolean
   description?: string | null
@@ -46,6 +48,7 @@ export async function updateFeeType(
     name: string
     code: string
     frequency: 'once' | 'monthly' | 'term' | 'yearly'
+    start_date: string | null
     default_amount: number
     is_active: boolean
     description: string | null
@@ -98,6 +101,7 @@ export type FeeAssignment = {
   balance: string
   status: string
   due_date: string | null
+  next_due_date?: string | null
   notes?: string | null
 }
 
@@ -180,17 +184,43 @@ export async function fetchPayments(params: {
   return data.data
 }
 
-export async function createPayment(payload: {
+export type CreatePaymentPayload = {
   student_id: number
   school_year_id: number
   payment_date: string
   amount: number
   payment_method: string
+  fee_assignment_id: number
   transaction_reference?: string | null
-  invoice_id?: number | null
-  fee_assignment_id?: number | null
   note?: string | null
-}): Promise<Payment> {
+}
+
+export async function createPayment(
+  payload: CreatePaymentPayload,
+  proofFile?: File | null
+): Promise<Payment> {
+  const needsMultipart =
+    proofFile != null ||
+    payload.payment_method === 'check' ||
+    payload.payment_method === 'transfer' ||
+    payload.payment_method === 'cheque' ||
+    payload.payment_method === 'virement'
+
+  if (needsMultipart) {
+    const fd = new FormData()
+    Object.entries(payload).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        fd.append(k, String(v))
+      }
+    })
+    if (proofFile) fd.append('proof', proofFile)
+    const { data } = await apiClient.post<Ok<Payment> | Err>('/v1/payments', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    if (!data.success) throw new Error(messageFromFailedApiPayload(data))
+    return data.data
+  }
+
   const { data } = await apiClient.post<Ok<Payment> | Err>('/v1/payments', payload)
   if (!data.success) throw new Error(messageFromFailedApiPayload(data))
   return data.data

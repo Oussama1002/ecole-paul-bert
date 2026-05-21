@@ -7,10 +7,9 @@ import { formatMad } from '../../utils/studentFinanceLabels'
 
 const PAYMENT_METHODS = [
   ['cash', 'Espèces'],
-  ['cheque', 'Chèque'],
-  ['virement', 'Virement bancaire'],
-  ['carte', 'Carte bancaire'],
-  ['mobile', 'Paiement mobile'],
+  ['check', 'Chèque'],
+  ['transfer', 'Virement bancaire'],
+  ['card', 'Carte bancaire'],
 ] as const
 
 function formatDate(d?: string | null): string {
@@ -87,6 +86,8 @@ export function StudentFinancePanel({
   const [newPayAmount, setNewPayAmount] = useState('')
   const [newPayDate, setNewPayDate] = useState(new Date().toISOString().slice(0, 10))
   const [newPayMethod, setNewPayMethod] = useState('cash')
+  const [newPayChequeNumber, setNewPayChequeNumber] = useState('')
+  const [newPayProofFile, setNewPayProofFile] = useState<File | null>(null)
   const [newPayNote, setNewPayNote] = useState('')
   const [newPayErr, setNewPayErr] = useState<string | null>(null)
 
@@ -139,22 +140,39 @@ export function StudentFinancePanel({
   })
 
   const addPayment = useMutation({
-    mutationFn: () =>
-      financeApi.createPayment({
-        student_id: studentId,
-        school_year_id: schoolYearId ?? 0,
-        fee_assignment_id: newPayFeeId,
-        payment_date: newPayDate,
-        amount: parseFloat(newPayAmount),
-        payment_method: newPayMethod,
-        note: newPayNote || null,
-      }),
+    mutationFn: () => {
+      if (newPayMethod === 'check' && !newPayChequeNumber.trim()) {
+        throw new Error('Indiquez le numéro de chèque.')
+      }
+      if ((newPayMethod === 'check' || newPayMethod === 'transfer') && !newPayProofFile) {
+        throw new Error(
+          newPayMethod === 'check'
+            ? 'Joignez une image du chèque.'
+            : 'Joignez le reçu de virement.'
+        )
+      }
+      return financeApi.createPayment(
+        {
+          student_id: studentId,
+          school_year_id: schoolYearId ?? 0,
+          fee_assignment_id: newPayFeeId,
+          payment_date: newPayDate,
+          amount: parseFloat(newPayAmount),
+          payment_method: newPayMethod,
+          transaction_reference: newPayMethod === 'check' ? newPayChequeNumber.trim() : null,
+          note: newPayNote || null,
+        },
+        newPayProofFile
+      )
+    },
     onSuccess: () => {
       void refetchPayments()
       void refetchFees()
       setNewPayAmount('')
       setNewPayNote('')
       setNewPayFeeId(0)
+      setNewPayChequeNumber('')
+      setNewPayProofFile(null)
       setNewPayErr(null)
       setPaymentModalOpen(false)
     },
@@ -330,11 +348,15 @@ export function StudentFinancePanel({
                   className="school-select text-sm"
                 >
                   <option value="">— Choisir —</option>
-                  {payableFees.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.fee_type?.name ?? `Frais #${f.id}`} — reste {formatMad(f.balance)}
-                    </option>
-                  ))}
+                  {payableFees.map((f) => {
+                    const echeance = f.next_due_date ?? f.due_date
+                    return (
+                      <option key={f.id} value={f.id}>
+                        {f.fee_type?.name ?? `Frais #${f.id}`} — reste {formatMad(f.balance)}
+                        {echeance ? ` · éch. ${formatDate(echeance)}` : ''}
+                      </option>
+                    )
+                  })}
                 </select>
               </Field>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -362,7 +384,11 @@ export function StudentFinancePanel({
               <Field label="Mode de paiement">
                 <select
                   value={newPayMethod}
-                  onChange={(e) => setNewPayMethod(e.target.value)}
+                  onChange={(e) => {
+                    setNewPayMethod(e.target.value)
+                    setNewPayProofFile(null)
+                    if (e.target.value !== 'check') setNewPayChequeNumber('')
+                  }}
                   className="school-select"
                 >
                   {PAYMENT_METHODS.map(([k, v]) => (
@@ -372,6 +398,38 @@ export function StudentFinancePanel({
                   ))}
                 </select>
               </Field>
+              {newPayMethod === 'check' && (
+                <>
+                  <Field label="N° de chèque *">
+                    <input
+                      required
+                      value={newPayChequeNumber}
+                      onChange={(e) => setNewPayChequeNumber(e.target.value)}
+                      className="school-input"
+                    />
+                  </Field>
+                  <Field label="Photo / scan du chèque *">
+                    <input
+                      type="file"
+                      required
+                      accept="image/*,.pdf"
+                      onChange={(e) => setNewPayProofFile(e.target.files?.[0] ?? null)}
+                      className="school-input text-sm"
+                    />
+                  </Field>
+                </>
+              )}
+              {newPayMethod === 'transfer' && (
+                <Field label="Reçu de virement *">
+                  <input
+                    type="file"
+                    required
+                    accept="image/*,.pdf"
+                    onChange={(e) => setNewPayProofFile(e.target.files?.[0] ?? null)}
+                    className="school-input text-sm"
+                  />
+                </Field>
+              )}
               <Field label="Note (optionnel)">
                 <input
                   value={newPayNote}

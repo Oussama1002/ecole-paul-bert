@@ -43,9 +43,11 @@ export function PaymentsListPage() {
   // New payment modal
   const [showModal, setShowModal] = useState(false)
   const [formStudentId, setFormStudentId] = useState<number | null>(null)
-  const [formInvoiceId, setFormInvoiceId] = useState<number | null>(null)
+  const [formFeeAssignmentId, setFormFeeAssignmentId] = useState<number | null>(null)
   const [amount, setAmount] = useState<number>(0)
   const [method, setMethod] = useState<string>('cash')
+  const [chequeNumber, setChequeNumber] = useState('')
+  const [proofFile, setProofFile] = useState<File | null>(null)
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
   const [createdPaymentId, setCreatedPaymentId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -122,10 +124,10 @@ export function PaymentsListPage() {
     [allInvoicesForFilter.data?.items]
   )
 
-  const invoicesForPayment = useQuery({
-    queryKey: ['payments-invoices-form', schoolYearId, formStudentId],
+  const feesForPayment = useQuery({
+    queryKey: ['payments-fees-form', schoolYearId, formStudentId],
     queryFn: () =>
-      financeApi.fetchInvoices({
+      financeApi.fetchFeeAssignments({
         school_year_id: schoolYearId || undefined,
         student_id: formStudentId ?? undefined,
         per_page: 100,
@@ -133,35 +135,34 @@ export function PaymentsListPage() {
     enabled: schoolYearId > 0 && formStudentId !== null,
   })
 
-  const outstandingInvoices = useMemo(
+  const payableFees = useMemo(
     () =>
-      (invoicesForPayment.data?.items ?? []).filter(
-        (inv) => Number(inv.amount_due) > 0 && inv.status !== 'cancelled'
+      (feesForPayment.data?.items ?? []).filter(
+        (fa) => fa.status !== 'cancelled' && (parseFloat(fa.balance) || 0) > 0.001
       ),
-    [invoicesForPayment.data?.items]
+    [feesForPayment.data?.items]
   )
 
-  const outstandingInvoiceOptions = useMemo<SearchSelectOption[]>(
-    () =>
-      outstandingInvoices.map((inv) => ({
-        value: inv.id,
-        label: inv.invoice_number ?? 'Facture sans numéro',
-        hint: `Reste ${inv.amount_due} / Total ${inv.total_amount}`,
-      })),
-    [outstandingInvoices]
+  const selectedFee = useMemo(
+    () => payableFees.find((x) => x.id === formFeeAssignmentId) ?? null,
+    [payableFees, formFeeAssignmentId]
   )
 
-  const selectedOutstandingInvoice = useMemo(
-    () => outstandingInvoices.find((x) => x.id === formInvoiceId) ?? null,
-    [outstandingInvoices, formInvoiceId]
-  )
+  function formatDue(d?: string | null): string {
+    if (!d) return '—'
+    const dt = new Date(d)
+    if (Number.isNaN(dt.getTime())) return d
+    return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
 
   const closeNewModal = () => {
     setShowModal(false)
     setFormStudentId(null)
-    setFormInvoiceId(null)
+    setFormFeeAssignmentId(null)
     setAmount(0)
     setMethod('cash')
+    setChequeNumber('')
+    setProofFile(null)
     setDate(new Date().toISOString().slice(0, 10))
     setCreatedPaymentId(null)
     setError(null)
@@ -170,24 +171,41 @@ export function PaymentsListPage() {
   const create = useMutation({
     mutationFn: async () => {
       setError(null)
-      if (!schoolYearId || !formStudentId || !formInvoiceId || !amount) {
-        throw new Error('Sélectionnez année, élève, facture et montant.')
+      if (!schoolYearId || !formStudentId || !formFeeAssignmentId || !amount) {
+        throw new Error('Sélectionnez un élève, un frais et un montant.')
       }
-      return financeApi.createPayment({
-        school_year_id: schoolYearId,
-        student_id: formStudentId,
-        invoice_id: formInvoiceId,
-        payment_date: date,
-        amount,
-        payment_method: method,
-      })
+      if (method === 'check' && !chequeNumber.trim()) {
+        throw new Error('Indiquez le numéro de chèque.')
+      }
+      if ((method === 'check' || method === 'transfer') && !proofFile) {
+        throw new Error(
+          method === 'check'
+            ? 'Joignez une image du chèque.'
+            : 'Joignez le reçu de virement.'
+        )
+      }
+      return financeApi.createPayment(
+        {
+          school_year_id: schoolYearId,
+          student_id: formStudentId,
+          fee_assignment_id: formFeeAssignmentId,
+          payment_date: date,
+          amount,
+          payment_method: method,
+          transaction_reference: method === 'check' ? chequeNumber.trim() : null,
+        },
+        proofFile
+      )
     },
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['payments'] })
       qc.invalidateQueries({ queryKey: ['invoices'] })
+      qc.invalidateQueries({ queryKey: ['fee-assignments'] })
       setCreatedPaymentId(created.id)
       setAmount(0)
-      setFormInvoiceId(null)
+      setFormFeeAssignmentId(null)
+      setChequeNumber('')
+      setProofFile(null)
     },
     onError: (e) => setError(getApiErrorMessage(e, 'Création du paiement impossible.')),
   })
@@ -231,7 +249,7 @@ export function PaymentsListPage() {
         <div>
           <h2 className="text-xl font-semibold text-slate-800">Paiements</h2>
           <p className="text-sm text-slate-500">
-            Flux de paiement guidé : élève → facture restante → montant → reçu.
+            Élève → frais à régler (échéance) → montant → facture et reçu générés automatiquement.
           </p>
         </div>
         {canManage && (
@@ -307,7 +325,12 @@ export function PaymentsListPage() {
                 <Field label="1) Élève *" className="sm:col-span-2">
                   <SearchSelect
                     value={formStudentId}
-                    onChange={(v) => { setFormStudentId(v); setFormInvoiceId(null); setCreatedPaymentId(null) }}
+                    onChange={(v) => {
+                      setFormStudentId(v)
+                      setFormFeeAssignmentId(null)
+                      setAmount(0)
+                      setCreatedPaymentId(null)
+                    }}
                     options={studentOptions}
                     placeholder="Rechercher un élève"
                     disabled={schoolYearId <= 0}
@@ -316,28 +339,69 @@ export function PaymentsListPage() {
                     className="mt-1"
                   />
                 </Field>
-                <Field label="2) Facture à régler *" className="sm:col-span-2">
-                  <SearchSelect
-                    value={formInvoiceId}
-                    onChange={(v) => {
-                      setFormInvoiceId(v)
-                      const inv = outstandingInvoices.find((x) => x.id === v)
-                      if (inv) setAmount(Number(inv.amount_due))
-                      setCreatedPaymentId(null)
-                    }}
-                    options={outstandingInvoiceOptions}
-                    placeholder="Factures impayées"
-                    disabled={schoolYearId <= 0 || formStudentId === null}
-                    isLoading={invoicesForPayment.isLoading}
-                    isError={invoicesForPayment.isError}
-                    className="mt-1"
-                  />
-                </Field>
 
-                {selectedOutstandingInvoice && (
+                {formStudentId !== null && (
+                  <div className="sm:col-span-2">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                      2) Frais à régler *
+                    </p>
+                    {feesForPayment.isLoading && (
+                      <p className="text-sm text-school-inkmuted">Chargement des frais…</p>
+                    )}
+                    {!feesForPayment.isLoading && payableFees.length === 0 && (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        Aucun frais impayé pour cet élève. Assignez des frais depuis sa fiche (onglet Finance).
+                      </p>
+                    )}
+                    {payableFees.length > 0 && (
+                      <ul className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-school-line bg-school-cream/40 p-2">
+                        {payableFees.map((fa) => {
+                          const selected = formFeeAssignmentId === fa.id
+                          const echeance = fa.next_due_date ?? fa.due_date
+                          return (
+                            <li key={fa.id}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormFeeAssignmentId(fa.id)
+                                  setAmount(parseFloat(fa.balance) || 0)
+                                  setCreatedPaymentId(null)
+                                }}
+                                className={`w-full rounded-xl border-2 px-3 py-2 text-left text-sm transition ${
+                                  selected
+                                    ? 'border-school-grape bg-white shadow-sm'
+                                    : 'border-transparent bg-white/80 hover:border-school-line'
+                                }`}
+                              >
+                                <span className="font-semibold text-school-ink">
+                                  {fa.fee_type?.name ?? `Frais #${fa.id}`}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-school-inkmuted">
+                                  Reste {fa.balance} MAD
+                                  {echeance ? ` · Échéance ${formatDue(echeance)}` : ''}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {selectedFee && (
                   <div className="rounded-xl border border-school-line bg-school-cream/60 p-3 text-xs text-school-inkmuted sm:col-span-2">
-                    <p>Facture&nbsp;: <strong className="text-school-ink">{selectedOutstandingInvoice.invoice_number ?? 'Sans numéro'}</strong></p>
-                    <p>Total {selectedOutstandingInvoice.total_amount} · Déjà payé {selectedOutstandingInvoice.amount_paid} · Reste <strong className="text-school-ink">{selectedOutstandingInvoice.amount_due}</strong></p>
+                    <p>
+                      <strong className="text-school-ink">{selectedFee.fee_type?.name}</strong> — reste{' '}
+                      <strong className="text-school-ink">{selectedFee.balance} MAD</strong>
+                    </p>
+                    <p>
+                      Prochaine échéance&nbsp;:{' '}
+                      <strong className="text-school-ink">
+                        {formatDue(selectedFee.next_due_date ?? selectedFee.due_date)}
+                      </strong>
+                    </p>
+                    <p className="mt-1 text-school-grape">Une facture sera créée automatiquement à l&apos;enregistrement.</p>
                   </div>
                 )}
 
@@ -362,18 +426,64 @@ export function PaymentsListPage() {
                   />
                 </Field>
                 <Field label="4) Méthode de paiement" className="sm:col-span-2">
-                  <select value={method} onChange={(e) => setMethod(e.target.value)} className="school-select">
+                  <select
+                    value={method}
+                    onChange={(e) => {
+                      setMethod(e.target.value)
+                      setProofFile(null)
+                      if (e.target.value !== 'check') setChequeNumber('')
+                    }}
+                    className="school-select"
+                  >
                     <option value="cash">Espèces</option>
                     <option value="card">Carte</option>
                     <option value="transfer">Virement</option>
                     <option value="check">Chèque</option>
                   </select>
                 </Field>
+
+                {method === 'check' && (
+                  <>
+                    <Field label="N° de chèque *" className="sm:col-span-2">
+                      <input
+                        type="text"
+                        required
+                        value={chequeNumber}
+                        onChange={(e) => setChequeNumber(e.target.value)}
+                        className="school-input"
+                        placeholder="Ex. 1234567"
+                      />
+                    </Field>
+                    <Field label="Photo / scan du chèque *" className="sm:col-span-2">
+                      <input
+                        type="file"
+                        required
+                        accept="image/*,.pdf"
+                        onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                        className="school-input text-sm"
+                      />
+                    </Field>
+                  </>
+                )}
+
+                {method === 'transfer' && (
+                  <Field label="Reçu de virement *" className="sm:col-span-2">
+                    <input
+                      type="file"
+                      required
+                      accept="image/*,.pdf"
+                      onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                      className="school-input text-sm"
+                    />
+                  </Field>
+                )}
               </div>
 
               {createdPaymentId && (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="mb-2 text-sm font-semibold text-emerald-700">Paiement enregistré avec succès.</p>
+                  <p className="mb-2 text-sm font-semibold text-emerald-700">
+                    Paiement enregistré — facture et reçu générés automatiquement.
+                  </p>
                   <button
                     type="button"
                     onClick={() => financeApi.downloadReceipt(createdPaymentId)}
@@ -388,7 +498,7 @@ export function PaymentsListPage() {
                 <button type="button" onClick={closeNewModal} className="school-btn-secondary">Fermer</button>
                 <button
                   type="submit"
-                  disabled={create.isPending || !formStudentId || !formInvoiceId || amount <= 0}
+                  disabled={create.isPending || !formStudentId || !formFeeAssignmentId || amount <= 0}
                   className="school-btn-primary disabled:opacity-60"
                 >
                   {create.isPending ? 'Enregistrement…' : 'Enregistrer et générer le reçu'}

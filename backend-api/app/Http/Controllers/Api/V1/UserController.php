@@ -8,6 +8,8 @@ use App\Http\Requests\Api\V1\User\StoreUserRequest;
 use App\Http\Requests\Api\V1\User\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Responses\ApiResponse;
+use App\Models\Role;
+use App\Models\Teacher;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
@@ -75,14 +77,20 @@ class UserController extends Controller
         $this->authorize('create', User::class);
 
         $data = $request->validated();
+        $teacherId = isset($data['teacher_id']) ? (int) $data['teacher_id'] : null;
+        unset($data['teacher_id']);
+
         $data['password_hash'] = Hash::make($data['password']);
         unset($data['password']);
         $data['status'] = $data['status'] ?? 'active';
 
-        // Username always derives from the role code (made unique with a suffix)
         if (empty($data['username'])) {
-            $role = \App\Models\Role::query()->find($data['role_id'] ?? null);
-            $base = $role?->code ?: 'user';
+            $role = Role::query()->find($data['role_id'] ?? null);
+            $teacher = $teacherId ? Teacher::query()->find($teacherId) : null;
+            $base = $teacher?->employee_code
+                ? Str::lower(Str::slug($teacher->employee_code, ''))
+                : ($role?->code ?: 'user');
+            $base = $base !== '' ? $base : 'user';
             $username = $base;
             $n = 1;
             while (User::query()->where('username', $username)->exists()) {
@@ -95,12 +103,27 @@ class UserController extends Controller
         $user = User::query()->create($data);
         $user->clearPermissionCache();
 
+        if ($teacherId) {
+            Teacher::query()
+                ->whereKey($teacherId)
+                ->whereNull('user_id')
+                ->update(['user_id' => $user->id]);
+        }
+
         $this->audit->log(
             $request->user(),
             'user.created',
             $user,
             null,
-            $user->only(['email', 'first_name', 'last_name', 'role_id', 'status', 'username'])
+            array_filter([
+                'email' => $user->email,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'role_id' => $user->role_id,
+                'status' => $user->status,
+                'username' => $user->username,
+                'teacher_id' => $teacherId,
+            ], fn ($v) => $v !== null)
         );
 
         return ApiResponse::success(

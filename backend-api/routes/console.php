@@ -2,7 +2,10 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use App\Support\Qa\ClientFlowRunner;
+
+Schedule::command('finance:fee-payment-reminders')->hourly();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

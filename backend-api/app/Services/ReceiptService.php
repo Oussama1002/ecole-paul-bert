@@ -12,7 +12,7 @@ class ReceiptService
 {
     public function generatePaymentReceiptPdf(Payment $payment): void
     {
-        $payment->loadMissing(['student']);
+        $payment->loadMissing(['student', 'invoice:id,invoice_number']);
 
         $html = view('finance.receipt', [
             'payment' => $payment,

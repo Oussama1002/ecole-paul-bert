@@ -21,6 +21,7 @@ type FormState = {
   name: string
   code: string
   frequency: FeeFrequency
+  start_date: string
   default_amount: string
   description: string
   is_active: boolean
@@ -30,6 +31,7 @@ const emptyForm = (): FormState => ({
   name: '',
   code: '',
   frequency: 'monthly',
+  start_date: '',
   default_amount: '',
   description: '',
   is_active: true,
@@ -59,6 +61,7 @@ export function FeeTypesPage() {
         name: form.name.trim(),
         code: form.code.trim().toUpperCase().replace(/\s+/g, '_'),
         frequency: form.frequency,
+        start_date: form.start_date.trim() || null,
         default_amount: Number.isNaN(amount) ? 0 : amount,
         is_active: form.is_active,
         description: form.description.trim() || null,
@@ -85,6 +88,7 @@ export function FeeTypesPage() {
             name: preset.name,
             code: preset.code,
             frequency: preset.frequency,
+            start_date: '',
             default_amount: String(preset.amount),
             description: '',
             is_active: true,
@@ -101,6 +105,7 @@ export function FeeTypesPage() {
       name: ft.name,
       code: ft.code,
       frequency: ft.frequency as FormState['frequency'],
+      start_date: ft.start_date ?? '',
       default_amount: ft.default_amount,
       description: ft.description ?? '',
       is_active: ft.is_active,
@@ -118,7 +123,8 @@ export function FeeTypesPage() {
         <h1 className="font-display text-2xl font-bold text-school-ink">Types de frais</h1>
         <p className="mt-1 text-sm text-school-inkmuted">
           Définissez ce que les familles doivent payer : inscription (unique), mensualité, transport,
-          cantine… Puis assignez ces frais sur la fiche de chaque élève (onglet Finance).
+          cantine… Indiquez une date de début pour planifier les échéances. Les administrateurs
+          reçoivent une notification 48 h avant chaque échéance (onglet Notifications).
         </p>
       </div>
 
@@ -205,6 +211,22 @@ export function FeeTypesPage() {
                 className="school-input"
               />
             </label>
+            <label className="block text-sm sm:col-span-2">
+              <span className="mb-1 block text-xs font-semibold text-school-inkmuted">
+                Date de début des échéances *
+              </span>
+              <input
+                type="date"
+                required
+                value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                className="school-input"
+              />
+              <span className="mt-1 block text-xs text-school-inkmuted">
+                Première échéance (puis selon la périodicité). Rappel admin 48 h avant chaque
+                paiement attendu pour les élèves concernés.
+              </span>
+            </label>
           </div>
           <label className="block text-sm">
             <span className="mb-1 block text-xs font-semibold text-school-inkmuted">Description</span>
@@ -253,6 +275,9 @@ export function FeeTypesPage() {
                 <p className="text-xs text-school-inkmuted">
                   {ft.code} · {FEE_FREQUENCY_LABELS[ft.frequency] ?? ft.frequency} ·{' '}
                   {formatMad(ft.default_amount)}
+                  {ft.start_date
+                    ? ` · début ${new Date(ft.start_date).toLocaleDateString('fr-FR')}`
+                    : ''}
                 </p>
               </div>
               <div className="flex items-center gap-2">

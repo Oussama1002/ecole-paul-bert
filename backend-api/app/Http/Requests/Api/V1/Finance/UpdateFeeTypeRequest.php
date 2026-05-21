@@ -19,6 +19,7 @@ class UpdateFeeTypeRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:150'],
             'code' => ['sometimes', 'string', 'max:50', 'unique:fee_types,code,'.($id ?? 'NULL')],
             'frequency' => ['sometimes', 'in:once,monthly,term,yearly'],
+            'start_date' => ['sometimes', 'nullable', 'date'],
             'default_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],

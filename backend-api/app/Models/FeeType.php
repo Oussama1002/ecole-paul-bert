@@ -12,6 +12,7 @@ class FeeType extends Model
         'description',
         'amount',
         'frequency',
+        'start_date',
         'is_mandatory',
         'status',
     ];
@@ -21,6 +22,7 @@ class FeeType extends Model
         return [
             'amount' => 'decimal:2',
             'is_mandatory' => 'boolean',
+            'start_date' => 'date',
         ];
     }
 }
