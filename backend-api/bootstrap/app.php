@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*')) {
                 $errors = $e->errors();
                 $message = 'Certains champs sont invalides.';
-                foreach (['email', 'username', 'password', 'role_id', 'teacher_id'] as $field) {
+                foreach (['email', 'username', 'password', 'role_id', 'teacher_id', 'code', 'name', 'start_date'] as $field) {
                     if (! empty($errors[$field][0]) && is_string($errors[$field][0])) {
                         $message = trim($errors[$field][0]);
                         break;

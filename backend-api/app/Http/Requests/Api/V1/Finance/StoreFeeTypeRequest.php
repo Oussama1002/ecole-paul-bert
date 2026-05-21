@@ -23,5 +23,23 @@ class StoreFeeTypeRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:2000'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Le libellé est obligatoire.',
+            'code.required' => 'Le code est obligatoire.',
+            'code.unique' => 'Ce code existe déjà (ex. MENSUEL). Modifiez le type existant dans la liste ou utilisez un autre code.',
+            'frequency.required' => 'La périodicité est obligatoire.',
+            'frequency.in' => 'Périodicité invalide.',
+            'start_date.required' => 'La date de début des échéances est obligatoire.',
+            'start_date.date' => 'Date de début invalide.',
+            'default_amount.numeric' => 'Le montant doit être un nombre.',
+            'default_amount.min' => 'Le montant ne peut pas être négatif.',
+        ];
+    }
 }
 

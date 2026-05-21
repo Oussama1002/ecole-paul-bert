@@ -49,6 +49,19 @@ function translateKnownValidationMessage(msg: string): string {
   ) {
     return 'Cet identifiant est déjà utilisé.'
   }
+  if (m === 'validation.unique' || m.includes('validation.unique')) {
+    return 'Cette valeur existe déjà. Modifiez l’entrée existante ou choisissez un autre code.'
+  }
+  if (
+    (m.includes('code') && m.includes('already')) ||
+    m.includes('déjà utilisé') ||
+    m.includes('existe déjà')
+  ) {
+    return msg
+  }
+  if (m.includes('already been taken') || m.includes('has already been taken')) {
+    return 'Cette valeur est déjà utilisée.'
+  }
   return msg
 }
 
@@ -123,7 +136,7 @@ function firstApiFieldMessage(
   if (!errors) {
     return null
   }
-  const priority = ['email', 'username', 'password', 'role_id', 'teacher_id']
+  const priority = ['email', 'username', 'password', 'role_id', 'teacher_id', 'code', 'name', 'start_date']
   for (const key of priority) {
     const msgs = errors[key]
     if (msgs?.[0]) {

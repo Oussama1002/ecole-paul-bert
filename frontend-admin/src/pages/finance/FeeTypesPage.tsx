@@ -133,16 +133,25 @@ export function FeeTypesPage() {
           <button type="button" onClick={() => openCreate()} className="school-btn-primary text-sm">
             + Nouveau type
           </button>
-          {PRESETS.map((p) => (
-            <button
-              key={p.code}
-              type="button"
-              onClick={() => openCreate(p)}
-              className="school-btn-secondary text-sm"
-            >
-              {p.name}
-            </button>
-          ))}
+          {PRESETS.map((p) => {
+            const existing = data?.items.find((ft) => ft.code === p.code)
+            return (
+              <button
+                key={p.code}
+                type="button"
+                onClick={() => (existing ? openEdit(existing) : openCreate(p))}
+                className="school-btn-secondary text-sm"
+                title={
+                  existing
+                    ? `${p.name} existe déjà — cliquer pour modifier`
+                    : `Créer ${p.name}`
+                }
+              >
+                {p.name}
+                {existing ? ' ✎' : ''}
+              </button>
+            )
+          })}
         </div>
       )}
 

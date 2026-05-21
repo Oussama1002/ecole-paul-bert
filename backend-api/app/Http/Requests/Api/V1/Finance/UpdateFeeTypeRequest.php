@@ -25,5 +25,19 @@ class UpdateFeeTypeRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'code.unique' => 'Ce code est déjà utilisé par un autre type de frais.',
+            'frequency.in' => 'Périodicité invalide.',
+            'start_date.date' => 'Date de début invalide.',
+            'default_amount.numeric' => 'Le montant doit être un nombre.',
+            'default_amount.min' => 'Le montant ne peut pas être négatif.',
+        ];
+    }
 }
 
