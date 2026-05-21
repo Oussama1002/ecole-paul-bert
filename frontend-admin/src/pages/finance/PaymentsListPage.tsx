@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import * as financeApi from '../../api/finance'
 import * as schoolYearsApi from '../../api/schoolYears'
 import * as studentsApi from '../../api/students'
@@ -9,6 +10,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { SearchSelect, type SearchSelectOption } from '../../components/ui/SearchSelect'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { formatMad } from '../../utils/studentFinanceLabels'
 
 const METHOD_FR: Record<string, string> = {
   cash: 'Espèces',
@@ -83,6 +85,9 @@ export function PaymentsListPage() {
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
   const [createdPaymentId, setCreatedPaymentId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [assignFeeTypeId, setAssignFeeTypeId] = useState(0)
+  const [assignFeeAmount, setAssignFeeAmount] = useState('')
+  const [assignFeeErr, setAssignFeeErr] = useState<string | null>(null)
 
   // Edit payment modal
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -164,6 +169,45 @@ export function PaymentsListPage() {
     enabled: formStudentId !== null,
   })
 
+  const feeTypesForAssign = useQuery({
+    queryKey: ['fee-types-active-payment-modal'],
+    queryFn: () => financeApi.fetchFeeTypes({ is_active: true, per_page: 100 }),
+    enabled: showModal && formStudentId !== null && canManage,
+  })
+
+  const paymentSchoolYearId = useMemo(() => {
+    if (schoolYearId > 0) return schoolYearId
+    const current = years?.items.find((y) => y.is_current) ?? years?.items[0]
+    return current?.id ?? 0
+  }, [schoolYearId, years?.items])
+
+  const assignFee = useMutation({
+    mutationFn: async () => {
+      if (!formStudentId || !assignFeeTypeId || !paymentSchoolYearId) {
+        throw new Error('Choisissez un type de frais et vérifiez l’année scolaire.')
+      }
+      const amountDue = parseFloat(assignFeeAmount)
+      if (Number.isNaN(amountDue) || amountDue <= 0) {
+        throw new Error('Indiquez un montant valide.')
+      }
+      return financeApi.createFeeAssignment({
+        student_id: formStudentId,
+        school_year_id: paymentSchoolYearId,
+        fee_type_id: assignFeeTypeId,
+        amount_due: amountDue,
+      })
+    },
+    onSuccess: (created) => {
+      void qc.invalidateQueries({ queryKey: ['payments-fees-form', formStudentId] })
+      setAssignFeeTypeId(0)
+      setAssignFeeAmount('')
+      setAssignFeeErr(null)
+      setFormFeeAssignmentId(created.id)
+      setAmount(parseFloat(created.balance) || 0)
+    },
+    onError: (e) => setAssignFeeErr(getApiErrorMessage(e, 'Impossible d’assigner ce frais.')),
+  })
+
   const studentFees = useMemo(
     () =>
       (feesForPayment.data?.items ?? []).filter(
@@ -200,6 +244,9 @@ export function PaymentsListPage() {
     setDate(new Date().toISOString().slice(0, 10))
     setCreatedPaymentId(null)
     setError(null)
+    setAssignFeeTypeId(0)
+    setAssignFeeAmount('')
+    setAssignFeeErr(null)
   }
 
   const create = useMutation({
@@ -365,6 +412,9 @@ export function PaymentsListPage() {
                       setFormFeeAssignmentId(null)
                       setAmount(0)
                       setCreatedPaymentId(null)
+                      setAssignFeeTypeId(0)
+                      setAssignFeeAmount('')
+                      setAssignFeeErr(null)
                     }}
                     options={studentOptions}
                     placeholder="Rechercher un élève"
@@ -399,9 +449,100 @@ export function PaymentsListPage() {
                       <p className="text-sm text-school-inkmuted">Chargement des frais…</p>
                     )}
                     {!feesForPayment.isLoading && studentFees.length === 0 && (
-                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                        Aucun frais assigné à cet élève. Assignez des frais depuis sa fiche (onglet Finance).
-                      </p>
+                      <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+                        <p className="text-sm text-amber-900">
+                          Aucun frais n&apos;est encore assigné à cet élève pour l&apos;année{' '}
+                          {years?.items.find((y) => y.id === paymentSchoolYearId)?.name ??
+                            'scolaire sélectionnée'}
+                          .
+                        </p>
+                        {canManage && paymentSchoolYearId > 0 && (
+                          <form
+                            className="space-y-2 rounded-xl border border-school-line bg-white p-3"
+                            onSubmit={(e) => {
+                              e.preventDefault()
+                              setAssignFeeErr(null)
+                              assignFee.mutate()
+                            }}
+                          >
+                            <p className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                              Assigner un frais ici
+                            </p>
+                            {assignFeeErr && (
+                              <p className="text-xs text-red-600">{assignFeeErr}</p>
+                            )}
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-xs text-school-inkmuted">
+                                Type de frais *
+                              </span>
+                              <select
+                                required
+                                value={assignFeeTypeId || ''}
+                                onChange={(e) => {
+                                  const id = Number(e.target.value)
+                                  setAssignFeeTypeId(id)
+                                  const ft = feeTypesForAssign.data?.items.find((t) => t.id === id)
+                                  if (ft?.default_amount) setAssignFeeAmount(ft.default_amount)
+                                }}
+                                className="school-select w-full text-sm"
+                              >
+                                <option value="">— Choisir —</option>
+                                {(feeTypesForAssign.data?.items.length ?? 0) === 0 ? (
+                                  <option value="">Aucun type actif — créez-en dans Types de frais</option>
+                                ) : (
+                                  feeTypesForAssign.data?.items.map((ft) => (
+                                    <option key={ft.id} value={ft.id}>
+                                      {ft.name} — {formatMad(ft.default_amount)}
+                                    </option>
+                                  ))
+                                )}
+                              </select>
+                            </label>
+                            {(feeTypesForAssign.data?.items.length ?? 0) === 0 && (
+                              <Link
+                                to="/finance/types-de-frais"
+                                className="block text-xs font-semibold text-school-grape underline"
+                              >
+                                Configurer les types de frais
+                              </Link>
+                            )}
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-xs text-school-inkmuted">
+                                Montant dû (MAD) *
+                              </span>
+                              <input
+                                required
+                                type="number"
+                                min={0.01}
+                                step={0.01}
+                                value={assignFeeAmount}
+                                onChange={(e) => setAssignFeeAmount(e.target.value)}
+                                className="school-input w-full"
+                              />
+                            </label>
+                            <button
+                              type="submit"
+                              disabled={assignFee.isPending || feeTypesForAssign.isLoading}
+                              className="school-btn-secondary w-full text-sm"
+                            >
+                              {assignFee.isPending ? 'Ajout…' : 'Assigner ce frais'}
+                            </button>
+                          </form>
+                        )}
+                        {canManage && paymentSchoolYearId <= 0 && (
+                          <p className="text-xs text-amber-800">
+                            Sélectionnez une année scolaire en haut de la page pour assigner des frais.
+                          </p>
+                        )}
+                        {formStudentId && (
+                          <Link
+                            to={`/eleves/${formStudentId}`}
+                            className="block text-center text-xs font-semibold text-school-grape underline"
+                          >
+                            Ouvrir la fiche élève (onglet Finance)
+                          </Link>
+                        )}
+                      </div>
                     )}
                     {studentFees.length > 0 && (
                       <ul className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-school-line bg-school-cream/40 p-2">
