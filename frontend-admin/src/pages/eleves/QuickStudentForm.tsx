@@ -76,9 +76,16 @@ export function QuickStudentForm({
   })
 
   useEffect(() => {
-    if (!isNew || schoolYearId > 0 || !defaultYearId) return
-    setSchoolYearId(defaultYearId)
-  }, [isNew, schoolYearId, defaultYearId])
+    if (!isNew || schoolYearId > 0) return
+    if (defaultYearId) {
+      setSchoolYearId(defaultYearId)
+      return
+    }
+    if (years?.items.length) {
+      const y = years.items.find((item) => item.is_current) ?? years.items[0]
+      setSchoolYearId(y.id)
+    }
+  }, [isNew, schoolYearId, defaultYearId, years?.items])
 
   const { data: classes } = useQuery({
     queryKey: ['classes-student-form', schoolYearId],
@@ -360,8 +367,14 @@ export function QuickStudentForm({
                   className="school-select"
                   disabled={schoolYearId <= 0}
                 >
-                  <option value="">—</option>
-                  {classes?.items.map((c) => (
+                  <option value="">
+                    {schoolYearId <= 0
+                      ? '— Choisir une année —'
+                      : (classes?.items.length ?? 0) === 0
+                        ? 'Aucune classe — Paramétrage → Classes'
+                        : '— Choisir —'}
+                  </option>
+                  {(classes?.items ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

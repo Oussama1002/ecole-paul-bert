@@ -13,8 +13,20 @@ export function useCurrentSchoolYear() {
 
   const yearsQuery = useQuery({
     queryKey: ['school-year-current', 'list'],
-    queryFn: () =>
-      schoolYearsApi.fetchSchoolYears({ per_page: 10, is_current: true }),
+    queryFn: async () => {
+      const flagged = await schoolYearsApi.fetchSchoolYears({
+        per_page: 10,
+        is_current: true,
+      })
+      if (flagged.items.length > 0) {
+        return flagged
+      }
+      return schoolYearsApi.fetchSchoolYears({
+        per_page: 20,
+        sort_by: 'start_date',
+        sort_order: 'desc',
+      })
+    },
     enabled: canListYears,
     staleTime: 2 * 60 * 1000,
   })
@@ -27,7 +39,8 @@ export function useCurrentSchoolYear() {
   })
 
   if (canListYears) {
-    const current = yearsQuery.data?.items.find((y) => y.is_current)
+    const items = yearsQuery.data?.items ?? []
+    const current = items.find((y) => y.is_current) ?? items[0]
     return {
       id: current?.id ?? null,
       name: current?.name ?? null,

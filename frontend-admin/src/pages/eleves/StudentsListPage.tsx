@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as classesApi from '../../api/classes'
 import * as levelsApi from '../../api/levels'
@@ -73,16 +73,25 @@ export function StudentsListPage() {
       levelsApi.fetchLevels({ per_page: 200, sort_by: 'sort_order', sort_order: 'asc' }),
   })
 
-  const { data: classes } = useQuery({
-    queryKey: ['classes-filter', schoolYearId],
+  const yearForClassPicker = useMemo(() => {
+    if (schoolYearId !== '') {
+      return schoolYearId as number
+    }
+    const current = years?.items.find((y) => y.is_current) ?? years?.items[0]
+    return current?.id ?? 0
+  }, [schoolYearId, years?.items])
+
+  const { data: classes, isLoading: classesLoading } = useQuery({
+    queryKey: ['classes-filter', yearForClassPicker, levelId],
     queryFn: () =>
       classesApi.fetchClasses({
         per_page: 100,
-        school_year_id: schoolYearId === '' ? undefined : schoolYearId,
+        school_year_id: yearForClassPicker,
+        level_id: levelId === '' ? undefined : levelId,
         sort_by: 'name',
         sort_order: 'asc',
       }),
-    enabled: schoolYearId !== '',
+    enabled: yearForClassPicker > 0,
   })
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -363,14 +372,33 @@ export function StudentsListPage() {
                 setPage(1)
               }}
               className="school-select"
+              disabled={yearForClassPicker <= 0}
             >
-              <option value="">Toutes</option>
-              {classes?.items.map((c) => (
+              <option value="">
+                {yearForClassPicker <= 0
+                  ? '— Année scolaire requise —'
+                  : classesLoading
+                    ? 'Chargement…'
+                    : 'Toutes'}
+              </option>
+              {(classes?.items ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.code})
                 </option>
               ))}
             </select>
+            {yearForClassPicker > 0 &&
+              !classesLoading &&
+              (classes?.items.length ?? 0) === 0 && (
+                <span className="mt-1 block text-xs text-amber-700">
+                  Aucune classe pour cette année — créez-en dans Paramétrage → Classes.
+                </span>
+              )}
+            {schoolYearId === '' && yearForClassPicker > 0 && (
+              <span className="mt-1 block text-xs text-school-inkmuted">
+                Classes de l&apos;année courante (filtre élèves : toutes années).
+              </span>
+            )}
           </label>
           <div className="flex items-end">
             <button type="submit" className="school-btn-secondary">
