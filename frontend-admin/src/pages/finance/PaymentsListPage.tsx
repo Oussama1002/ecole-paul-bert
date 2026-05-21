@@ -21,6 +21,38 @@ const STATUS_FR: Record<string, string> = {
   confirmed: 'Confirmé',
   cancelled: 'Annulé',
   pending: 'En attente',
+  partial: 'Partiel',
+  paid: 'Soldé',
+  overdue: 'En retard',
+}
+
+type FeeDueTone = 'on-time' | 'overdue' | 'no-date' | 'paid'
+
+function feeEcheanceDate(fa: financeApi.FeeAssignment): string | null {
+  return fa.next_due_date ?? fa.due_date ?? null
+}
+
+function feeDueTone(fa: financeApi.FeeAssignment): FeeDueTone {
+  const balance = parseFloat(fa.balance) || 0
+  if (balance <= 0.001 || fa.status === 'paid') {
+    return 'paid'
+  }
+  const echeance = feeEcheanceDate(fa)
+  if (!echeance) {
+    return 'no-date'
+  }
+  const due = new Date(echeance)
+  due.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return due < today ? 'overdue' : 'on-time'
+}
+
+const FEE_TONE_STYLES: Record<FeeDueTone, string> = {
+  'on-time': 'border-emerald-400/80 bg-emerald-50 text-emerald-950',
+  overdue: 'border-red-400/80 bg-red-50 text-red-950',
+  'no-date': 'border-school-line bg-white text-school-ink',
+  paid: 'border-slate-200 bg-slate-50 text-slate-600',
 }
 
 type EditForm = {
@@ -125,27 +157,31 @@ export function PaymentsListPage() {
   )
 
   const feesForPayment = useQuery({
-    queryKey: ['payments-fees-form', schoolYearId, formStudentId],
+    queryKey: ['payments-fees-form', formStudentId],
     queryFn: () =>
       financeApi.fetchFeeAssignments({
-        school_year_id: schoolYearId || undefined,
         student_id: formStudentId ?? undefined,
         per_page: 100,
       }),
-    enabled: schoolYearId > 0 && formStudentId !== null,
+    enabled: formStudentId !== null,
   })
 
-  const payableFees = useMemo(
+  const studentFees = useMemo(
     () =>
       (feesForPayment.data?.items ?? []).filter(
-        (fa) => fa.status !== 'cancelled' && (parseFloat(fa.balance) || 0) > 0.001
+        (fa) => fa.status !== 'cancelled' && fa.status !== 'waived'
       ),
     [feesForPayment.data?.items]
   )
 
+  const payableFees = useMemo(
+    () => studentFees.filter((fa) => (parseFloat(fa.balance) || 0) > 0.001),
+    [studentFees]
+  )
+
   const selectedFee = useMemo(
-    () => payableFees.find((x) => x.id === formFeeAssignmentId) ?? null,
-    [payableFees, formFeeAssignmentId]
+    () => studentFees.find((x) => x.id === formFeeAssignmentId) ?? null,
+    [studentFees, formFeeAssignmentId]
   )
 
   function formatDue(d?: string | null): string {
@@ -171,7 +207,8 @@ export function PaymentsListPage() {
   const create = useMutation({
     mutationFn: async () => {
       setError(null)
-      if (!schoolYearId || !formStudentId || !formFeeAssignmentId || !amount) {
+      const payYearId = selectedFee?.school_year_id ?? schoolYearId
+      if (!formStudentId || !formFeeAssignmentId || !amount || !payYearId) {
         throw new Error('Sélectionnez un élève, un frais et un montant.')
       }
       if (method === 'check' && !chequeNumber.trim()) {
@@ -186,7 +223,7 @@ export function PaymentsListPage() {
       }
       return financeApi.createPayment(
         {
-          school_year_id: schoolYearId,
+          school_year_id: payYearId,
           student_id: formStudentId,
           fee_assignment_id: formFeeAssignmentId,
           payment_date: date,
@@ -342,43 +379,72 @@ export function PaymentsListPage() {
 
                 {formStudentId !== null && (
                   <div className="sm:col-span-2">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
-                      2) Frais à régler *
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                      2) Frais de l&apos;élève *
                     </p>
+                    <p className="mb-2 text-xs text-school-inkmuted">
+                      <span className="inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800">
+                        Vert
+                      </span>{' '}
+                      = dans les délais ·{' '}
+                      <span className="inline-block rounded bg-red-100 px-1.5 py-0.5 text-red-800">
+                        Rouge
+                      </span>{' '}
+                      = échéance dépassée
+                    </p>
+                    {feesForPayment.isError && (
+                      <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                        {getApiErrorMessage(feesForPayment.error, 'Impossible de charger les frais.')}
+                      </p>
+                    )}
                     {feesForPayment.isLoading && (
                       <p className="text-sm text-school-inkmuted">Chargement des frais…</p>
                     )}
-                    {!feesForPayment.isLoading && payableFees.length === 0 && (
+                    {!feesForPayment.isLoading && studentFees.length === 0 && (
                       <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                        Aucun frais impayé pour cet élève. Assignez des frais depuis sa fiche (onglet Finance).
+                        Aucun frais assigné à cet élève. Assignez des frais depuis sa fiche (onglet Finance).
                       </p>
                     )}
-                    {payableFees.length > 0 && (
-                      <ul className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-school-line bg-school-cream/40 p-2">
-                        {payableFees.map((fa) => {
+                    {studentFees.length > 0 && (
+                      <ul className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-school-line bg-school-cream/40 p-2">
+                        {studentFees.map((fa) => {
                           const selected = formFeeAssignmentId === fa.id
-                          const echeance = fa.next_due_date ?? fa.due_date
+                          const echeance = feeEcheanceDate(fa)
+                          const tone = feeDueTone(fa)
+                          const canPay = (parseFloat(fa.balance) || 0) > 0.001
+                          const statusLabel = STATUS_FR[fa.status] ?? fa.status
                           return (
                             <li key={fa.id}>
                               <button
                                 type="button"
+                                disabled={!canPay}
                                 onClick={() => {
+                                  if (!canPay) return
                                   setFormFeeAssignmentId(fa.id)
                                   setAmount(parseFloat(fa.balance) || 0)
                                   setCreatedPaymentId(null)
                                 }}
                                 className={`w-full rounded-xl border-2 px-3 py-2 text-left text-sm transition ${
-                                  selected
-                                    ? 'border-school-grape bg-white shadow-sm'
-                                    : 'border-transparent bg-white/80 hover:border-school-line'
-                                }`}
+                                  FEE_TONE_STYLES[tone]
+                                } ${
+                                  selected ? 'ring-2 ring-school-grape ring-offset-1' : ''
+                                } ${!canPay ? 'cursor-default opacity-75' : 'hover:brightness-[0.98]'}`}
                               >
-                                <span className="font-semibold text-school-ink">
+                                <span className="flex flex-wrap items-center justify-between gap-1 font-semibold">
                                   {fa.fee_type?.name ?? `Frais #${fa.id}`}
+                                  <span className="text-xs font-medium opacity-80">{statusLabel}</span>
                                 </span>
-                                <span className="mt-0.5 block text-xs text-school-inkmuted">
-                                  Reste {fa.balance} MAD
-                                  {echeance ? ` · Échéance ${formatDue(echeance)}` : ''}
+                                <span className="mt-0.5 block text-xs opacity-90">
+                                  Total {fa.amount_due} MAD · Payé {fa.amount_paid} MAD · Reste{' '}
+                                  <strong>{fa.balance} MAD</strong>
+                                </span>
+                                <span className="mt-0.5 block text-xs font-medium opacity-90">
+                                  {echeance
+                                    ? `Échéance ${formatDue(echeance)}${
+                                        tone === 'overdue' && canPay ? ' — en retard' : ''
+                                      }${tone === 'on-time' && canPay ? ' — à jour' : ''}`
+                                    : 'Échéance non définie'}
+                                  {!canPay ? ' · Soldé' : ''}
                                 </span>
                               </button>
                             </li>
@@ -386,22 +452,33 @@ export function PaymentsListPage() {
                         })}
                       </ul>
                     )}
+                    {!feesForPayment.isLoading && studentFees.length > 0 && payableFees.length === 0 && (
+                      <p className="mt-2 text-xs text-amber-800">
+                        Tous les frais sont soldés ; sélectionnez un autre élève ou assignez de nouveaux frais.
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {selectedFee && (
-                  <div className="rounded-xl border border-school-line bg-school-cream/60 p-3 text-xs text-school-inkmuted sm:col-span-2">
+                {selectedFee && (parseFloat(selectedFee.balance) || 0) > 0.001 && (
+                  <div
+                    className={`rounded-xl border p-3 text-xs sm:col-span-2 ${
+                      feeDueTone(selectedFee) === 'overdue'
+                        ? 'border-red-300 bg-red-50/80 text-red-950'
+                        : 'border-emerald-300 bg-emerald-50/80 text-emerald-950'
+                    }`}
+                  >
                     <p>
-                      <strong className="text-school-ink">{selectedFee.fee_type?.name}</strong> — reste{' '}
-                      <strong className="text-school-ink">{selectedFee.balance} MAD</strong>
+                      <strong>{selectedFee.fee_type?.name}</strong> — reste{' '}
+                      <strong>{selectedFee.balance} MAD</strong>
                     </p>
                     <p>
-                      Prochaine échéance&nbsp;:{' '}
-                      <strong className="text-school-ink">
-                        {formatDue(selectedFee.next_due_date ?? selectedFee.due_date)}
-                      </strong>
+                      Échéance&nbsp;:{' '}
+                      <strong>{formatDue(feeEcheanceDate(selectedFee))}</strong>
                     </p>
-                    <p className="mt-1 text-school-grape">Une facture sera créée automatiquement à l&apos;enregistrement.</p>
+                    <p className="mt-1 opacity-90">
+                      Une facture sera créée automatiquement à l&apos;enregistrement.
+                    </p>
                   </div>
                 )}
 
@@ -498,7 +575,13 @@ export function PaymentsListPage() {
                 <button type="button" onClick={closeNewModal} className="school-btn-secondary">Fermer</button>
                 <button
                   type="submit"
-                  disabled={create.isPending || !formStudentId || !formFeeAssignmentId || amount <= 0}
+                  disabled={
+                    create.isPending ||
+                    !formStudentId ||
+                    !formFeeAssignmentId ||
+                    amount <= 0 ||
+                    payableFees.length === 0
+                  }
                   className="school-btn-primary disabled:opacity-60"
                 >
                   {create.isPending ? 'Enregistrement…' : 'Enregistrer et générer le reçu'}
