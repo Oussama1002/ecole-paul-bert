@@ -8,7 +8,9 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { FEE_FREQUENCY_LABELS, formatMad } from '../../utils/studentFinanceLabels'
 
-const PRESETS: { name: string; code: string; frequency: financeApi.FeeType['frequency']; amount: number }[] = [
+type FeeFrequency = 'once' | 'monthly' | 'term' | 'yearly'
+
+const PRESETS: { name: string; code: string; frequency: FeeFrequency; amount: number }[] = [
   { name: 'Frais d\'inscription', code: 'INSCRIPTION', frequency: 'once', amount: 1500 },
   { name: 'Scolarité mensuelle', code: 'MENSUEL', frequency: 'monthly', amount: 800 },
   { name: 'Transport scolaire', code: 'TRANSPORT', frequency: 'monthly', amount: 300 },
@@ -18,7 +20,7 @@ const PRESETS: { name: string; code: string; frequency: financeApi.FeeType['freq
 type FormState = {
   name: string
   code: string
-  frequency: 'once' | 'monthly' | 'term' | 'yearly'
+  frequency: FeeFrequency
   default_amount: string
   description: string
   is_active: boolean
@@ -108,7 +110,7 @@ export function FeeTypesPage() {
   }
 
   if (isLoading) return <LoadingState label="Types de frais…" />
-  if (isError) return <ErrorState message={String(error)} onRetry={() => refetch()} />
+  if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
