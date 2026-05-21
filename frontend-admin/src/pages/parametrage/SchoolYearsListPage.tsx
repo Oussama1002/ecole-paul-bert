@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import * as schoolYearsApi from '../../api/schoolYears'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApiErrorMessage } from '../../utils/apiError'
+import { SchoolYearFormModal } from './SchoolYearFormModal'
 
 const statusLabels: Record<string, string> = {
   planned: 'Planifiée',
@@ -156,8 +157,20 @@ export function SchoolYearsListPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [editYearId, setEditYearId] = useState<number | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const canManage = hasPermission('school_years.manage')
+
+  useEffect(() => {
+    const raw = searchParams.get('edit')
+    if (!raw) return
+    const id = parseInt(raw, 10)
+    if (!Number.isNaN(id) && id > 0) {
+      setEditYearId(id)
+    }
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['school-years', page, status],
@@ -190,6 +203,13 @@ export function SchoolYearsListPage() {
           items={data.items}
           onClose={() => setShowModal(false)}
           onSuccess={() => queryClient.invalidateQueries({ queryKey: ['school-years'] })}
+        />
+      )}
+
+      {editYearId !== null && (
+        <SchoolYearFormModal
+          yearId={editYearId}
+          onClose={() => setEditYearId(null)}
         />
       )}
 
@@ -294,12 +314,13 @@ export function SchoolYearsListPage() {
                         </button>
                       )}
                       {canManage && (
-                        <Link
-                          to={`/parametrage/annees-scolaires/${y.id}/editer`}
+                        <button
+                          type="button"
+                          onClick={() => setEditYearId(y.id)}
                           className="text-xs font-medium text-slate-600 hover:underline"
                         >
                           Modifier
-                        </Link>
+                        </button>
                       )}
                       {canManage && (
                         <button

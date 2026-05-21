@@ -88,15 +88,14 @@ export function QuickStudentForm({
   }, [isNew, schoolYearId, defaultYearId, years?.items])
 
   const { data: classes } = useQuery({
-    queryKey: ['classes-student-form', schoolYearId],
+    queryKey: ['classes-student-form-all'],
     queryFn: () =>
       classesApi.fetchClasses({
-        per_page: 100,
-        school_year_id: schoolYearId,
+        per_page: 200,
         sort_by: 'name',
         sort_order: 'asc',
       }),
-    enabled: isNew && schoolYearId > 0,
+    enabled: isNew,
   })
 
   const { data: suggested } = useQuery({
@@ -343,8 +342,14 @@ export function QuickStudentForm({
                   required
                   value={schoolYearId || ''}
                   onChange={(e) => {
-                    setSchoolYearId(Number(e.target.value) || 0)
-                    setClassId(0)
+                    const newYear = Number(e.target.value) || 0
+                    setSchoolYearId(newYear)
+                    if (classId > 0) {
+                      const current = classes?.items.find((c) => c.id === classId)
+                      if (current && current.school_year_id !== newYear) {
+                        setClassId(0)
+                      }
+                    }
                   }}
                   className="school-select"
                 >
@@ -363,20 +368,25 @@ export function QuickStudentForm({
                 <select
                   required
                   value={classId || ''}
-                  onChange={(e) => setClassId(Number(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const id = Number(e.target.value) || 0
+                    setClassId(id)
+                    const picked = classes?.items.find((c) => c.id === id)
+                    if (picked?.school_year_id) {
+                      setSchoolYearId(picked.school_year_id)
+                    }
+                  }}
                   className="school-select"
-                  disabled={schoolYearId <= 0}
                 >
                   <option value="">
-                    {schoolYearId <= 0
-                      ? '— Choisir une année —'
-                      : (classes?.items.length ?? 0) === 0
-                        ? 'Aucune classe — Paramétrage → Classes'
-                        : '— Choisir —'}
+                    {(classes?.items.length ?? 0) === 0
+                      ? 'Aucune classe — Paramétrage → Classes'
+                      : '— Choisir —'}
                   </option>
                   {(classes?.items ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
+                      {c.school_year?.name ? ` — ${c.school_year.name}` : ''}
                     </option>
                   ))}
                 </select>

@@ -19,6 +19,7 @@ import { LevelsListPage } from './pages/parametrage/LevelsListPage'
 import { ParametragePeriodsPage } from './pages/parametrage/ParametragePeriodsPage'
 import { RoomFormPage } from './pages/parametrage/RoomFormPage'
 import { RoomsListPage } from './pages/parametrage/RoomsListPage'
+import { SchoolYearEditRedirect } from './pages/parametrage/SchoolYearEditRedirect'
 import { SchoolYearFormPage } from './pages/parametrage/SchoolYearFormPage'
 import { SchoolYearsListPage } from './pages/parametrage/SchoolYearsListPage'
 import { SubjectFormPage } from './pages/parametrage/SubjectFormPage'
@@ -474,7 +475,7 @@ export default function App() {
                 element={
                   <RequireAdvancedMode>
                     <RequirePermission permission="school_years.manage">
-                      <SchoolYearFormPage />
+                      <SchoolYearEditRedirect />
                     </RequirePermission>
                   </RequireAdvancedMode>
                 }

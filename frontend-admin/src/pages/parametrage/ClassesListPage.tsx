@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as classesApi from '../../api/classes'
 import * as levelsApi from '../../api/levels'
@@ -25,12 +25,6 @@ export function ClassesListPage() {
         sort_order: 'desc',
       }),
   })
-
-  useEffect(() => {
-    if (!years?.items.length || schoolYearId !== '') return
-    const current = years.items.find((y) => y.is_current) ?? years.items[0]
-    setSchoolYearId(current.id)
-  }, [years, schoolYearId])
 
   const { data: levels } = useQuery({
     queryKey: ['levels-all'],
