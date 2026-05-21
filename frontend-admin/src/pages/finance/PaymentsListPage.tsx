@@ -114,15 +114,13 @@ export function PaymentsListPage() {
   })
 
   const studentsQuery = useQuery({
-    queryKey: ['payments-students', schoolYearId],
+    queryKey: ['payments-students-all'],
     queryFn: () =>
       studentsApi.fetchStudents({
-        school_year_id: schoolYearId || undefined,
         per_page: 500,
         sort_by: 'last_name',
         sort_order: 'asc',
       }),
-    enabled: schoolYearId > 0,
   })
 
   const studentOptions = useMemo<SearchSelectOption[]>(
@@ -318,9 +316,9 @@ export function PaymentsListPage() {
             onChange={(v) => { setStudentId(v); setInvoiceId(null) }}
             options={studentOptions}
             placeholder="Rechercher un élève"
-            disabled={schoolYearId <= 0}
             isLoading={studentsQuery.isLoading}
             isError={studentsQuery.isError}
+            emptyLabel="Aucun élève."
             className="mt-1"
           />
         </label>
@@ -370,9 +368,9 @@ export function PaymentsListPage() {
                     }}
                     options={studentOptions}
                     placeholder="Rechercher un élève"
-                    disabled={schoolYearId <= 0}
                     isLoading={studentsQuery.isLoading}
                     isError={studentsQuery.isError}
+                    emptyLabel="Aucun élève trouvé."
                     className="mt-1"
                   />
                 </Field>

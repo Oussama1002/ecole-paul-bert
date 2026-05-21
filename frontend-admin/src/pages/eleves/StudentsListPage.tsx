@@ -67,12 +67,6 @@ export function StudentsListPage() {
       }),
   })
 
-  useEffect(() => {
-    if (!years?.items.length || schoolYearId !== '') return
-    const current = years.items.find((y) => y.is_current) ?? years.items[0]
-    setSchoolYearId(current.id)
-  }, [years, schoolYearId])
-
   const { data: levels } = useQuery({
     queryKey: ['levels-all'],
     queryFn: () =>
@@ -324,13 +318,19 @@ export function StudentsListPage() {
               }}
               className="school-select"
             >
-              <option value="">Toutes</option>
+              <option value="">Toutes les années</option>
               {years?.items.map((y) => (
                 <option key={y.id} value={y.id}>
                   {y.name}
+                  {y.is_current ? ' (courante)' : ''}
                 </option>
               ))}
             </select>
+            {schoolYearId !== '' && (
+              <span className="mt-1 block text-xs text-school-inkmuted">
+                Filtre actif : élèves inscrits pour cette année (ou sans inscription).
+              </span>
+            )}
           </label>
           <label>
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
