@@ -68,28 +68,25 @@ export function RolloverWizardPage() {
       }
       let classesCreated = 0
       let enrollmentsCreated = 0
-      const classMap: Record<number, number> = {}
 
       for (const cls of currentClasses.items) {
-        const created = await classesApi.createClass({
-          level_id: cls.level_id,
-          school_year_id: newYear.id,
-          name: cls.name,
-          code: cls.code,
-          section: cls.section,
-          max_students: cls.max_students,
-          room_label: cls.room_label,
-          main_teacher_id: cls.main_teacher_id,
-          status: 'active',
-        })
-        classMap[cls.id] = created.id
-        classesCreated++
-        setProgress({ classesCreated, enrollmentsCreated })
+        const yearIds = new Set(
+          cls.school_year_ids ??
+            cls.school_years?.map((y) => y.id) ??
+            (cls.school_year_id ? [cls.school_year_id] : [])
+        )
+        if (!yearIds.has(newYear.id)) {
+          yearIds.add(newYear.id)
+          await classesApi.updateClass(cls.id, {
+            school_year_ids: [...yearIds],
+          })
+          classesCreated++
+          setProgress({ classesCreated, enrollmentsCreated })
+        }
       }
 
       for (const cls of currentClasses.items) {
-        const newClassId = classMap[cls.id]
-        if (!newClassId) continue
+        const newClassId = cls.id
 
         let page = 1
         let hasMore = true
