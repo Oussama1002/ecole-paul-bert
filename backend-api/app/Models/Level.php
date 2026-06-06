@@ -12,6 +12,7 @@ class Level extends Model
         'code',
         'description',
         'sort_order',
+        'status',
     ];
 
     protected function casts(): array

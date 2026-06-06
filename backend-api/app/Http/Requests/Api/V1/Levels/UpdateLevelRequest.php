@@ -29,6 +29,7 @@ class UpdateLevelRequest extends FormRequest
             ],
             'description' => ['sometimes', 'nullable', 'string'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
+            'status' => ['sometimes', 'string', 'in:active,inactive'],
         ];
     }
 }

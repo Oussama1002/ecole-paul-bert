@@ -21,6 +21,7 @@ export function LevelFormModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [sortOrder, setSortOrder] = useState(1)
+  const [status, setStatus] = useState('active')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -28,17 +29,23 @@ export function LevelFormModal({
     setName(existing.name)
     setDescription(existing.description ?? '')
     setSortOrder(existing.sort_order)
+    setStatus(existing.status ?? 'active')
   }, [existing])
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = {
+      if (isNew) {
+        return levelsApi.createLevel({
+          name,
+          description: description || null,
+        })
+      }
+      return levelsApi.updateLevel(levelId as number, {
         name,
         description: description || null,
         sort_order: sortOrder,
-      }
-      if (isNew) return levelsApi.createLevel(payload)
-      return levelsApi.updateLevel(levelId as number, payload)
+        status,
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['levels'] })
@@ -79,16 +86,27 @@ export function LevelFormModal({
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Description</span>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="school-input" />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Ordre d'affichage</span>
-              <input
-                type="number"
-                min={0}
-                value={sortOrder}
-                onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
-                className="school-input"
-              />
-            </label>
+            {!isNew && (
+              <>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Ordre d'affichage</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
+                    className="school-input"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Statut</span>
+                  <select value={status} onChange={(e) => setStatus(e.target.value)} className="school-select">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </label>
+              </>
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onClose} className="school-btn-secondary">Annuler</button>

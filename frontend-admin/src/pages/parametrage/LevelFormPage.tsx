@@ -20,6 +20,7 @@ export function LevelFormPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [sortOrder, setSortOrder] = useState(1)
+  const [status, setStatus] = useState('active')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,19 +28,23 @@ export function LevelFormPage() {
     setName(existing.name)
     setDescription(existing.description ?? '')
     setSortOrder(existing.sort_order)
+    setStatus(existing.status ?? 'active')
   }, [existing])
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = {
+      if (isNew) {
+        return levelsApi.createLevel({
+          name,
+          description: description || null,
+        })
+      }
+      return levelsApi.updateLevel(id, {
         name,
         description: description || null,
         sort_order: sortOrder,
-      }
-      if (isNew) {
-        return levelsApi.createLevel(payload)
-      }
-      return levelsApi.updateLevel(id, payload)
+        status,
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['levels'] })
@@ -93,16 +98,31 @@ export function LevelFormPage() {
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-slate-500">Ordre d’affichage</span>
-          <input
-            type="number"
-            min={0}
-            value={sortOrder}
-            onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
+        {!isNew && (
+          <>
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-500">Ordre d’affichage</span>
+              <input
+                type="number"
+                min={0}
+                value={sortOrder}
+                onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
+                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-slate-500">Statut</span>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </label>
+          </>
+        )}
         <div className="flex gap-3 pt-2">
           <button
             type="submit"

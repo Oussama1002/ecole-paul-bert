@@ -10,6 +10,7 @@ export type Level = {
   code: string
   description: string | null
   sort_order: number
+  status: string
   created_at?: string | null
   updated_at?: string | null
 }
@@ -39,6 +40,7 @@ export async function createLevel(payload: {
   code?: string
   description?: string | null
   sort_order?: number
+  status?: string
 }): Promise<Level> {
   const { data } = await apiClient.post<Ok<Level> | Err>('/v1/levels', payload)
   if (!data.success) throw new Error(data.message)
@@ -52,6 +54,7 @@ export async function updateLevel(
     code: string
     description: string | null
     sort_order: number
+    status: string
   }>
 ): Promise<Level> {
   const { data } = await apiClient.patch<Ok<Level> | Err>(

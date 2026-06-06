@@ -21,13 +21,19 @@ class StoreLevelRequest extends FormRequest
             'code' => ['required', 'string', 'max:50', 'unique:levels,code'],
             'description' => ['nullable', 'string'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
+            'status' => ['sometimes', 'string', 'in:active,inactive'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         if (! $this->has('sort_order')) {
-            $this->merge(['sort_order' => 1]);
+            $max = (int) \App\Models\Level::query()->max('sort_order');
+            $this->merge(['sort_order' => $max + 1]);
+        }
+
+        if (! $this->has('status')) {
+            $this->merge(['status' => 'active']);
         }
 
         // Code is auto-generated from the name (unique, hidden from the form)

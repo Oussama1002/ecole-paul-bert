@@ -18,6 +18,7 @@ class LevelResource extends JsonResource
             'code' => $this->code,
             'description' => $this->description,
             'sort_order' => $this->sort_order,
+            'status' => $this->status ?? 'active',
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
