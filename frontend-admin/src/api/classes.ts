@@ -17,7 +17,8 @@ export type ClassMainTeacher = {
 export type SchoolClass = {
   id: number
   level_id: number
-  school_year_id: number
+  school_year_id: number | null
+  school_year_ids?: number[]
   name: string
   code: string
   section: string | null
@@ -29,6 +30,7 @@ export type SchoolClass = {
   updated_at?: string | null
   level?: Level
   school_year?: SchoolYear
+  school_years?: SchoolYear[]
   main_teacher?: ClassMainTeacher | null
 }
 
@@ -58,7 +60,7 @@ export async function fetchClass(id: number): Promise<SchoolClass> {
 
 export type ClassPayload = {
   level_id: number
-  school_year_id: number
+  school_year_ids?: number[]
   name: string
   code?: string
   section?: string | null
@@ -66,6 +68,23 @@ export type ClassPayload = {
   room_label?: string | null
   main_teacher_id?: number | null
   status?: string
+}
+
+export function classYearLabel(c: SchoolClass, totalYears?: number): string {
+  const linked = c.school_years ?? []
+  if (linked.length > 0) {
+    if (totalYears != null && totalYears > 0 && linked.length >= totalYears) {
+      return 'Toutes les années'
+    }
+    return linked.map((y) => y.name).join(', ')
+  }
+  if (c.school_year_ids?.length) {
+    return c.school_year_ids.length > 1 ? `${c.school_year_ids.length} années` : '—'
+  }
+  if (c.school_year?.name) {
+    return c.school_year.name
+  }
+  return 'Toutes les années'
 }
 
 export async function createClass(payload: ClassPayload): Promise<SchoolClass> {
