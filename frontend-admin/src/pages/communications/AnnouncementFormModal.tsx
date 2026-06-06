@@ -127,7 +127,7 @@ export function AnnouncementFormModal({
             {!simpleMode && (
               <>
                 <label className="block text-sm">
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Public</span>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Destinataires</span>
                   <select
                     className="school-select"
                     value={audienceType}

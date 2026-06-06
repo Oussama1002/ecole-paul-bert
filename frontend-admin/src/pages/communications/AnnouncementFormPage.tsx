@@ -115,7 +115,7 @@ export function AnnouncementFormPage() {
         {!simpleMode && (
           <>
             <label className="block text-sm">
-              <span className="text-slate-600">Public</span>
+              <span className="text-slate-600">Destinataires</span>
               <select
                 className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
                 value={audienceType}
