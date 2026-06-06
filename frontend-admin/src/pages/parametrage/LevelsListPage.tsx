@@ -4,6 +4,11 @@ import * as levelsApi from '../../api/levels'
 import { useAuth } from '../../contexts/AuthContext'
 import { LevelFormModal } from './LevelFormModal'
 
+const statusLabels: Record<string, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+}
+
 export function LevelsListPage() {
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
@@ -85,6 +90,7 @@ export function LevelsListPage() {
                 <th className="px-4 py-2 text-left">Ordre</th>
                 <th className="px-4 py-2 text-left">Code</th>
                 <th className="px-4 py-2 text-left">Nom</th>
+                <th className="px-4 py-2 text-left">Statut</th>
                 <th className="px-4 py-2 text-right">Actions</th>
               </tr>
             </thead>
@@ -95,6 +101,17 @@ export function LevelsListPage() {
                   <td className="px-4 py-2 font-mono text-slate-700">{l.code}</td>
                   <td className="px-4 py-2 font-medium text-slate-800">
                     {l.name}
+                  </td>
+                  <td className="px-4 py-2">
+                    {(l.status ?? 'active') === 'active' ? (
+                      <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                        {statusLabels[l.status ?? 'active'] ?? l.status}
+                      </span>
+                    ) : (
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                        {statusLabels[l.status ?? 'inactive'] ?? l.status}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-right">
                     {canManage && (
