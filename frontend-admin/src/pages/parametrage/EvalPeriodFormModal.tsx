@@ -12,6 +12,25 @@ function autoEvalCode(name: string): string {
   return match ? `EP${match[0]}-PB` : ''
 }
 
+function daysBetween(start: string, end: string): number {
+  const a = new Date(`${start.slice(0, 10)}T12:00:00`).getTime()
+  const b = new Date(`${end.slice(0, 10)}T12:00:00`).getTime()
+  return Math.round((b - a) / 86400000)
+}
+
+function weeksFromRange(start: string, end: string): number {
+  if (!start || !end) return 1
+  const days = daysBetween(start, end) + 1
+  if (days <= 0) return 1
+  return Math.max(1, Math.round(days / 7))
+}
+
+function endDateFromWeeks(start: string, weeks: number): string {
+  const d = new Date(`${start.slice(0, 10)}T12:00:00`)
+  d.setDate(d.getDate() + Math.max(1, weeks) * 7 - 1)
+  return d.toISOString().slice(0, 10)
+}
+
 export function EvalPeriodFormModal({
   schoolYearId,
   schoolYear,
@@ -47,6 +66,12 @@ export function EvalPeriodFormModal({
   const [end, setEnd] = useState(
     period?.end_date?.slice(0, 10) ?? suggestion?.end_date ?? ''
   )
+  const [weeks, setWeeks] = useState(() =>
+    weeksFromRange(
+      period?.start_date?.slice(0, 10) ?? suggestion?.start_date ?? '',
+      period?.end_date?.slice(0, 10) ?? suggestion?.end_date ?? ''
+    )
+  )
   const [order, setOrder] = useState(period?.sort_order ?? suggestion?.sort_order ?? 1)
   const [closed, setClosed] = useState(period?.is_closed ?? false)
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +79,22 @@ export function EvalPeriodFormModal({
   function onNameChange(v: string) {
     setName(v)
     if (!codeManual) setCode(autoEvalCode(v))
+  }
+
+  function onStartChange(v: string) {
+    setStart(v)
+    if (v && weeks > 0) setEnd(endDateFromWeeks(v, weeks))
+  }
+
+  function onWeeksChange(raw: number) {
+    const safe = Math.max(1, raw || 1)
+    setWeeks(safe)
+    if (start) setEnd(endDateFromWeeks(start, safe))
+  }
+
+  function onEndChange(v: string) {
+    setEnd(v)
+    if (start && v) setWeeks(weeksFromRange(start, v))
   }
 
   const save = useMutation({
@@ -124,13 +165,23 @@ export function EvalPeriodFormModal({
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Code *</span>
               <input required placeholder="Ex : EP1-PB" value={code} onChange={(e) => { setCodeManual(true); setCode(e.target.value) }} className="school-input" />
             </label>
-            <label className="block text-sm">
+            <label className="block text-sm sm:col-span-2">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Date de début *</span>
-              <input type="date" required value={start} onChange={(e) => setStart(e.target.value)} className="school-input" />
+              <input type="date" required value={start} onChange={(e) => onStartChange(e.target.value)} className="school-input max-w-xs" />
             </label>
-            <label className="block text-sm">
+            <label className="block text-sm sm:col-span-2">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Durée (semaines)</span>
+              <input
+                type="number"
+                min={1}
+                value={weeks}
+                onChange={(e) => onWeeksChange(parseInt(e.target.value, 10))}
+                className="school-input max-w-xs"
+              />
+            </label>
+            <label className="block text-sm sm:col-span-2">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Date de fin *</span>
-              <input type="date" required value={end} onChange={(e) => setEnd(e.target.value)} className="school-input" />
+              <input type="date" required value={end} onChange={(e) => onEndChange(e.target.value)} className="school-input max-w-xs" />
             </label>
             {!isNew && (
               <label className="block text-sm">
