@@ -134,7 +134,7 @@ export function RoomFormModal({
                 <select value={status} onChange={(e) => setStatus(e.target.value)} className="school-select">
                   <option value="available">Disponible</option>
                   <option value="unavailable">Indisponible</option>
-                  <option value="maintenance">Maintenance</option>
+                  <option value="maintenance">En maintenance</option>
                 </select>
               </label>
               <label className="block text-sm sm:col-span-2">

@@ -14,6 +14,12 @@ const typeLabels: Record<string, string> = {
   other: 'Autre',
 }
 
+const statusLabels: Record<string, string> = {
+  available: 'Disponible',
+  unavailable: 'Indisponible',
+  maintenance: 'En maintenance',
+}
+
 export function RoomsListPage() {
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
@@ -88,7 +94,7 @@ export function RoomsListPage() {
             <option value="">Tous</option>
             <option value="available">Disponible</option>
             <option value="unavailable">Indisponible</option>
-            <option value="maintenance">Maintenance</option>
+            <option value="maintenance">En maintenance</option>
           </select>
         </label>
       </div>
@@ -120,7 +126,9 @@ export function RoomsListPage() {
                     {typeLabels[r.room_type] ?? r.room_type}
                   </td>
                   <td className="px-4 py-2">{r.capacity ?? '—'}</td>
-                  <td className="px-4 py-2">{r.status}</td>
+                  <td className="px-4 py-2">
+                    {statusLabels[r.status] ?? r.status}
+                  </td>
                   <td className="px-4 py-2 text-right">
                     {canManage && (
                       <>

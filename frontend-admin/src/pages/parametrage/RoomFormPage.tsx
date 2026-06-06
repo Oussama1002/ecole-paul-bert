@@ -175,7 +175,7 @@ export function RoomFormPage() {
           >
             <option value="available">Disponible</option>
             <option value="unavailable">Indisponible</option>
-            <option value="maintenance">Maintenance</option>
+            <option value="maintenance">En maintenance</option>
           </select>
         </label>
         <label className="block">
