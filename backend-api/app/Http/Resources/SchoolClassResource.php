@@ -16,6 +16,7 @@ class SchoolClassResource extends JsonResource
             'id' => $this->id,
             'level_id' => $this->level_id,
             'school_year_id' => $this->school_year_id,
+            'school_year_ids' => $this->whenLoaded('schoolYears', fn () => $this->schoolYears->pluck('id')->values()->all()),
             'name' => $this->name,
             'code' => $this->code,
             'section' => $this->section,
@@ -27,6 +28,7 @@ class SchoolClassResource extends JsonResource
             'updated_at' => $this->updated_at?->toIso8601String(),
             'level' => LevelResource::make($this->whenLoaded('level')),
             'school_year' => SchoolYearResource::make($this->whenLoaded('schoolYear')),
+            'school_years' => SchoolYearResource::collection($this->whenLoaded('schoolYears')),
             'main_teacher' => $this->whenLoaded('mainTeacher', function () {
                 if (! $this->mainTeacher) {
                     return null;

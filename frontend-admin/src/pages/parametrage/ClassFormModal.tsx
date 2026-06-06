@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import * as classesApi from '../../api/classes'
 import * as levelsApi from '../../api/levels'
 import * as schoolYearsApi from '../../api/schoolYears'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 export function ClassFormModal({
   classId,
@@ -105,7 +106,7 @@ export function ClassFormModal({
       queryClient.invalidateQueries({ queryKey: ['classes'] })
       onClose()
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: unknown) => setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
 
   return (

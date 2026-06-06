@@ -115,7 +115,7 @@ class StudentController extends Controller
 
             if ($schoolYearId && $classId) {
                 $class = SchoolClass::query()->findOrFail($classId);
-                if ((int) $class->school_year_id !== $schoolYearId) {
+                if (! $class->isOfferedInSchoolYear($schoolYearId)) {
                     throw ValidationException::withMessages([
                         'class_id' => ['La classe sélectionnée n’appartient pas à cette année scolaire.'],
                     ]);

@@ -59,7 +59,7 @@ class EnrollmentController extends Controller
         $data = $request->validated();
         $class = SchoolClass::query()->findOrFail($data['class_id']);
 
-        if ((int) $class->school_year_id !== (int) $data['school_year_id']) {
+        if (! $class->isOfferedInSchoolYear((int) $data['school_year_id'])) {
             return ApiResponse::error(
                 'La classe sélectionnée n’appartient pas à cette année scolaire.',
                 [],
@@ -93,7 +93,7 @@ class EnrollmentController extends Controller
 
         if (isset($data['class_id'])) {
             $class = SchoolClass::query()->findOrFail($data['class_id']);
-            if ((int) $class->school_year_id !== (int) $enrollment->school_year_id) {
+            if (! $class->isOfferedInSchoolYear((int) $enrollment->school_year_id)) {
                 return ApiResponse::error(
                     'La classe ne correspond pas à l’année de l’inscription.',
                     [],

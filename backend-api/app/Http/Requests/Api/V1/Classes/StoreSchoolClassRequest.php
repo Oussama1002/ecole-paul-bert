@@ -17,19 +17,17 @@ class StoreSchoolClassRequest extends FormRequest
      */
     public function rules(): array
     {
-        $schoolYearId = $this->input('school_year_id');
-
         return [
             'level_id' => ['required', 'integer', 'exists:levels,id'],
-            'school_year_id' => ['required', 'integer', 'exists:school_years,id'],
+            'school_year_id' => ['prohibited'],
+            'school_year_ids' => ['sometimes', 'nullable', 'array'],
+            'school_year_ids.*' => ['integer', 'exists:school_years,id'],
             'name' => ['required', 'string', 'max:100'],
             'code' => [
-                'required',
+                'sometimes',
                 'string',
                 'max:50',
-                Rule::unique('classes', 'code')->where(
-                    fn ($q) => $q->where('school_year_id', $schoolYearId)
-                ),
+                Rule::unique('classes', 'code'),
             ],
             'section' => ['nullable', 'string', 'max:100'],
             'max_students' => ['nullable', 'integer', 'min:1'],
@@ -47,17 +45,11 @@ class StoreSchoolClassRequest extends FormRequest
 
         // Code is auto-generated from the name (unique per school year, hidden from the form)
         if (! $this->filled('code') && $this->filled('name')) {
-            $schoolYearId = $this->input('school_year_id');
             $base = strtoupper(\Illuminate\Support\Str::slug((string) $this->input('name'))) ?: 'CLS';
             $base = substr($base, 0, 40);
             $code = $base;
             $n = 1;
-            while (
-                \App\Models\SchoolClass::query()
-                    ->where('school_year_id', $schoolYearId)
-                    ->where('code', $code)
-                    ->exists()
-            ) {
+            while (\App\Models\SchoolClass::query()->where('code', $code)->exists()) {
                 $n++;
                 $code = $base.'-'.$n;
             }
