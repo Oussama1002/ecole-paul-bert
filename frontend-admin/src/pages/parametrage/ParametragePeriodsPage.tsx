@@ -257,6 +257,8 @@ export function ParametragePeriodsPage() {
       {termModal && schoolYearId > 0 && (
         <TermFormModal
           schoolYearId={schoolYearId}
+          schoolYear={years?.items.find((y) => y.id === schoolYearId) ?? null}
+          existingTerms={terms?.items ?? []}
           term={termModal.mode === 'edit' ? termModal.term : null}
           onClose={() => setTermModal(null)}
         />

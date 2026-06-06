@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useState } from 'react'
 import * as academicTermsApi from '../../api/academicTerms'
 import type { AcademicTerm } from '../../api/academicTerms'
+import type { SchoolYear } from '../../api/schoolYears'
+import { suggestNextAcademicTerm } from '../../utils/academicTermSuggestion'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 function autoTermCode(name: string): string {
@@ -11,22 +13,31 @@ function autoTermCode(name: string): string {
 
 export function TermFormModal({
   schoolYearId,
+  schoolYear,
+  existingTerms,
   term,
   onClose,
 }: {
   schoolYearId: number
+  schoolYear: SchoolYear | null
+  existingTerms: AcademicTerm[]
   term: AcademicTerm | null
   onClose: () => void
 }) {
   const isNew = term === null
   const queryClient = useQueryClient()
 
-  const [name, setName] = useState(term?.name ?? '')
-  const [code, setCode] = useState(term?.code ?? '')
+  const suggestion =
+    isNew && schoolYear ? suggestNextAcademicTerm(existingTerms, schoolYear) : null
+
+  const [name, setName] = useState(term?.name ?? suggestion?.name ?? '')
+  const [code, setCode] = useState(term?.code ?? suggestion?.code ?? '')
   const [codeManual, setCodeManual] = useState(!isNew)
-  const [start, setStart] = useState(term?.start_date?.slice(0, 10) ?? '')
-  const [end, setEnd] = useState(term?.end_date?.slice(0, 10) ?? '')
-  const [order, setOrder] = useState(term?.sort_order ?? 1)
+  const [start, setStart] = useState(
+    term?.start_date?.slice(0, 10) ?? suggestion?.start_date ?? ''
+  )
+  const [end, setEnd] = useState(term?.end_date?.slice(0, 10) ?? suggestion?.end_date ?? '')
+  const [order, setOrder] = useState(term?.sort_order ?? suggestion?.sort_order ?? 1)
   const [active, setActive] = useState(term?.is_active ?? true)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,7 +55,6 @@ export function TermFormModal({
           code,
           start_date: start,
           end_date: end,
-          sort_order: order,
           is_active: active,
         })
       }
@@ -101,11 +111,13 @@ export function TermFormModal({
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Date de fin *</span>
               <input type="date" required value={end} onChange={(e) => setEnd(e.target.value)} className="school-input" />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Ordre d'affichage</span>
-              <input type="number" min={0} value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="school-input" />
-            </label>
-            <label className="flex items-center gap-2 pt-6 text-sm">
+            {!isNew && (
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Ordre d'affichage</span>
+                <input type="number" min={0} value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="school-input" />
+              </label>
+            )}
+            <label className={`flex items-center gap-2 text-sm ${!isNew ? 'pt-6' : 'sm:col-span-2'}`}>
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4" />
               <span className="text-school-ink">Actif</span>
             </label>

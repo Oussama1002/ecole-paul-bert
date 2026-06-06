@@ -33,8 +33,15 @@ class StoreAcademicTermRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if (! $this->has('sort_order')) {
+            $syId = $this->input('school_year_id');
+            $max = $syId
+                ? (int) AcademicTerm::query()->where('school_year_id', $syId)->max('sort_order')
+                : 0;
+            $this->merge(['sort_order' => $max + 1]);
+        }
+
         $this->merge([
-            'sort_order' => $this->input('sort_order', 1),
             'is_active' => $this->boolean('is_active', true),
         ]);
     }
