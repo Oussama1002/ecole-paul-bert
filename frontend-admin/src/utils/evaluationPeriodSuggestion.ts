@@ -36,12 +36,6 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-function daysBetween(start: string, end: string): number {
-  const a = new Date(`${start.slice(0, 10)}T12:00:00`).getTime()
-  const b = new Date(`${end.slice(0, 10)}T12:00:00`).getTime()
-  return Math.round((b - a) / 86400000)
-}
-
 export function suggestNextEvaluationPeriod(
   existingPeriods: EvaluationPeriod[],
   terms: AcademicTerm[],
@@ -61,11 +55,14 @@ export function suggestNextEvaluationPeriod(
     terms.find((t) => extractTrimestreNumber(t.name, t.code) === next) ?? null
 
   if (matchingTerm) {
+    const start_date = matchingTerm.start_date.slice(0, 10)
+    const termEnd = matchingTerm.end_date.slice(0, 10)
+    const suggestedEnd = addDays(start_date, 4)
     return {
       name: `Évaluation ${next}`,
       code: `EP${next}-PB`,
-      start_date: matchingTerm.start_date.slice(0, 10),
-      end_date: matchingTerm.end_date.slice(0, 10),
+      start_date,
+      end_date: suggestedEnd > termEnd ? termEnd : suggestedEnd,
       sort_order: maxSort + 1,
       term_id: matchingTerm.id,
     }
@@ -77,7 +74,6 @@ export function suggestNextEvaluationPeriod(
 
   const syStart = schoolYear.start_date.slice(0, 10)
   const syEnd = schoolYear.end_date.slice(0, 10)
-  const partDays = Math.max(1, Math.floor(daysBetween(syStart, syEnd) / 3))
 
   let start_date: string
   if (prevPeriod && next > 1) {
@@ -86,14 +82,8 @@ export function suggestNextEvaluationPeriod(
     start_date = syStart
   }
 
-  let end_date: string
-  if (next >= 3) {
-    end_date = syEnd
-  } else {
-    end_date = addDays(syStart, next * partDays - 1)
-    if (end_date < start_date) end_date = addDays(start_date, partDays - 1)
-    if (end_date > syEnd) end_date = syEnd
-  }
+  const suggestedEnd = addDays(start_date, 4)
+  const end_date = suggestedEnd > syEnd ? syEnd : suggestedEnd
 
   return {
     name: `Évaluation ${next}`,
