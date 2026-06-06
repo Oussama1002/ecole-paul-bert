@@ -18,12 +18,7 @@ class StoreTeacherRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('users', 'id'),
-                Rule::unique('teachers', 'user_id'),
-            ],
+            'user_id' => ['prohibited'],
             'employee_code' => ['required', 'string', 'max:50', Rule::unique('teachers', 'employee_code')],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],

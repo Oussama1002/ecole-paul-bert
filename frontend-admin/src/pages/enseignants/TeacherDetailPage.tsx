@@ -41,13 +41,7 @@ const observationTypePill: Record<string, string> = {
   note: 'school-pill-green',
 }
 
-const docTypeLabels: Record<string, string> = {
-  contract: 'Contrat',
-  certificate: 'Certificat / diplôme',
-  addendum: 'Avenant',
-  id_proof: "Pièce d'identité",
-  other: 'Autre',
-}
+import { TEACHER_DOC_TYPE_LABELS } from '../../utils/teacherDocumentTypes'
 
 const dayFr: Record<string, string> = {
   monday: 'Lundi',
@@ -708,7 +702,7 @@ export function TeacherDetailPage() {
                       onChange={(e) => setDocType(e.target.value)}
                       className="school-select"
                     >
-                      {Object.entries(docTypeLabels).map(([k, v]) => (
+                      {Object.entries(TEACHER_DOC_TYPE_LABELS).map(([k, v]) => (
                         <option key={k} value={k}>
                           {v}
                         </option>
@@ -753,7 +747,7 @@ export function TeacherDetailPage() {
                     </span>
                     {!simpleMode && (
                       <span className="ml-2 text-xs text-school-inkmuted">
-                        {docTypeLabels[d.document_type] ?? d.document_type}
+                        {TEACHER_DOC_TYPE_LABELS[d.document_type] ?? d.document_type}
                       </span>
                     )}
                   </div>

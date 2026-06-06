@@ -23,7 +23,7 @@ class StoreTeacherDocumentRequest extends FormRequest
                 'required',
                 'string',
                 'max:100',
-                Rule::in(['contract', 'certificate', 'addendum', 'id_proof', 'other']),
+                Rule::in(['contract', 'certificate', 'addendum', 'id_proof', 'cin', 'cv', 'other']),
             ],
             'title' => ['nullable', 'string', 'max:255'],
             'issued_at' => ['nullable', 'date'],

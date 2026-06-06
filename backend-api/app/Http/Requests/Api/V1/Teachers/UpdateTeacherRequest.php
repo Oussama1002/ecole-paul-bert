@@ -20,12 +20,7 @@ class UpdateTeacherRequest extends FormRequest
         $teacher = $this->route('teacher');
 
         return [
-            'user_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('users', 'id'),
-                Rule::unique('teachers', 'user_id')->ignore($teacher->id),
-            ],
+            'user_id' => ['prohibited'],
             'employee_code' => [
                 'sometimes',
                 'string',

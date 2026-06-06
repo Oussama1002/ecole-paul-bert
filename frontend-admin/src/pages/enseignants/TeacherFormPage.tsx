@@ -3,7 +3,13 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import * as teachersApi from '../../api/teachers'
 import { useSimpleMode } from '../../contexts/SimpleModeContext'
+import { getApiErrorMessage } from '../../utils/apiError'
+import type { PendingTeacherDocuments } from '../../utils/teacherDocumentTypes'
 import { QuickTeacherForm } from './QuickTeacherForm'
+import {
+  TeacherDocumentUploadFields,
+  uploadPendingTeacherDocuments,
+} from './TeacherDocumentUploadFields'
 
 export function TeacherFormPage() {
   const { pathname } = useLocation()
@@ -32,7 +38,6 @@ export function TeacherFormPage() {
     )
   }
 
-  const [userId, setUserId] = useState('')
   const [employeeCode, setEmployeeCode] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -51,11 +56,11 @@ export function TeacherFormPage() {
   const [emergencyName, setEmergencyName] = useState('')
   const [emergencyPhone, setEmergencyPhone] = useState('')
   const [notes, setNotes] = useState('')
+  const [pendingDocs, setPendingDocs] = useState<PendingTeacherDocuments>({})
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!existing) return
-    setUserId(existing.user_id != null ? String(existing.user_id) : '')
     setEmployeeCode(existing.employee_code)
     setFirstName(existing.first_name)
     setLastName(existing.last_name)
@@ -80,9 +85,7 @@ export function TeacherFormPage() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const uid = userId.trim()
       const payload: teachersApi.TeacherPayload = {
-        user_id: uid ? parseInt(uid, 10) : null,
         employee_code: employeeCode,
         first_name: firstName,
         last_name: lastName,
@@ -103,7 +106,11 @@ export function TeacherFormPage() {
         notes: notes || null,
       }
       if (isNew) {
-        return teachersApi.createTeacher(payload)
+        const teacher = await teachersApi.createTeacher(payload)
+        if (Object.keys(pendingDocs).length > 0) {
+          await uploadPendingTeacherDocuments(teacher.id, pendingDocs)
+        }
+        return teacher
       }
       return teachersApi.updateTeacher(id, payload)
     },
@@ -111,7 +118,8 @@ export function TeacherFormPage() {
       queryClient.invalidateQueries({ queryKey: ['teachers'] })
       navigate('/enseignants')
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: unknown) =>
+      setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
 
   if (!isNew && isLoading) {
@@ -145,19 +153,6 @@ export function TeacherFormPage() {
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700">
-              ID utilisateur (compte) — optionnel
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm"
-              placeholder="Lier à un compte existant"
-            />
-          </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
               Matricule *
@@ -361,6 +356,13 @@ export function TeacherFormPage() {
             />
           </div>
         </div>
+
+        {isNew && (
+          <TeacherDocumentUploadFields
+            pending={pendingDocs}
+            onChange={setPendingDocs}
+          />
+        )}
 
         <div className="flex gap-3 pt-2">
           <button

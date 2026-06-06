@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useState } from 'react'
 import * as teachersApi from '../../api/teachers'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { useSimpleMode } from '../../contexts/SimpleModeContext'
+import type { PendingTeacherDocuments } from '../../utils/teacherDocumentTypes'
+import {
+  TeacherDocumentUploadFields,
+  uploadPendingTeacherDocuments,
+} from './TeacherDocumentUploadFields'
 
 function suggestEmployeeCode(): string {
   const y = new Date().getFullYear()
@@ -26,7 +32,6 @@ export function TeacherFormModal({
     enabled: !isNew && teacherId != null,
   })
 
-  const [userId, setUserId] = useState('')
   const [employeeCode, setEmployeeCode] = useState(isNew ? suggestEmployeeCode() : '')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -45,11 +50,11 @@ export function TeacherFormModal({
   const [emergencyName, setEmergencyName] = useState('')
   const [emergencyPhone, setEmergencyPhone] = useState('')
   const [notes, setNotes] = useState('')
+  const [pendingDocs, setPendingDocs] = useState<PendingTeacherDocuments>({})
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!existing) return
-    setUserId(existing.user_id != null ? String(existing.user_id) : '')
     setEmployeeCode(existing.employee_code)
     setFirstName(existing.first_name)
     setLastName(existing.last_name)
@@ -72,9 +77,7 @@ export function TeacherFormModal({
 
   const save = useMutation({
     mutationFn: async () => {
-      const uid = userId.trim()
       const payload: teachersApi.TeacherPayload = {
-        user_id: uid ? parseInt(uid, 10) : null,
         employee_code: employeeCode.trim(),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -94,14 +97,21 @@ export function TeacherFormModal({
         emergency_contact_phone: emergencyPhone || null,
         notes: notes || null,
       }
-      if (isNew) return teachersApi.createTeacher(payload)
+      if (isNew) {
+        const teacher = await teachersApi.createTeacher(payload)
+        if (Object.keys(pendingDocs).length > 0) {
+          await uploadPendingTeacherDocuments(teacher.id, pendingDocs)
+        }
+        return teacher
+      }
       return teachersApi.updateTeacher(teacherId as number, payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] })
       onClose()
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: unknown) =>
+      setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
 
   return (
@@ -184,9 +194,6 @@ export function TeacherFormModal({
                       <option value="other">Autre</option>
                     </select>
                   </Field>
-                  <Field label="ID utilisateur (compte) — optionnel">
-                    <input type="number" min={1} value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="Lier à un compte existant" className="school-input" />
-                  </Field>
                   <Field label="Date de naissance">
                     <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="school-input" />
                   </Field>
@@ -220,6 +227,13 @@ export function TeacherFormModal({
                 </>
               )}
             </div>
+
+            {isNew && (
+              <TeacherDocumentUploadFields
+                pending={pendingDocs}
+                onChange={setPendingDocs}
+              />
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={onClose} className="school-btn-secondary">Annuler</button>

@@ -2,6 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import * as teachersApi from '../../api/teachers'
+import { getApiErrorMessage } from '../../utils/apiError'
+import type { PendingTeacherDocuments } from '../../utils/teacherDocumentTypes'
+import {
+  TeacherDocumentUploadFields,
+  uploadPendingTeacherDocuments,
+} from './TeacherDocumentUploadFields'
 
 /**
  * Simple-mode teacher form.
@@ -45,6 +51,7 @@ export function QuickTeacherForm({
   const [lastName, setLastName] = useState(existing?.last_name ?? '')
   const [email, setEmail] = useState(existing?.email ?? '')
   const [phone, setPhone] = useState(existing?.phone ?? '')
+  const [pendingDocs, setPendingDocs] = useState<PendingTeacherDocuments>({})
   const [error, setError] = useState<string | null>(null)
 
   const save = useMutation({
@@ -58,7 +65,13 @@ export function QuickTeacherForm({
         employment_type: existing?.employment_type ?? 'full_time',
         status: existing?.status ?? 'active',
       }
-      if (isNew) return teachersApi.createTeacher(payload)
+      if (isNew) {
+        const teacher = await teachersApi.createTeacher(payload)
+        if (Object.keys(pendingDocs).length > 0) {
+          await uploadPendingTeacherDocuments(teacher.id, pendingDocs)
+        }
+        return teacher
+      }
       if (teacherId == null) throw new Error('Identifiant enseignant manquant.')
       return teachersApi.updateTeacher(teacherId, payload)
     },
@@ -66,7 +79,8 @@ export function QuickTeacherForm({
       queryClient.invalidateQueries({ queryKey: ['teachers'] })
       navigate('/enseignants')
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: unknown) =>
+      setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
 
   return (
@@ -203,6 +217,13 @@ export function QuickTeacherForm({
             </label>
           </div>
         </section>
+
+        {isNew && (
+          <TeacherDocumentUploadFields
+            pending={pendingDocs}
+            onChange={setPendingDocs}
+          />
+        )}
 
         <div className="flex flex-col-reverse items-stretch gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
           <Link to="/enseignants" className="school-btn-secondary text-center">

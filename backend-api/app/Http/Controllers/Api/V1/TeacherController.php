@@ -13,11 +13,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Services\AuditLogger;
+use App\Services\TeacherAccountService;
 
 class TeacherController extends Controller
 {
     public function __construct(
-        private AuditLogger $audit
+        private AuditLogger $audit,
+        private TeacherAccountService $teacherAccounts,
     ) {}
 
     public function index(IndexTeacherRequest $request): JsonResponse
@@ -72,6 +74,7 @@ class TeacherController extends Controller
     public function store(StoreTeacherRequest $request): JsonResponse
     {
         $teacher = Teacher::query()->create($request->validated());
+        $this->teacherAccounts->ensureUserAccount($teacher);
         $this->audit->log(
             $request->user(),
             'teacher.created',
@@ -93,6 +96,9 @@ class TeacherController extends Controller
         $teacher->fill($request->validated());
         $teacher->save();
         $changes = $teacher->getChanges();
+        if ($teacher->user_id === null) {
+            $this->teacherAccounts->ensureUserAccount($teacher);
+        }
         if ($changes !== []) {
             $this->audit->log(
                 $request->user(),
