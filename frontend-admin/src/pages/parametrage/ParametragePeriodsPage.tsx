@@ -267,6 +267,8 @@ export function ParametragePeriodsPage() {
       {evalModal && schoolYearId > 0 && (
         <EvalPeriodFormModal
           schoolYearId={schoolYearId}
+          schoolYear={years?.items.find((y) => y.id === schoolYearId) ?? null}
+          existingPeriods={evalPeriods?.items ?? []}
           period={evalModal.mode === 'edit' ? evalModal.period : null}
           terms={terms?.items ?? []}
           onClose={() => setEvalModal(null)}

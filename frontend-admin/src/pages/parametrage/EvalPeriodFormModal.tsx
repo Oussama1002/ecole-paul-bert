@@ -3,6 +3,8 @@ import { type FormEvent, useState } from 'react'
 import type { AcademicTerm } from '../../api/academicTerms'
 import * as evaluationPeriodsApi from '../../api/evaluationPeriods'
 import type { EvaluationPeriod } from '../../api/evaluationPeriods'
+import type { SchoolYear } from '../../api/schoolYears'
+import { suggestNextEvaluationPeriod } from '../../utils/evaluationPeriodSuggestion'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 function autoEvalCode(name: string): string {
@@ -12,11 +14,15 @@ function autoEvalCode(name: string): string {
 
 export function EvalPeriodFormModal({
   schoolYearId,
+  schoolYear,
+  existingPeriods,
   period,
   terms,
   onClose,
 }: {
   schoolYearId: number
+  schoolYear: SchoolYear | null
+  existingPeriods: EvaluationPeriod[]
   period: EvaluationPeriod | null
   terms: AcademicTerm[]
   onClose: () => void
@@ -24,13 +30,24 @@ export function EvalPeriodFormModal({
   const isNew = period === null
   const queryClient = useQueryClient()
 
-  const [termId, setTermId] = useState<number | ''>(period?.term_id ?? '')
-  const [name, setName] = useState(period?.name ?? '')
-  const [code, setCode] = useState(period?.code ?? '')
+  const suggestion =
+    isNew && schoolYear
+      ? suggestNextEvaluationPeriod(existingPeriods, terms, schoolYear)
+      : null
+
+  const [termId, setTermId] = useState<number | ''>(
+    period?.term_id ?? suggestion?.term_id ?? ''
+  )
+  const [name, setName] = useState(period?.name ?? suggestion?.name ?? '')
+  const [code, setCode] = useState(period?.code ?? suggestion?.code ?? '')
   const [codeManual, setCodeManual] = useState(!isNew)
-  const [start, setStart] = useState(period?.start_date?.slice(0, 10) ?? '')
-  const [end, setEnd] = useState(period?.end_date?.slice(0, 10) ?? '')
-  const [order, setOrder] = useState(period?.sort_order ?? 1)
+  const [start, setStart] = useState(
+    period?.start_date?.slice(0, 10) ?? suggestion?.start_date ?? ''
+  )
+  const [end, setEnd] = useState(
+    period?.end_date?.slice(0, 10) ?? suggestion?.end_date ?? ''
+  )
+  const [order, setOrder] = useState(period?.sort_order ?? suggestion?.sort_order ?? 1)
   const [closed, setClosed] = useState(period?.is_closed ?? false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +66,6 @@ export function EvalPeriodFormModal({
           code,
           start_date: start,
           end_date: end,
-          sort_order: order,
           is_closed: closed,
         })
       }
@@ -116,11 +132,13 @@ export function EvalPeriodFormModal({
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Date de fin *</span>
               <input type="date" required value={end} onChange={(e) => setEnd(e.target.value)} className="school-input" />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Ordre d'affichage</span>
-              <input type="number" min={0} value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="school-input" />
-            </label>
-            <label className="flex items-center gap-2 pt-6 text-sm">
+            {!isNew && (
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">Ordre d'affichage</span>
+                <input type="number" min={0} value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="school-input" />
+              </label>
+            )}
+            <label className={`flex items-center gap-2 text-sm ${!isNew ? 'pt-6' : 'sm:col-span-2'}`}>
               <input type="checkbox" checked={closed} onChange={(e) => setClosed(e.target.checked)} className="h-4 w-4" />
               <span className="text-school-ink">Fermée</span>
             </label>
