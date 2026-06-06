@@ -1,5 +1,12 @@
 import type { AuditLogRow } from '../../api/auditLogs'
-import { ActionBadge, formatSubjectTarget, formatAuditDate } from './auditLogDisplay'
+import {
+  ActionBadge,
+  formatAuditDate,
+  formatProfileChanges,
+  formatSubjectTarget,
+  shouldHideAuditOldValues,
+  shouldHideAuditRawValues,
+} from './auditLogDisplay'
 
 function formatJsonBlock(values: Record<string, unknown> | null): string | null {
   if (!values || Object.keys(values).length === 0) return null
@@ -15,6 +22,12 @@ export function AuditLogDetailModal({
 }) {
   const oldJson = formatJsonBlock(row.old_values)
   const newJson = formatJsonBlock(row.new_values)
+  const hideOldValues = shouldHideAuditOldValues(row.action)
+  const hideRawValues = shouldHideAuditRawValues(row.action)
+  const profileChanges =
+    row.action === 'auth.profile_updated'
+      ? formatProfileChanges(row.old_values, row.new_values)
+      : []
 
   return (
     <div
@@ -65,9 +78,8 @@ export function AuditLogDetailModal({
               <dt className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
                 Action
               </dt>
-              <dd className="mt-1 flex flex-wrap items-center gap-2">
+              <dd className="mt-1">
                 <ActionBadge code={row.action} />
-                <span className="font-mono text-xs text-school-inkmuted">{row.action}</span>
               </dd>
             </div>
             <div className="sm:col-span-2">
@@ -78,7 +90,26 @@ export function AuditLogDetailModal({
             </div>
           </dl>
 
-          {oldJson && (
+          {profileChanges.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                Modifications
+              </p>
+              <ul className="space-y-2 rounded-xl border border-school-line bg-school-canvas px-4 py-3">
+                {profileChanges.map((change) => (
+                  <li key={change.label} className="text-school-ink">
+                    <span className="font-semibold">{change.label}</span>
+                    {' : '}
+                    <span className="text-school-inkmuted">{change.before}</span>
+                    {' → '}
+                    <span>{change.after}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {oldJson && !hideOldValues && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
                 Anciennes valeurs
@@ -89,7 +120,7 @@ export function AuditLogDetailModal({
             </div>
           )}
 
-          {newJson && (
+          {newJson && !hideRawValues && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
                 Nouvelles valeurs
@@ -100,7 +131,7 @@ export function AuditLogDetailModal({
             </div>
           )}
 
-          {!oldJson && !newJson && (
+          {!hideRawValues && !oldJson && !newJson && (
             <p className="rounded-xl border border-school-line bg-school-canvas px-4 py-3 text-school-inkmuted">
               Aucune donnée de modification enregistrée pour cette action.
             </p>

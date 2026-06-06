@@ -111,3 +111,33 @@ export function formatSubjectTarget(row: AuditLogRow): string {
   }
   return '—'
 }
+
+const PROFILE_FIELD_FR: Record<string, string> = {
+  first_name: 'Prénom',
+  last_name: 'Nom',
+  email: 'E-mail',
+  phone: 'Téléphone',
+  username: 'Identifiant',
+}
+
+export function formatProfileChanges(
+  oldValues: Record<string, unknown> | null,
+  newValues: Record<string, unknown> | null
+): { label: string; before: string; after: string }[] {
+  if (!newValues) return []
+  return Object.keys(PROFILE_FIELD_FR)
+    .filter((key) => oldValues?.[key] !== newValues[key])
+    .map((key) => ({
+      label: PROFILE_FIELD_FR[key],
+      before: oldValues?.[key] != null && oldValues[key] !== '' ? String(oldValues[key]) : '—',
+      after: newValues[key] != null && newValues[key] !== '' ? String(newValues[key]) : '—',
+    }))
+}
+
+export function shouldHideAuditOldValues(action: string): boolean {
+  return action === 'auth.profile_updated' || action === 'auth.password_changed'
+}
+
+export function shouldHideAuditRawValues(action: string): boolean {
+  return action === 'auth.profile_updated' || action === 'auth.password_changed'
+}
