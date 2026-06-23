@@ -14,6 +14,14 @@ class CleanTestData extends Command
 
     public function handle(): int
     {
+        // Hard guard: refuse to run unless an explicit, hard-to-fat-finger env var is set.
+        // This prevents any cron, deploy script, or accident from truncating production data.
+        if (env('ALLOW_DB_CLEAN_TESTDATA') !== 'I_REALLY_WANT_TO_WIPE_DATA') {
+            $this->error('Refusing to run. Set ALLOW_DB_CLEAN_TESTDATA="I_REALLY_WANT_TO_WIPE_DATA" in .env to enable.');
+            \Illuminate\Support\Facades\Log::warning('db:clean-testdata invocation refused (env guard not set).');
+            return self::FAILURE;
+        }
+
         if (app()->environment('production') && ! $this->option('force')) {
             if (! $this->confirm('You are on PRODUCTION. Are you sure you want to delete test data?')) {
                 $this->info('Aborted.');
