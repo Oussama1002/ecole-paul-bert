@@ -31,6 +31,7 @@ export function GradesBulkClassPage() {
   const [maxScore, setMaxScore] = useState<number>(20)
   const [coefficient, setCoefficient] = useState<number>(1)
   const [error, setError] = useState<string | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
   const { data: years } = useQuery({
     queryKey: ['school-years-grades'],
@@ -211,6 +212,10 @@ export function GradesBulkClassPage() {
         })
       }
     },
+    onSuccess: () => {
+      setError(null)
+      setShowModal(false)
+    },
     onError: (e) => setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
 
@@ -265,6 +270,31 @@ export function GradesBulkClassPage() {
         </label>
       </div>
 
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowModal(true)}
+          disabled={!schoolYearId || !classId || !periodId}
+          className="rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+        >
+          ✏️ Saisir les notes
+        </button>
+      </div>
+
+      {showModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10"
+        onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}
+      >
+      <div className="w-full max-w-4xl rounded-3xl border-2 border-school-line bg-white shadow-2xl">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-school-line bg-white px-6 py-4 rounded-t-3xl">
+        <div>
+          <h3 className="font-display text-lg font-bold text-school-ink">Saisie des notes par classe</h3>
+          <p className="text-xs text-school-inkmuted">Sélectionnez la matière, puis renseignez les notes.</p>
+        </div>
+        <button type="button" onClick={() => setShowModal(false)} className="rounded-xl border-2 border-school-line px-3 py-1 text-sm font-semibold text-school-inkmuted hover:bg-school-cream">✕ Fermer</button>
+      </div>
+      <div className="space-y-4 p-6">
       {isLocked && (
         <div
           className={[
@@ -438,6 +468,10 @@ export function GradesBulkClassPage() {
           </tbody>
         </table>
       </div>
+      </div>
+      </div>
+      </div>
+      )}
     </div>
   )
 }
