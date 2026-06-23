@@ -155,17 +155,6 @@ export function TeacherFormPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Matricule *
-            </label>
-            <input
-              required
-              value={employeeCode}
-              onChange={(e) => setEmployeeCode(e.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
               Statut
             </label>
             <select

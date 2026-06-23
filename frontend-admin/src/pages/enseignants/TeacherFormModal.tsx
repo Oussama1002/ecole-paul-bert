@@ -146,21 +146,6 @@ export function TeacherFormModal({
                 <input required value={lastName} onChange={(e) => setLastName(e.target.value)} className="school-input" />
               </Field>
 
-              <Field label="Matricule *" className="sm:col-span-2">
-                <div className="flex gap-2">
-                  <input required value={employeeCode} onChange={(e) => setEmployeeCode(e.target.value)} className="school-input flex-1 font-mono" />
-                  {isNew && (
-                    <button
-                      type="button"
-                      onClick={() => setEmployeeCode(suggestEmployeeCode())}
-                      className="rounded-2xl border-2 border-school-grape/30 bg-white px-3 py-2 text-xs font-bold text-school-grape hover:bg-school-grape/5"
-                    >
-                      Auto
-                    </button>
-                  )}
-                </div>
-              </Field>
-
               <Field label="Email">
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="school-input" />
               </Field>

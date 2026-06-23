@@ -4,6 +4,7 @@ import * as attendanceApi from '../../api/attendance'
 import * as classesApi from '../../api/classes'
 import * as schoolYearsApi from '../../api/schoolYears'
 import * as studentsApi from '../../api/students'
+import * as subjectsApi from '../../api/subjects'
 
 type Row = {
   student_id: number
@@ -16,8 +17,14 @@ type Row = {
 export function AttendanceQuickClassPage() {
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
   const [classId, setClassId] = useState<number>(0)
+  const [subjectId, setSubjectId] = useState<number>(0)
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
   const [error, setError] = useState<string | null>(null)
+
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects-attendance'],
+    queryFn: () => subjectsApi.fetchSubjects({ per_page: 200, status: 'active', sort_by: 'name', sort_order: 'asc' }),
+  })
 
   const { data: years } = useQuery({
     queryKey: ['school-years-attendance'],
@@ -88,6 +95,7 @@ export function AttendanceQuickClassPage() {
       const payload: attendanceApi.BulkMarkPayload = {
         school_year_id: schoolYearId,
         attendance_date: date,
+        subject_id: subjectId || null,
         items: rows.map((r) => ({
           student_id: r.student_id,
           attendance_status: r.status,
@@ -117,7 +125,7 @@ export function AttendanceQuickClassPage() {
         <p className="text-sm text-slate-500">Saisie en masse par classe (présent/absent/retard).</p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-3">
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-4">
         <label className="block text-sm">
           <span className="text-xs text-slate-500">Année scolaire</span>
           <select
@@ -150,6 +158,20 @@ export function AttendanceQuickClassPage() {
               <option key={c.id} value={c.id}>
                 {c.name} ({c.code})
               </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm">
+          <span className="text-xs text-slate-500">Matière</span>
+          <select
+            value={subjectId || ''}
+            onChange={(e) => setSubjectId(Number(e.target.value))}
+            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+          >
+            <option value="">— Toutes —</option>
+            {subjects?.items.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </label>
