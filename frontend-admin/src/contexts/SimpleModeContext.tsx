@@ -1,14 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
-import * as settingsApi from '../api/appSettings'
-import { useAuth } from './AuthContext'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 
 type SimpleModeContextValue = {
   simpleMode: boolean
@@ -19,61 +9,23 @@ type SimpleModeContextValue = {
 
 const SimpleModeContext = createContext<SimpleModeContextValue | null>(null)
 
-const LOCAL_FALLBACK_KEY = 'paulbert_simple_mode'
-
+/**
+ * Simple mode has been removed — users always see the full feature set.
+ * This context is kept as a stable shim so existing call sites that still
+ * read `simpleMode` keep compiling; `simpleMode` is permanently `false`
+ * and the toggle is hidden (`canToggle: false`).
+ */
 export function SimpleModeProvider({ children }: { children: ReactNode }) {
-  const { user, ready: authReady } = useAuth()
-  const [simpleMode, setSimpleModeState] = useState<boolean>(() => {
-    const stored = localStorage.getItem(LOCAL_FALLBACK_KEY)
-    return stored === null ? true : stored === '1'
-  })
-  const [ready, setReady] = useState(false)
-
-  const canToggle =
-    user?.role?.code === 'super_admin' || user?.role?.code === 'admin'
-
-  const loadFromServer = useCallback(async () => {
-    try {
-      const s = await settingsApi.fetchAppSettings()
-      setSimpleModeState(s.simple_mode_enabled)
-      localStorage.setItem(LOCAL_FALLBACK_KEY, s.simple_mode_enabled ? '1' : '0')
-    } catch {
-      // keep local fallback — offline or 401
-    } finally {
-      setReady(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!authReady) return
-    if (!user) {
-      setReady(true)
-      return
-    }
-    void loadFromServer()
-  }, [authReady, user, loadFromServer])
-
-  const setSimpleMode = useCallback(
-    async (value: boolean) => {
-      // Optimistic update
-      setSimpleModeState(value)
-      localStorage.setItem(LOCAL_FALLBACK_KEY, value ? '1' : '0')
-      if (canToggle) {
-        try {
-          const s = await settingsApi.updateAppSettings({ simple_mode_enabled: value })
-          setSimpleModeState(s.simple_mode_enabled)
-        } catch {
-          // revert on failure
-          await loadFromServer()
-        }
-      }
-    },
-    [canToggle, loadFromServer]
-  )
-
-  const value = useMemo(
-    () => ({ simpleMode, ready, canToggle, setSimpleMode }),
-    [simpleMode, ready, canToggle, setSimpleMode]
+  const value = useMemo<SimpleModeContextValue>(
+    () => ({
+      simpleMode: false,
+      ready: true,
+      canToggle: false,
+      setSimpleMode: async () => {
+        /* no-op — simple mode is disabled globally */
+      },
+    }),
+    []
   )
 
   return (
