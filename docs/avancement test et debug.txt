@@ -1,0 +1,51 @@
+🏠
+Tableau de bord
+🎒
+Élèves ------------------------------------------------------------------------------------- DONE    (RECU DE PAIEMENT)
+
+📋
+Absences & retards
+✏️
+Notes & bulletins
+💶
+Finance
+📊
+— Bilan
+💳
+— Paiements ------------------------------------------------------------------------------------- DONE    (RECU DE PAIEMENT)
+📑
+— Factures  ------------------------------------------------------------------------------------- DONE
+🧾
+— Dépenses  ------------------------------------------------------------------------------------- DONE
+
+📁
+Documents  ------------------------------------------------------------------------------------- DONE  (by default any document should be stored here)
+👩‍🏫
+Enseignants
+📅
+Emploi du temps
+👥
+Utilisateurs
+📢
+Annonces
+🔍
+Audit
+Paramétrage
+
+📆
+Années scolaires ------------------------------------------------------------------------------------- DONE
+🔢
+Niveaux
+🚪
+Classes
+📚
+Matières ------------------------------------------------------------------------------------- DONE
+
+⏱️
+Périodes & évaluations
+🏫
+Salles
+✦
+Modèle de bulletin
+⚙️
+École — réglages simples

@@ -47,10 +47,10 @@
     </div>
     <table>
         <tbody>
-        <tr><th>Recettes (paiements confirmés)</th><td>{{ number_format($revenue, 2, ',', ' ') }} FCFA</td></tr>
-        <tr><th>Dépenses (actives)</th><td>{{ number_format($expenses, 2, ',', ' ') }} FCFA</td></tr>
-        <tr><th>Solde net</th><td><b>{{ number_format($net, 2, ',', ' ') }} FCFA</b></td></tr>
-        <tr><th>Encours factures (hors annulées)</th><td>{{ number_format($unpaid, 2, ',', ' ') }} FCFA</td></tr>
+        <tr><th>Recettes (paiements confirmés)</th><td>{{ number_format($revenue, 2, ',', ' ') }} MAD</td></tr>
+        <tr><th>Dépenses (actives)</th><td>{{ number_format($expenses, 2, ',', ' ') }} MAD</td></tr>
+        <tr><th>Solde net</th><td><b>{{ number_format($net, 2, ',', ' ') }} MAD</b></td></tr>
+        <tr><th>Encours factures (hors annulées)</th><td>{{ number_format($unpaid, 2, ',', ' ') }} MAD</td></tr>
         </tbody>
     </table>
     </div>

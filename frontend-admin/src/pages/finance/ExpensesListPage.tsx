@@ -55,7 +55,7 @@ export function ExpensesListPage() {
 
   const { data: categories } = useQuery({
     queryKey: ['expense-categories'],
-    queryFn: () => financeApi.fetchExpenseCategories({ is_active: true, per_page: 100 }),
+    queryFn: () => financeApi.fetchExpenseCategories({ per_page: 100 }),
   })
 
   const { data: nextRef, refetch: refetchRef } = useQuery({

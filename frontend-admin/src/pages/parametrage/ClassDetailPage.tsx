@@ -60,8 +60,8 @@ export function ClassDetailPage() {
           <dd className="text-slate-800">{data.level?.name ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase text-slate-500">Année scolaire</dt>
-          <dd className="text-slate-800">{data.school_year?.name ?? '—'}</dd>
+          <dt className="text-xs uppercase text-slate-500">Années scolaires</dt>
+          <dd className="text-slate-800">{classesApi.classYearLabel(data)}</dd>
         </div>
         <div>
           <dt className="text-xs uppercase text-slate-500">Section</dt>

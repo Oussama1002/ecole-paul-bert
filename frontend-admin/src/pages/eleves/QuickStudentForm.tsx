@@ -88,10 +88,11 @@ export function QuickStudentForm({
   }, [isNew, schoolYearId, defaultYearId, years?.items])
 
   const { data: classes } = useQuery({
-    queryKey: ['classes-student-form-all'],
+    queryKey: ['classes-student-form', schoolYearId],
     queryFn: () =>
       classesApi.fetchClasses({
         per_page: 200,
+        school_year_id: schoolYearId > 0 ? schoolYearId : undefined,
         sort_by: 'name',
         sort_order: 'asc',
       }),
@@ -344,9 +345,13 @@ export function QuickStudentForm({
                   onChange={(e) => {
                     const newYear = Number(e.target.value) || 0
                     setSchoolYearId(newYear)
-                    if (classId > 0) {
+                    if (classId > 0 && newYear > 0) {
                       const current = classes?.items.find((c) => c.id === classId)
-                      if (current && current.school_year_id !== newYear) {
+                      const offered =
+                        current?.school_year_ids?.includes(newYear) ||
+                        current?.school_years?.some((y) => y.id === newYear) ||
+                        current?.school_year_id === newYear
+                      if (current && !offered) {
                         setClassId(0)
                       }
                     }
@@ -372,8 +377,12 @@ export function QuickStudentForm({
                     const id = Number(e.target.value) || 0
                     setClassId(id)
                     const picked = classes?.items.find((c) => c.id === id)
-                    if (picked?.school_year_id) {
-                      setSchoolYearId(picked.school_year_id)
+                    if (picked && schoolYearId <= 0) {
+                      const yearId =
+                        picked.school_year_id ??
+                        picked.school_year_ids?.[0] ??
+                        picked.school_years?.[0]?.id
+                      if (yearId) setSchoolYearId(yearId)
                     }
                   }}
                   className="school-select"
@@ -386,7 +395,9 @@ export function QuickStudentForm({
                   {(classes?.items ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
-                      {c.school_year?.name ? ` — ${c.school_year.name}` : ''}
+                      {classesApi.classYearLabel(c) !== 'Toutes les années'
+                        ? ` — ${classesApi.classYearLabel(c)}`
+                        : ''}
                     </option>
                   ))}
                 </select>

@@ -1,20 +1,30 @@
-in http://79.143.180.186/bulletins/6 in Aperçu PDF: Aperçu impossible. Essayez de télécharger directement.
+in http://79.143.180.186/bulletins/6 in Aperçu PDF: Aperçu impossible. Essayez de télécharger directement.------------DONE
 
 Erreur de chargement:
-1- Élève in http://79.143.180.186/finance/factures
-2- Matière in http://79.143.180.186/notes/saisie-classe
+1- Élève in http://79.143.180.186/finance/factures                                                                        DONE
+2- Matière in http://79.143.180.186/notes/saisie-classe                                                                   DONE
 
 liste depenses doesnt appear from http://79.143.180.186/ecole/parametres to Nouvelle dépense
-Catégorie on http://79.143.180.186/finance/depenses
+Catégorie on http://79.143.180.186/finance/depenses ---
 
-there is no button of save on Saisie des notes par classe in http://79.143.180.186/notes/saisie-classe
+there is no button of save on Saisie des notes par classe in http://79.143.180.186/notes/saisie-classe ---
 
-Une erreur interne est survenue. Veuillez réessayer. on Uploader un document in http://79.143.180.186/documents
+Une erreur interne est survenue. Veuillez réessayer. on Uploader un document in http://79.143.180.186/documents --
 
-error Request failed with status code 422 on Nouvel enseignant on http://79.143.180.186/enseignants/nouveau
+error Request failed with status code 422 on Nouvel enseignant on http://79.143.180.186/enseignants/nouveau ---
 
-on Marquage rapide field Matière is missed in http://79.143.180.186/assiduite/marquage
+on Marquage rapide field Matière is missed in http://79.143.180.186/assiduite/marquage ---
 
-error Matière options doesnt appear on Nouveau créneau http://79.143.180.186/emploi-du-temps
+error Matière options doesnt appear on Nouveau créneau http://79.143.180.186/emploi-du-temps --------------------------DONE
 
-logo of the system
+add the logo to the system: C:\xampp2\htdocs\ecole-paul-bert\frontend-admin\src\assets\logo_paulbert.jpg
+
+
+error on http://79.143.180.186/ecole/parametres: Une erreur interne est survenue. Veuillez réessayer.------------------DONE
+
+the code should be auto like T1-PB for 1er trimestre and T2-PB	2eme trimestre.------------------------DONE
+
+on http://79.143.180.186/emploi-du-temps error Enseignant not displaying :Nouveau créneau ------------------- done 
+
+Mot de passe oublié should send a request notif to admin side to change the password of that user and admin should change his pwd
+

@@ -141,3 +141,160 @@ export function shouldHideAuditOldValues(action: string): boolean {
 export function shouldHideAuditRawValues(action: string): boolean {
   return action === 'auth.profile_updated' || action === 'auth.password_changed'
 }
+
+// ─── Friendly French diff renderer ────────────────────────────────────────
+
+const FIELD_FR: Record<string, string> = {
+  // common
+  name: 'Nom',
+  email: 'E-mail',
+  phone: 'Téléphone',
+  address: 'Adresse',
+  city: 'Ville',
+  status: 'Statut',
+  amount: 'Montant',
+  notes: 'Notes',
+  description: 'Description',
+  // school settings
+  'school.name': "Nom de l'école",
+  'school.address': 'Adresse',
+  'school.city': 'Ville',
+  'school.phone': 'Téléphone',
+  'school.email': 'E-mail',
+  'school.logo_path': 'Logo',
+  'bulletin.title': 'Titre du bulletin',
+  'bulletin.signature_line': 'Ligne de signature',
+  'bulletin.footer_line': 'Pied de page',
+  'bulletin.show_attendance': 'Afficher absences',
+  'bulletin.show_ranking': 'Afficher rang',
+  'bulletin.principal_comment': 'Commentaire direction',
+  'bulletin.teacher_comment': 'Commentaire enseignant',
+  'attendance_alerts.window_days': 'Fenêtre alertes (jours)',
+  'attendance_alerts.unjustified_absences': 'Seuil absences non justifiées',
+  'attendance_alerts.late_count': 'Seuil retards',
+  current_school_year_id: 'Année scolaire active',
+  'finance_journal.income_labels': 'Catégories recettes',
+  'finance_journal.expense_labels': 'Catégories dépenses',
+  // user
+  first_name: 'Prénom',
+  last_name: 'Nom',
+  username: 'Identifiant',
+  role_id: 'Rôle',
+  // invoice/payment
+  invoice_number: 'N° facture',
+  payment_reference: 'Référence',
+  payment_method: 'Méthode',
+  payment_date: 'Date du paiement',
+  issue_date: "Date d'émission",
+  due_date: 'Échéance',
+  total_amount: 'Total',
+  amount_paid: 'Payé',
+  amount_due: 'Reste',
+  discount_amount: 'Remise',
+  tax_amount: 'Taxe',
+  cancel_reason: "Motif d'annulation",
+  cancelled_at: 'Annulé le',
+  // student
+  student_code: 'Matricule',
+  date_of_birth: 'Date de naissance',
+  // teacher
+  employee_code: 'Matricule',
+  employment_type: 'Type de contrat',
+}
+
+const STATUS_VALUES_FR: Record<string, string> = {
+  active: 'Actif',
+  inactive: 'Inactif',
+  pending: 'En attente',
+  archived: 'Archivé',
+  withdrawn: 'Retiré',
+  graduated: 'Diplômé',
+  transferred: 'Transféré',
+  suspended: 'Suspendu',
+  confirmed: 'Confirmé',
+  cancelled: 'Annulé',
+  draft: 'Brouillon',
+  issued: 'Émise',
+  partial: 'Partielle',
+  paid: 'Payée',
+  published: 'Publié',
+  cash: 'Espèces',
+  card: 'Carte',
+  transfer: 'Virement',
+  check: 'Chèque',
+}
+
+function prettifyKey(path: string): string {
+  if (FIELD_FR[path]) return FIELD_FR[path]
+  const last = path.split('.').pop() ?? path
+  if (FIELD_FR[last]) return FIELD_FR[last]
+  return last
+    .replace(/[._]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatValue(path: string, value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'boolean') return value ? 'Oui' : 'Non'
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '— (vide)'
+    return value.map((v) => String(v)).join(', ')
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+  const str = String(value)
+  // status-like / known enums
+  if (
+    path.endsWith('status') ||
+    path.endsWith('payment_method') ||
+    STATUS_VALUES_FR[str]
+  ) {
+    return STATUS_VALUES_FR[str] ?? str
+  }
+  // long logo paths or storage paths — shorten
+  if ((path.includes('logo') || path.includes('path')) && str.length > 40) {
+    return '… ' + str.slice(-32)
+  }
+  return str
+}
+
+export type AuditChange = { path: string; label: string; before: string; after: string }
+
+function flatten(obj: Record<string, unknown> | null | undefined, prefix = ''): Record<string, unknown> {
+  if (!obj || typeof obj !== 'object') return {}
+  const out: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(obj)) {
+    const path = prefix ? `${prefix}.${key}` : key
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      Object.assign(out, flatten(val as Record<string, unknown>, path))
+    } else {
+      out[path] = val
+    }
+  }
+  return out
+}
+
+export function computeAuditDiff(
+  oldVals: Record<string, unknown> | null,
+  newVals: Record<string, unknown> | null
+): AuditChange[] {
+  const oldFlat = flatten(oldVals)
+  const newFlat = flatten(newVals)
+  const keys = new Set([...Object.keys(oldFlat), ...Object.keys(newFlat)])
+  const changes: AuditChange[] = []
+  for (const path of keys) {
+    const before = oldFlat[path]
+    const after = newFlat[path]
+    const bStr = JSON.stringify(before ?? null)
+    const aStr = JSON.stringify(after ?? null)
+    if (bStr === aStr) continue
+    changes.push({
+      path,
+      label: prettifyKey(path),
+      before: formatValue(path, before),
+      after: formatValue(path, after),
+    })
+  }
+  return changes.sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+}

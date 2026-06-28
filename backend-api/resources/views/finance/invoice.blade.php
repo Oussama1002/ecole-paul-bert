@@ -65,19 +65,19 @@
         @foreach($invoice->items as $it)
             <tr>
                 <td class="word-break">{{ $it->label ?: '—' }}</td>
-                <td class="right">{{ number_format((float)$it->amount, 2, ',', ' ') }} DH</td>
+                <td class="right">{{ number_format((float)$it->amount, 2, ',', ' ') }} MAD</td>
             </tr>
         @endforeach
         </tbody>
     </table>
 
     <div style="margin-top: 16px;">
-        <div><span class="muted">Sous-total</span> {{ number_format((float)$invoice->subtotal, 2, ',', ' ') }} DH</div>
-        <div><span class="muted">Remise</span> {{ number_format((float)$invoice->discount_amount, 2, ',', ' ') }} DH</div>
-        <div><span class="muted">Taxes</span> {{ number_format((float)$invoice->tax_amount, 2, ',', ' ') }} DH</div>
-        <div><b>Total</b> {{ number_format((float)$invoice->total_amount, 2, ',', ' ') }} DH</div>
-        <div><span class="muted">Payé</span> {{ number_format((float)$invoice->amount_paid, 2, ',', ' ') }} DH</div>
-        <div><b>Reste dû</b> {{ number_format((float)$invoice->amount_due, 2, ',', ' ') }} DH</div>
+        <div><span class="muted">Sous-total</span> {{ number_format((float)$invoice->subtotal, 2, ',', ' ') }} MAD</div>
+        <div><span class="muted">Remise</span> {{ number_format((float)$invoice->discount_amount, 2, ',', ' ') }} MAD</div>
+        <div><span class="muted">Taxes</span> {{ number_format((float)$invoice->tax_amount, 2, ',', ' ') }} MAD</div>
+        <div><b>Total</b> {{ number_format((float)$invoice->total_amount, 2, ',', ' ') }} MAD</div>
+        <div><span class="muted">Payé</span> {{ number_format((float)$invoice->amount_paid, 2, ',', ' ') }} MAD</div>
+        <div><b>Reste dû</b> {{ number_format((float)$invoice->amount_due, 2, ',', ' ') }} MAD</div>
     </div>
     </div>
 </body>

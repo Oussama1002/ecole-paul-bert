@@ -41,11 +41,10 @@ export function useClassSelector(schoolYearId: number) {
     queryFn: () =>
       classesApi.fetchClasses({
         per_page: 200,
-        school_year_id: schoolYearId,
+        school_year_id: schoolYearId > 0 ? schoolYearId : undefined,
         sort_by: 'name',
         sort_order: 'asc',
       }),
-    enabled: schoolYearId > 0,
     staleTime: 2 * 60 * 1000,
   })
 

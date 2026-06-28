@@ -376,7 +376,7 @@ export function ScheduleWeeklyPage() {
 
       <p className="mb-2 text-sm text-slate-600">{weekLabel}</p>
 
-      {conflicts.length > 0 && (
+      {!formOpen && conflicts.length > 0 && (
         <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="font-medium">Conflits détectés</p>
           <ul className="mt-1 list-inside list-disc">
@@ -389,7 +389,7 @@ export function ScheduleWeeklyPage() {
         </div>
       )}
 
-      {formErr && !conflicts.length && (
+      {!formOpen && formErr && !conflicts.length && (
         <p className="mb-4 text-sm text-red-600">{formErr}</p>
       )}
 
@@ -624,12 +624,20 @@ export function ScheduleWeeklyPage() {
                 />
               </div>
             </div>
+            {formErr && conflicts.length === 0 && (
+              <div className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+                ✕ {formErr}
+              </div>
+            )}
             {conflicts.length > 0 && (
-              <ul className="mt-3 list-inside list-disc text-sm text-amber-800">
-                {conflicts.map((c) => (
-                  <li key={`f-${c.code}-${c.conflicting_entry_id}`}>{c.message}</li>
-                ))}
-              </ul>
+              <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="mb-1 font-semibold">⚠️ Conflit détecté</p>
+                <ul className="list-inside list-disc">
+                  {conflicts.map((c) => (
+                    <li key={`f-${c.code}-${c.conflicting_entry_id}`}>{c.message}</li>
+                  ))}
+                </ul>
+              </div>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
               <button

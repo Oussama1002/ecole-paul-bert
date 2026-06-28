@@ -222,90 +222,125 @@ export function AttendanceQuickClassPage() {
         </button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left">
-              <th className="px-4 py-3">Élève</th>
-              <th className="px-4 py-3">Statut</th>
-              <th className="px-4 py-3">Retard (min)</th>
-              <th className="px-4 py-3">Remarques</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td className="px-4 py-3 text-slate-500" colSpan={4}>
-                  Sélectionnez une année et une classe.
-                </td>
-              </tr>
-            ) : (
-              rows.map((r, idx) => (
-                <tr key={r.student_id} className="border-b border-slate-100">
-                  <td className="px-4 py-3">{r.label}</td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={r.status}
-                      onChange={(e) => {
-                        const status = e.target.value as attendanceApi.AttendanceStatus
-                        setRows((prev) =>
-                          prev.map((x, i) =>
-                            i === idx
-                              ? {
-                                  ...x,
-                                  status,
-                                  minutes_late: status === 'late' ? x.minutes_late : 0,
-                                }
-                              : x
-                          )
-                        )
-                      }}
-                      className="w-full rounded border border-slate-300 px-2 py-1"
-                    >
-                      <option value="present">Présent</option>
-                      <option value="absent">Absent</option>
-                      <option value="late">Retard</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="number"
-                      min={0}
-                      max={600}
-                      value={r.minutes_late}
-                      disabled={r.status !== 'late'}
-                      onChange={(e) =>
-                        setRows((prev) =>
-                          prev.map((x, i) =>
-                            i === idx ? { ...x, minutes_late: Number(e.target.value) } : x
-                          )
-                        )
-                      }
-                      className="w-28 rounded border border-slate-300 px-2 py-1 disabled:opacity-60"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      value={r.remarks}
-                      onChange={(e) =>
-                        setRows((prev) =>
-                          prev.map((x, i) => (i === idx ? { ...x, remarks: e.target.value } : x))
-                        )
-                      }
-                      className="w-full rounded border border-slate-300 px-2 py-1"
-                      placeholder="Optionnel…"
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {rows.length === 0 ? (
+        <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+          🎒 Sélectionnez une année et une classe pour afficher les élèves.
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 rounded-3xl border-2 border-school-line bg-white px-4 py-3 shadow-sm">
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              ✓ {rows.filter((r) => r.status === 'present').length} présents
+            </span>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+              ⏰ {rows.filter((r) => r.status === 'late').length} retards
+            </span>
+            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+              ✕ {rows.filter((r) => r.status === 'absent').length} absents
+            </span>
+            <span className="ml-auto text-xs text-slate-500">{rows.length} élèves au total</span>
+          </div>
 
-      <div className="text-sm text-slate-500">
-        Astuce: utilisez l’écran “Absences” sur la fiche élève pour justifier.
-      </div>
+          <div className="space-y-2">
+            {rows.map((r, idx) => {
+              const setStatus = (status: attendanceApi.AttendanceStatus) =>
+                setRows((prev) =>
+                  prev.map((x, i) =>
+                    i === idx
+                      ? { ...x, status, minutes_late: status === 'late' ? x.minutes_late || 5 : 0 }
+                      : x
+                  )
+                )
+              const statusBtn = (
+                v: attendanceApi.AttendanceStatus,
+                label: string,
+                emoji: string,
+                onClasses: string
+              ) => (
+                <button
+                  type="button"
+                  onClick={() => setStatus(v)}
+                  className={[
+                    'flex-1 rounded-xl px-3 py-2 text-sm font-bold transition',
+                    r.status === v
+                      ? onClasses + ' shadow'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
+                  ].join(' ')}
+                >
+                  {emoji} {label}
+                </button>
+              )
+              return (
+                <div
+                  key={r.student_id}
+                  className="rounded-2xl border-2 border-school-line bg-white p-3 shadow-sm transition hover:shadow"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-school-bubblegum to-school-grape text-sm font-bold text-white">
+                      {r.label
+                        .split(' ')
+                        .slice(0, 2)
+                        .map((s) => s[0] ?? '')
+                        .join('')
+                        .toUpperCase()}
+                    </div>
+                    <span className="flex-1 font-semibold text-slate-800">{r.label}</span>
+                    <div className="flex w-full gap-2 sm:w-auto">
+                      {statusBtn('present', 'Présent', '✓', 'bg-emerald-500 text-white')}
+                      {statusBtn('late', 'Retard', '⏰', 'bg-amber-500 text-white')}
+                      {statusBtn('absent', 'Absent', '✕', 'bg-red-500 text-white')}
+                    </div>
+                  </div>
+                  {r.status === 'late' && (
+                    <div className="mt-3 flex flex-wrap gap-3 border-t border-slate-100 pt-3">
+                      <label className="flex items-center gap-2 text-xs text-slate-600">
+                        Retard (min)
+                        <input
+                          type="number"
+                          min={0}
+                          max={600}
+                          value={r.minutes_late}
+                          onChange={(e) =>
+                            setRows((prev) =>
+                              prev.map((x, i) =>
+                                i === idx ? { ...x, minutes_late: Number(e.target.value) } : x
+                              )
+                            )
+                          }
+                          className="w-20 rounded border border-slate-300 px-2 py-1"
+                        />
+                      </label>
+                      <input
+                        value={r.remarks}
+                        onChange={(e) =>
+                          setRows((prev) =>
+                            prev.map((x, i) =>
+                              i === idx ? { ...x, remarks: e.target.value } : x
+                            )
+                          )
+                        }
+                        className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+                        placeholder="Remarque (optionnel)…"
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="sticky bottom-3 z-10 mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={() => bulk.mutate()}
+              disabled={bulk.isPending || !schoolYearId || !classId || rows.length === 0}
+              className="rounded-2xl bg-indigo-600 px-8 py-3 text-base font-bold text-white shadow-lg hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {bulk.isPending ? 'Enregistrement…' : '💾 Enregistrer les présences'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

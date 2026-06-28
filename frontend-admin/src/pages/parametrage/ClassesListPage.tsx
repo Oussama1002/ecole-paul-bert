@@ -116,7 +116,7 @@ export function ClassesListPage() {
                 <th className="px-4 py-2 text-left">Code</th>
                 <th className="px-4 py-2 text-left">Nom</th>
                 <th className="px-4 py-2 text-left">Niveau</th>
-                <th className="px-4 py-2 text-left">Année</th>
+                <th className="px-4 py-2 text-left">Années</th>
                 <th className="px-4 py-2 text-right">Actions</th>
               </tr>
             </thead>
@@ -129,7 +129,7 @@ export function ClassesListPage() {
                     {c.level?.name ?? '—'}
                   </td>
                   <td className="px-4 py-2 text-slate-600">
-                    {c.school_year?.name ?? '—'}
+                    {classesApi.classYearLabel(c, years?.items.length)}
                   </td>
                   <td className="px-4 py-2 text-right">
                     <Link

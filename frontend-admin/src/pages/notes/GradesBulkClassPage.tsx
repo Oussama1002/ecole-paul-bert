@@ -313,9 +313,9 @@ export function GradesBulkClassPage() {
         </div>
       )}
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-4">
-        <label className="block text-sm">
-          <span className="text-xs text-slate-500">Matière</span>
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-3">
+        <label className="block text-sm md:col-span-1">
+          <span className="text-xs text-slate-500">Matière *</span>
           <div className="mt-1">
             <SearchSelect
               value={subjectId || null}
@@ -345,23 +345,6 @@ export function GradesBulkClassPage() {
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
           />
         </label>
-        <div className="flex items-end">
-          <button
-            type="button"
-            onClick={() => bulk.mutate()}
-            disabled={
-              bulk.isPending ||
-              !schoolYearId ||
-              !classId ||
-              !periodId ||
-              !subjectId ||
-              editingBlocked
-            }
-            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            Enregistrer
-          </button>
-        </div>
       </div>
 
       {loadingGrades && subjectId > 0 && (
@@ -468,6 +451,36 @@ export function GradesBulkClassPage() {
           </tbody>
         </table>
       </div>
+      </div>
+      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-3xl border-t-2 border-school-line bg-white px-6 py-4">
+        <span className="text-xs text-slate-500">
+          {rows.length} élève{rows.length > 1 ? 's' : ''}
+          {subjectId > 0 ? ` · Matière sélectionnée` : ' · Sélectionnez une matière'}
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowModal(false)}
+            className="rounded-xl border-2 border-school-line px-4 py-2 text-sm font-semibold text-school-inkmuted hover:bg-school-cream"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => bulk.mutate()}
+            disabled={
+              bulk.isPending ||
+              !schoolYearId ||
+              !classId ||
+              !periodId ||
+              !subjectId ||
+              editingBlocked
+            }
+            className="rounded-xl bg-indigo-600 px-6 py-2 text-sm font-bold text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {bulk.isPending ? 'Enregistrement…' : '💾 Enregistrer les notes'}
+          </button>
+        </div>
       </div>
       </div>
       </div>

@@ -369,7 +369,9 @@ export function StudentsListPage() {
               {(classes?.items ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.code})
-                  {c.school_year?.name ? ` — ${c.school_year.name}` : ''}
+                  {classesApi.classYearLabel(c) !== 'Toutes les années'
+                    ? ` — ${classesApi.classYearLabel(c)}`
+                    : ''}
                 </option>
               ))}
             </select>

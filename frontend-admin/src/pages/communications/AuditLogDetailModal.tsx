@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { AuditLogRow } from '../../api/auditLogs'
 import {
   ActionBadge,
+  computeAuditDiff,
   formatAuditDate,
   formatProfileChanges,
   formatSubjectTarget,
@@ -20,6 +22,7 @@ export function AuditLogDetailModal({
   row: AuditLogRow
   onClose: () => void
 }) {
+  const [showRaw, setShowRaw] = useState(false)
   const oldJson = formatJsonBlock(row.old_values)
   const newJson = formatJsonBlock(row.new_values)
   const hideOldValues = shouldHideAuditOldValues(row.action)
@@ -28,6 +31,9 @@ export function AuditLogDetailModal({
     row.action === 'auth.profile_updated'
       ? formatProfileChanges(row.old_values, row.new_values)
       : []
+  const diff = !hideRawValues
+    ? computeAuditDiff(row.old_values, row.new_values)
+    : []
 
   return (
     <div
@@ -109,10 +115,49 @@ export function AuditLogDetailModal({
             </div>
           )}
 
-          {oldJson && !hideOldValues && (
+          {!hideRawValues && diff.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                  Modifications ({diff.length})
+                </p>
+                {(oldJson || newJson) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRaw((v) => !v)}
+                    className="text-xs font-semibold text-school-grape hover:underline"
+                  >
+                    {showRaw ? 'Masquer le JSON brut' : 'Voir le JSON brut'}
+                  </button>
+                )}
+              </div>
+              <div className="overflow-hidden rounded-xl border border-school-line bg-white">
+                <table className="w-full text-xs">
+                  <thead className="bg-school-canvas text-school-inkmuted">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold">Champ</th>
+                      <th className="px-3 py-2 text-left font-semibold">Avant</th>
+                      <th className="px-3 py-2 text-left font-semibold">Après</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diff.map((c) => (
+                      <tr key={c.path} className="border-t border-school-line">
+                        <td className="px-3 py-2 font-semibold text-school-ink">{c.label}</td>
+                        <td className="px-3 py-2 text-school-inkmuted line-through">{c.before}</td>
+                        <td className="px-3 py-2 text-school-ink">{c.after}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {showRaw && oldJson && !hideOldValues && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
-                Anciennes valeurs
+                Anciennes valeurs (JSON)
               </p>
               <pre className="max-h-48 overflow-auto rounded-xl border border-school-line bg-school-canvas p-3 font-mono text-xs text-school-ink">
                 {oldJson}
@@ -120,10 +165,10 @@ export function AuditLogDetailModal({
             </div>
           )}
 
-          {newJson && !hideRawValues && (
+          {showRaw && newJson && !hideRawValues && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
-                Nouvelles valeurs
+                Nouvelles valeurs (JSON)
               </p>
               <pre className="max-h-48 overflow-auto rounded-xl border border-school-line bg-school-canvas p-3 font-mono text-xs text-school-ink">
                 {newJson}
@@ -131,7 +176,7 @@ export function AuditLogDetailModal({
             </div>
           )}
 
-          {!hideRawValues && !oldJson && !newJson && (
+          {!hideRawValues && diff.length === 0 && !oldJson && !newJson && (
             <p className="rounded-xl border border-school-line bg-school-canvas px-4 py-3 text-school-inkmuted">
               Aucune donnée de modification enregistrée pour cette action.
             </p>
