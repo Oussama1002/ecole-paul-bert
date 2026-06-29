@@ -184,6 +184,20 @@ export async function fetchPayments(params: {
   return data.data
 }
 
+/** Fetch all payment pages for a student (API caps per_page at 100). */
+export async function fetchAllPaymentsForStudent(studentId: number): Promise<Payment[]> {
+  const items: Payment[] = []
+  let page = 1
+  let lastPage = 1
+  do {
+    const res = await fetchPayments({ student_id: studentId, per_page: 100, page })
+    items.push(...res.items)
+    lastPage = res.meta.last_page
+    page += 1
+  } while (page <= lastPage)
+  return items
+}
+
 export type CreatePaymentPayload = {
   student_id: number
   school_year_id: number

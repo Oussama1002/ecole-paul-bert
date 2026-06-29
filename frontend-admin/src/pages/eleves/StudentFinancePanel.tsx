@@ -3,6 +3,7 @@ import { type FormEvent, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as financeApi from '../../api/finance'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatMad, PAYMENT_METHOD_LABELS } from '../../utils/studentFinanceLabels'
@@ -104,9 +105,15 @@ export function StudentFinancePanel({
     queryFn: () => financeApi.fetchFeeAssignments({ student_id: studentId, per_page: 50 }),
   })
 
-  const { data: paymentsData, isLoading: loadingPayments, refetch: refetchPayments } = useQuery({
+  const {
+    data: paymentsData,
+    isLoading: loadingPayments,
+    isError: paymentsError,
+    error: paymentsErr,
+    refetch: refetchPayments,
+  } = useQuery({
     queryKey: ['payments-student', studentId],
-    queryFn: () => financeApi.fetchPayments({ student_id: studentId, per_page: 200 }),
+    queryFn: () => financeApi.fetchAllPaymentsForStudent(studentId),
   })
 
   const { data: feeTypes } = useQuery({
@@ -123,17 +130,19 @@ export function StudentFinancePanel({
     [feeAssignments?.items]
   )
 
+  const paymentItems = paymentsData ?? []
+
   const confirmedPayments = useMemo(
-    () => (paymentsData?.items ?? []).filter((p) => p.status !== 'cancelled'),
-    [paymentsData?.items]
+    () => paymentItems.filter((p) => p.status !== 'cancelled'),
+    [paymentItems]
   )
 
   const paymentHistory = useMemo(
     () =>
-      [...(paymentsData?.items ?? [])].sort(
+      [...paymentItems].sort(
         (a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
       ),
-    [paymentsData?.items]
+    [paymentItems]
   )
 
   const totalPaid = useMemo(
@@ -271,7 +280,15 @@ export function StudentFinancePanel({
 
         {loadingPayments && <LoadingState label="Chargement de l'historique…" lines={4} />}
 
-        {!loadingPayments && paymentHistory.length === 0 && (
+        {paymentsError && (
+          <ErrorState
+            error={paymentsErr}
+            fallback="Impossible de charger l'historique des paiements."
+            onRetry={() => void refetchPayments()}
+          />
+        )}
+
+        {!loadingPayments && !paymentsError && paymentHistory.length === 0 && (
           <EmptyState
             emoji="💳"
             title="Aucun paiement enregistré"
@@ -279,7 +296,7 @@ export function StudentFinancePanel({
           />
         )}
 
-        {!loadingPayments && paymentHistory.length > 0 && (
+        {!loadingPayments && !paymentsError && paymentHistory.length > 0 && (
           <div className="school-table-wrap">
             <table className="school-table">
               <thead>
