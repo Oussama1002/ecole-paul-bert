@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import * as docsApi from '../../api/documents'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
@@ -34,6 +35,7 @@ export function DocumentsPage() {
   const canManage = hasPermission('documents.manage')
 
   // List filters
+  const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterType, setFilterType] = useState('')
 
@@ -51,10 +53,11 @@ export function DocumentsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['documents', filterCategory, filterType],
+    queryKey: ['documents', search, filterCategory, filterType],
     queryFn: () =>
       docsApi.fetchDocuments({
         per_page: 100,
+        search: search.trim() || undefined,
         category: filterCategory || undefined,
         document_type: filterType || undefined,
       }),
@@ -140,7 +143,18 @@ export function DocumentsPage() {
       )}
 
       {/* Filters */}
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-3">
+      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+        <label className="block text-sm">
+          <span className="text-xs text-slate-500">Recherche libre</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Titre, fichier, élève, catégorie, type…"
+            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+          />
+        </label>
+        <div className="grid gap-3 md:grid-cols-3">
         <label className="block text-sm">
           <span className="text-xs text-slate-500">Catégorie</span>
           <select
@@ -167,17 +181,18 @@ export function DocumentsPage() {
             ))}
           </select>
         </label>
-        {(filterCategory || filterType) && (
+        {(search || filterCategory || filterType) && (
           <div className="flex items-end">
             <button
               type="button"
-              onClick={() => { setFilterCategory(''); setFilterType('') }}
+              onClick={() => { setSearch(''); setFilterCategory(''); setFilterType('') }}
               className="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
             >
               Réinitialiser les filtres
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Upload modal */}
@@ -270,6 +285,7 @@ export function DocumentsPage() {
             <thead>
               <tr className="border-b border-slate-200 text-left">
                 <th className="px-4 py-3">Titre</th>
+                <th className="px-4 py-3">Élève</th>
                 <th className="px-4 py-3">Catégorie</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Taille</th>
@@ -279,7 +295,24 @@ export function DocumentsPage() {
             <tbody>
               {items.map((d) => (
                 <tr key={d.id} className="border-b border-slate-100">
-                  <td className="px-4 py-3">{d.title ?? d.file_name ?? 'Document sans titre'}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{d.title ?? d.file_name ?? 'Document sans titre'}</div>
+                    {d.file_name && d.title && d.file_name !== d.title && (
+                      <div className="text-xs text-slate-500">{d.file_name}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {d.student_id && d.student_name ? (
+                      <Link
+                        to={`/eleves/${d.student_id}`}
+                        className="font-semibold text-indigo-600 hover:underline"
+                      >
+                        {d.student_name}
+                      </Link>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{CATEGORIES.find((c) => c.value === d.category)?.label ?? d.category ?? '—'}</td>
                   <td className="px-4 py-3">{DOC_TYPES.find((t) => t.value === d.document_type)?.label ?? d.document_type ?? '—'}</td>
                   <td className="px-4 py-3">{d.file_size != null ? `${Math.round(d.file_size / 1024)} KB` : '—'}</td>
@@ -322,7 +355,7 @@ export function DocumentsPage() {
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-3 text-slate-500">
+                  <td colSpan={6} className="px-4 py-3 text-slate-500">
                     <EmptyState
                       emoji="📁"
                       title="Aucun document"

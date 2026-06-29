@@ -17,6 +17,7 @@ export type Document = {
   is_confidential: boolean
   status: string | null
   student_id: number | null
+  student_name: string | null
   teacher_id: number | null
   invoice_id: number | null
   payment_id: number | null
@@ -28,6 +29,7 @@ export type Document = {
 export async function fetchDocuments(params: {
   category?: string
   document_type?: string
+  search?: string
   student_id?: number
   teacher_id?: number
   invoice_id?: number

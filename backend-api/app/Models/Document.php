@@ -43,6 +43,21 @@ class Document extends Model
         return $this->belongsTo(Student::class);
     }
 
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(Teacher::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
     public function expense(): BelongsTo
     {
         return $this->belongsTo(Expense::class);

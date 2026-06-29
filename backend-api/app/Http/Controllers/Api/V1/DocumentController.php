@@ -7,11 +7,13 @@ use App\Http\Requests\Api\V1\Documents\StoreDocumentRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\Document;
 use App\Models\DocumentAccessLog;
+use App\Models\Student;
 use App\Services\AuditLogger;
 use App\Services\DocumentStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class DocumentController extends Controller
@@ -26,6 +28,7 @@ class DocumentController extends Controller
         $request->validate([
             'category' => ['nullable', 'string'],
             'document_type' => ['nullable', 'string'],
+            'search' => ['nullable', 'string', 'max:120'],
             'student_id' => ['nullable', 'integer', 'exists:students,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:teachers,id'],
             'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
@@ -34,7 +37,13 @@ class DocumentController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $q = Document::query()->orderByDesc('created_at');
+        $q = Document::query()
+            ->with([
+                'student:id,first_name,last_name,student_code',
+                'payment.student:id,first_name,last_name,student_code',
+                'invoice.student:id,first_name,last_name,student_code',
+            ])
+            ->orderByDesc('created_at');
         foreach (['category', 'document_type'] as $k) {
             if ($request->filled($k)) {
                 $q->where($k, (string) $request->input($k));
@@ -44,6 +53,26 @@ class DocumentController extends Controller
             if ($request->filled($k)) {
                 $q->where($k, (int) $request->input($k));
             }
+        }
+        if ($request->filled('search')) {
+            $term = '%'.Str::lower(trim((string) $request->input('search'))).'%';
+            $q->where(function ($w) use ($term) {
+                foreach (['title', 'description', 'file_name', 'category', 'document_type'] as $col) {
+                    $w->orWhereRaw("LOWER({$col}) LIKE ?", [$term]);
+                }
+                $studentMatch = function ($s) use ($term) {
+                    $s->where(function ($q) use ($term) {
+                        $q->whereRaw('LOWER(first_name) LIKE ?', [$term])
+                            ->orWhereRaw('LOWER(last_name) LIKE ?', [$term])
+                            ->orWhereRaw('LOWER(student_code) LIKE ?', [$term])
+                            ->orWhereRaw("LOWER(CONCAT(last_name, ' ', first_name)) LIKE ?", [$term])
+                            ->orWhereRaw("LOWER(CONCAT(first_name, ' ', last_name)) LIKE ?", [$term]);
+                    });
+                };
+                $w->orWhereHas('student', $studentMatch)
+                    ->orWhereHas('payment.student', $studentMatch)
+                    ->orWhereHas('invoice.student', $studentMatch);
+            });
         }
 
         $p = $q->paginate(min((int) $request->input('per_page', 30), 100))->withQueryString();
@@ -205,6 +234,8 @@ class DocumentController extends Controller
      */
     private function toDto(Document $d): array
     {
+        $student = $this->resolveLinkedStudent($d);
+
         return [
             'id' => $d->id,
             'category' => $d->category,
@@ -217,7 +248,10 @@ class DocumentController extends Controller
             'visibility_scope' => $d->visibility_scope,
             'is_confidential' => (bool) $d->is_confidential,
             'status' => $d->status,
-            'student_id' => $d->student_id ? (int) $d->student_id : null,
+            'student_id' => $student?->id ?? ($d->student_id ? (int) $d->student_id : null),
+            'student_name' => $student
+                ? trim($student->last_name.' '.$student->first_name)
+                : null,
             'teacher_id' => $d->teacher_id ? (int) $d->teacher_id : null,
             'invoice_id' => $d->invoice_id ? (int) $d->invoice_id : null,
             'payment_id' => $d->payment_id ? (int) $d->payment_id : null,
@@ -225,6 +259,21 @@ class DocumentController extends Controller
             'uploaded_by' => $d->uploaded_by ? (int) $d->uploaded_by : null,
             'created_at' => $d->created_at?->toIso8601String(),
         ];
+    }
+
+    private function resolveLinkedStudent(Document $d): ?Student
+    {
+        if ($d->relationLoaded('student') && $d->student) {
+            return $d->student;
+        }
+        if ($d->relationLoaded('payment') && $d->payment?->relationLoaded('student') && $d->payment->student) {
+            return $d->payment->student;
+        }
+        if ($d->relationLoaded('invoice') && $d->invoice?->relationLoaded('student') && $d->invoice->student) {
+            return $d->invoice->student;
+        }
+
+        return null;
     }
 }
 
