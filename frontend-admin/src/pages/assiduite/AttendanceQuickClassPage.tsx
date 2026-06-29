@@ -1,25 +1,53 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import * as attendanceApi from '../../api/attendance'
 import * as classesApi from '../../api/classes'
 import * as schoolYearsApi from '../../api/schoolYears'
 import * as studentsApi from '../../api/students'
 import * as subjectsApi from '../../api/subjects'
+import { SearchSelect } from '../../components/ui/SearchSelect'
 
 type Row = {
   student_id: number
   label: string
+  initials: string
   status: attendanceApi.AttendanceStatus
   minutes_late: number
   remarks: string
 }
 
+const STATUS_CONFIG = {
+  present: {
+    label: 'Présent',
+    icon: '✓',
+    activeClass: 'border-school-leaf bg-school-leaf/15 text-school-leafdeep',
+    pillClass: 'bg-school-leaf/15 text-school-leafdeep',
+    dot: 'bg-school-leafdeep',
+  },
+  late: {
+    label: 'Retard',
+    icon: '⏰',
+    activeClass: 'border-school-mango bg-school-mango/15 text-[#92400E]',
+    pillClass: 'bg-school-mango/15 text-[#92400E]',
+    dot: 'bg-school-mango',
+  },
+  absent: {
+    label: 'Absent',
+    icon: '✕',
+    activeClass: 'border-school-coral bg-school-coral/15 text-[#B23A2E]',
+    pillClass: 'bg-school-coral/15 text-[#B23A2E]',
+    dot: 'bg-school-coral',
+  },
+} as const
+
 export function AttendanceQuickClassPage() {
+  const queryClient = useQueryClient()
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
   const [classId, setClassId] = useState<number>(0)
   const [subjectId, setSubjectId] = useState<number>(0)
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const { data: subjects } = useQuery({
     queryKey: ['subjects-attendance'],
@@ -67,12 +95,43 @@ export function AttendanceQuickClassPage() {
     enabled: schoolYearId > 0 && classId > 0,
   })
 
+  const yearOptions = useMemo(
+    () => (years?.items ?? []).map((y) => ({
+      value: y.id,
+      label: y.name,
+      hint: y.is_current ? 'En cours' : undefined,
+    })),
+    [years?.items]
+  )
+
+  const classOptions = useMemo(
+    () => (classes?.items ?? []).map((c) => ({
+      value: c.id,
+      label: c.name,
+      hint: c.code,
+    })),
+    [classes?.items]
+  )
+
+  const subjectOptions = useMemo(
+    () => [
+      { value: 0, label: 'Toutes les matières' },
+      ...(subjects?.items ?? []).map((s) => ({
+        value: s.id,
+        label: s.name,
+        hint: s.code,
+      })),
+    ],
+    [subjects?.items]
+  )
+
   const initialRows = useMemo<Row[]>(() => {
     const items = students?.items ?? []
     return items.map((s) => ({
       student_id: s.id,
       label: `${s.last_name} ${s.first_name}`,
-      status: 'present',
+      initials: `${(s.last_name?.[0] ?? '').toUpperCase()}${(s.first_name?.[0] ?? '').toUpperCase()}`,
+      status: 'present' as const,
       minutes_late: 0,
       remarks: '',
     }))
@@ -80,15 +139,23 @@ export function AttendanceQuickClassPage() {
 
   const [rows, setRows] = useState<Row[]>([])
 
-  // reset rows whenever student list changes
   useEffect(() => {
     setRows(initialRows)
     setError(null)
+    setSuccess(null)
   }, [initialRows, classId, schoolYearId])
+
+  const counts = useMemo(() => ({
+    present: rows.filter((r) => r.status === 'present').length,
+    late: rows.filter((r) => r.status === 'late').length,
+    absent: rows.filter((r) => r.status === 'absent').length,
+    total: rows.length,
+  }), [rows])
 
   const bulk = useMutation({
     mutationFn: async () => {
       setError(null)
+      setSuccess(null)
       if (!schoolYearId || !classId) {
         throw new Error('Sélectionnez année et classe.')
       }
@@ -105,7 +172,12 @@ export function AttendanceQuickClassPage() {
       }
       await attendanceApi.bulkMarkAttendance(classId, payload)
     },
-    onError: (e: Error) => setError(e.message),
+    onSuccess: () => {
+      setSuccess(`Présences enregistrées pour ${counts.total} élève(s).`)
+      setError(null)
+      void queryClient.invalidateQueries({ queryKey: ['attendance'] })
+    },
+    onError: (e: Error) => { setError(e.message); setSuccess(null) },
   })
 
   const setAll = (status: attendanceApi.AttendanceStatus) => {
@@ -113,203 +185,229 @@ export function AttendanceQuickClassPage() {
       prev.map((r) => ({
         ...r,
         status,
-        minutes_late: status === 'late' ? r.minutes_late : 0,
+        minutes_late: status === 'late' ? (r.minutes_late || 5) : 0,
       }))
     )
+    setSuccess(null)
   }
 
+  const selectedClassName = classes?.items.find((c) => c.id === classId)?.name
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* ── Header ── */}
       <div>
-        <h2 className="text-xl font-semibold text-slate-800">Marquage rapide</h2>
-        <p className="text-sm text-slate-500">Saisie en masse par classe (présent/absent/retard).</p>
+        <h2 className="font-display text-xl font-bold text-school-ink">Marquage rapide</h2>
+        <p className="text-sm text-school-inkmuted">Saisie en masse par classe (présent / absent / retard).</p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-4">
-        <label className="block text-sm">
-          <span className="text-xs text-slate-500">Année scolaire</span>
-          <select
-            value={schoolYearId || ''}
-            onChange={(e) => {
-              setSchoolYearId(Number(e.target.value))
-              setClassId(0)
-            }}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-          >
-            <option value="">—</option>
-            {years?.items.map((y) => (
-              <option key={y.id} value={y.id}>
-                {y.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-sm">
-          <span className="text-xs text-slate-500">Classe</span>
-          <select
-            value={classId || ''}
-            onChange={(e) => setClassId(Number(e.target.value))}
-            disabled={!schoolYearId}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2 disabled:opacity-60"
-          >
-            <option value="">—</option>
-            {classes?.items.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.code})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-sm">
-          <span className="text-xs text-slate-500">Matière</span>
-          <select
-            value={subjectId || ''}
-            onChange={(e) => setSubjectId(Number(e.target.value))}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-          >
-            <option value="">— Toutes —</option>
-            {subjects?.items.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-sm">
-          <span className="text-xs text-slate-500">Date</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-          />
-        </label>
-      </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setAll('present')}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
-          Tout présent
-        </button>
-        <button
-          type="button"
-          onClick={() => setAll('absent')}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
-          Tout absent
-        </button>
-        <button
-          type="button"
-          onClick={() => setAll('late')}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
-          Tout en retard
-        </button>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => bulk.mutate()}
-          disabled={bulk.isPending || !schoolYearId || !classId || rows.length === 0}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
-        >
-          Enregistrer
-        </button>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          🎒 Sélectionnez une année et une classe pour afficher les élèves.
+      {/* ── Filters ── */}
+      <div className="school-section">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block text-sm">
+            <span className="text-xs font-bold text-school-inkmuted">Année scolaire</span>
+            <div className="mt-1">
+              <SearchSelect
+                value={schoolYearId || null}
+                onChange={(v) => { setSchoolYearId(v ?? 0); setClassId(0) }}
+                options={yearOptions}
+                placeholder="Choisir…"
+              />
+            </div>
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs font-bold text-school-inkmuted">Classe</span>
+            <div className="mt-1">
+              <SearchSelect
+                value={classId || null}
+                onChange={(v) => setClassId(v ?? 0)}
+                options={classOptions}
+                disabled={!schoolYearId}
+                placeholder={schoolYearId ? 'Choisir…' : "Année d'abord"}
+              />
+            </div>
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs font-bold text-school-inkmuted">Matière (optionnel)</span>
+            <div className="mt-1">
+              <SearchSelect
+                value={subjectId || null}
+                onChange={(v) => setSubjectId(v ?? 0)}
+                options={subjectOptions}
+                placeholder="Toutes les matières"
+              />
+            </div>
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs font-bold text-school-inkmuted">Date</span>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="school-input mt-1"
+            />
+          </label>
         </div>
-      ) : (
+      </div>
+
+      {/* ── Feedback ── */}
+      {error && (
+        <div className="rounded-2xl border-2 border-school-coral/30 bg-school-coral/5 px-4 py-3 text-sm font-semibold text-[#B23A2E]">
+          ❌ {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-2xl border-2 border-school-leaf/30 bg-school-leaf/5 px-4 py-3 text-sm font-semibold text-school-leafdeep">
+          ✅ {success}
+        </div>
+      )}
+
+      {/* ── Empty State ── */}
+      {rows.length === 0 && (
+        <div className="school-empty">
+          <span className="school-empty-emoji">🎒</span>
+          <p className="school-empty-title">Aucun élève à afficher</p>
+          <p className="school-empty-hint">Sélectionnez une année et une classe pour commencer le marquage.</p>
+        </div>
+      )}
+
+      {/* ── Students List ── */}
+      {rows.length > 0 && (
         <>
-          <div className="flex flex-wrap items-center gap-2 rounded-3xl border-2 border-school-line bg-white px-4 py-3 shadow-sm">
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-              ✓ {rows.filter((r) => r.status === 'present').length} présents
-            </span>
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
-              ⏰ {rows.filter((r) => r.status === 'late').length} retards
-            </span>
-            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
-              ✕ {rows.filter((r) => r.status === 'absent').length} absents
-            </span>
-            <span className="ml-auto text-xs text-slate-500">{rows.length} élèves au total</span>
+          {/* Quick actions + Stats bar */}
+          <div className="school-section !p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-xs font-bold text-school-inkmuted">Actions rapides :</span>
+              <button
+                type="button"
+                onClick={() => setAll('present')}
+                className="school-toggle-on !min-h-[36px] !min-w-0 !rounded-full !px-3 !py-1 !text-xs"
+              >
+                ✓ Tout présent
+              </button>
+              <button
+                type="button"
+                onClick={() => setAll('absent')}
+                className="school-toggle-off !min-h-[36px] !min-w-0 !rounded-full !px-3 !py-1 !text-xs"
+              >
+                ✕ Tout absent
+              </button>
+              <button
+                type="button"
+                onClick={() => setAll('late')}
+                className="rounded-full border-2 border-school-mango bg-school-mango/15 px-3 py-1 text-xs font-bold text-[#92400E] transition active:scale-[0.98]"
+              >
+                ⏰ Tout retard
+              </button>
+
+              <div className="ml-auto flex items-center gap-2">
+                <span className="school-pill-green">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-school-leafdeep" />
+                  {counts.present}
+                </span>
+                <span className="school-pill-sun">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-school-mango" />
+                  {counts.late}
+                </span>
+                <span className="school-pill-coral">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-school-coral" />
+                  {counts.absent}
+                </span>
+                <span className="text-xs font-semibold text-school-inkmuted">
+                  / {counts.total}
+                </span>
+              </div>
+            </div>
           </div>
 
+          {/* Student cards */}
           <div className="space-y-2">
             {rows.map((r, idx) => {
-              const setStatus = (status: attendanceApi.AttendanceStatus) =>
+              const setStatus = (status: attendanceApi.AttendanceStatus) => {
                 setRows((prev) =>
                   prev.map((x, i) =>
                     i === idx
-                      ? { ...x, status, minutes_late: status === 'late' ? x.minutes_late || 5 : 0 }
+                      ? { ...x, status, minutes_late: status === 'late' ? (x.minutes_late || 5) : 0 }
                       : x
                   )
                 )
-              const statusBtn = (
-                v: attendanceApi.AttendanceStatus,
-                label: string,
-                emoji: string,
-                onClasses: string
-              ) => (
-                <button
-                  type="button"
-                  onClick={() => setStatus(v)}
-                  className={[
-                    'flex-1 rounded-xl px-3 py-2 text-sm font-bold transition',
-                    r.status === v
-                      ? onClasses + ' shadow'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
-                  ].join(' ')}
-                >
-                  {emoji} {label}
-                </button>
-              )
+                setSuccess(null)
+              }
+
+              const cfg = STATUS_CONFIG[r.status]
+
               return (
                 <div
                   key={r.student_id}
-                  className="rounded-2xl border-2 border-school-line bg-white p-3 shadow-sm transition hover:shadow"
+                  className={`rounded-2xl border-2 bg-white p-3 transition ${
+                    r.status === 'present' ? 'border-school-line' :
+                    r.status === 'late' ? 'border-school-mango/40' :
+                    'border-school-coral/40'
+                  }`}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-school-bubblegum to-school-grape text-sm font-bold text-white">
-                      {r.label
-                        .split(' ')
-                        .slice(0, 2)
-                        .map((s) => s[0] ?? '')
-                        .join('')
-                        .toUpperCase()}
+                    {/* Avatar */}
+                    <div className={`school-initials rounded-full ${
+                      r.status === 'present' ? 'bg-gradient-to-br from-school-leaf to-school-leafdeep' :
+                      r.status === 'late' ? 'bg-gradient-to-br from-school-mango to-school-sun' :
+                      'bg-gradient-to-br from-school-coral to-school-cherry'
+                    }`}>
+                      {r.initials}
                     </div>
-                    <span className="flex-1 font-semibold text-slate-800">{r.label}</span>
-                    <div className="flex w-full gap-2 sm:w-auto">
-                      {statusBtn('present', 'Présent', '✓', 'bg-emerald-500 text-white')}
-                      {statusBtn('late', 'Retard', '⏰', 'bg-amber-500 text-white')}
-                      {statusBtn('absent', 'Absent', '✕', 'bg-red-500 text-white')}
+
+                    {/* Name */}
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-bold text-school-ink">{r.label}</span>
+                      <span className={`ml-2 school-pill text-[10px] ${cfg.pillClass}`}>
+                        {cfg.icon} {cfg.label}
+                      </span>
+                    </div>
+
+                    {/* Status buttons */}
+                    <div className="flex gap-1.5">
+                      {(['present', 'late', 'absent'] as const).map((s) => {
+                        const sc = STATUS_CONFIG[s]
+                        const active = r.status === s
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setStatus(s)}
+                            className={`school-toggle !min-h-[40px] !min-w-[44px] !rounded-2xl !px-3 !py-1.5 text-xs ${
+                              active ? sc.activeClass : 'border-school-line bg-white text-school-inkmuted hover:bg-school-bg'
+                            }`}
+                            title={sc.label}
+                          >
+                            <span className="text-base">{sc.icon}</span>
+                            <span className="hidden sm:inline">{sc.label}</span>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
-                  {r.status === 'late' && (
-                    <div className="mt-3 flex flex-wrap gap-3 border-t border-slate-100 pt-3">
-                      <label className="flex items-center gap-2 text-xs text-slate-600">
-                        Retard (min)
-                        <input
-                          type="number"
-                          min={0}
-                          max={600}
-                          value={r.minutes_late}
-                          onChange={(e) =>
-                            setRows((prev) =>
-                              prev.map((x, i) =>
-                                i === idx ? { ...x, minutes_late: Number(e.target.value) } : x
+
+                  {/* Late/Absent details */}
+                  {r.status !== 'present' && (
+                    <div className="mt-3 flex flex-wrap gap-3 border-t border-school-line/50 pt-3">
+                      {r.status === 'late' && (
+                        <label className="flex items-center gap-2 text-xs font-semibold text-school-inkmuted">
+                          Retard (min)
+                          <input
+                            type="number"
+                            min={0}
+                            max={600}
+                            value={r.minutes_late}
+                            onChange={(e) =>
+                              setRows((prev) =>
+                                prev.map((x, i) =>
+                                  i === idx ? { ...x, minutes_late: Number(e.target.value) } : x
+                                )
                               )
-                            )
-                          }
-                          className="w-20 rounded border border-slate-300 px-2 py-1"
-                        />
-                      </label>
+                            }
+                            className="school-input w-20 !py-1 text-center"
+                          />
+                        </label>
+                      )}
                       <input
                         value={r.remarks}
                         onChange={(e) =>
@@ -319,7 +417,7 @@ export function AttendanceQuickClassPage() {
                             )
                           )
                         }
-                        className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
+                        className="school-input flex-1 !py-1"
                         placeholder="Remarque (optionnel)…"
                       />
                     </div>
@@ -329,14 +427,22 @@ export function AttendanceQuickClassPage() {
             })}
           </div>
 
-          <div className="sticky bottom-3 z-10 mt-4 flex justify-center">
+          {/* ── Sticky Save Bar ── */}
+          <div className="school-fab">
+            <div className="flex items-center gap-2 text-sm">
+              <span>{selectedClassName ?? 'Classe'}</span>
+              <span className="opacity-70">·</span>
+              <span>{new Date(date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+              <span className="opacity-70">·</span>
+              <span>{counts.present}✓ {counts.late}⏰ {counts.absent}✕</span>
+            </div>
             <button
               type="button"
               onClick={() => bulk.mutate()}
               disabled={bulk.isPending || !schoolYearId || !classId || rows.length === 0}
-              className="rounded-2xl bg-indigo-600 px-8 py-3 text-base font-bold text-white shadow-lg hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-2xl bg-white/20 px-5 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/30 disabled:opacity-50"
             >
-              {bulk.isPending ? 'Enregistrement…' : '💾 Enregistrer les présences'}
+              {bulk.isPending ? 'Enregistrement…' : '💾 Enregistrer'}
             </button>
           </div>
         </>
@@ -344,4 +450,3 @@ export function AttendanceQuickClassPage() {
     </div>
   )
 }
-
