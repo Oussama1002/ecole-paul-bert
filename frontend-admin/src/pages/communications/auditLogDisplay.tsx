@@ -97,7 +97,37 @@ export function ActionBadge({ code }: { code: string }) {
 
 export function formatAuditDate(iso: string | null): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('fr-FR')
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return iso
+  return dt.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+
+/** Detail modal: date + time with milliseconds when present in ISO string */
+export function formatAuditDateTimeDetail(iso: string | null): string {
+  if (!iso) return '—'
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return iso
+  const base = dt.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+  const msMatch = iso.match(/\.(\d{1,6})/)
+  if (!msMatch) return base
+  const ms = msMatch[1].padEnd(3, '0').slice(0, 3)
+  return `${base}.${ms}`
 }
 
 export function formatSubjectTarget(row: AuditLogRow): string {
@@ -244,6 +274,9 @@ function formatValue(path: string, value: unknown): string {
     return JSON.stringify(value)
   }
   const str = String(value)
+  if (/^\d{4}-\d{2}-\d{2}(T|\s)/.test(str)) {
+    return formatAuditDate(str)
+  }
   // status-like / known enums
   if (
     path.endsWith('status') ||

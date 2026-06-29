@@ -58,7 +58,9 @@ class AuditLogController extends Controller
                 'old_values' => $l->old_values,
                 'new_values' => $l->new_values,
                 'ip_address' => $l->ip_address,
-                'created_at' => $l->created_at?->toIso8601String(),
+                'created_at' => $l->created_at
+                    ?->timezone(config('app.timezone'))
+                    ->format('Y-m-d\TH:i:s.vP'),
             ]),
             'meta' => [
                 'current_page' => $p->currentPage(),

@@ -3,7 +3,7 @@ import type { AuditLogRow } from '../../api/auditLogs'
 import {
   ActionBadge,
   computeAuditDiff,
-  formatAuditDate,
+  formatAuditDateTimeDetail,
   formatProfileChanges,
   formatSubjectTarget,
   shouldHideAuditOldValues,
@@ -60,9 +60,16 @@ export function AuditLogDetailModal({
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
-                Date
+                Date et heure
               </dt>
-              <dd className="mt-1 text-school-ink">{formatAuditDate(row.created_at)}</dd>
+              <dd className="mt-1 text-school-ink">
+                {formatAuditDateTimeDetail(row.created_at)}
+              </dd>
+              {row.created_at && (
+                <dd className="mt-0.5 font-mono text-[11px] text-school-inkmuted">
+                  {row.created_at}
+                </dd>
+              )}
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
