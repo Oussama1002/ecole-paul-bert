@@ -1,4 +1,8 @@
 import type { AuditLogRow } from '../../api/auditLogs'
+import {
+  announcementStatusLabels,
+  audienceTypeLabels,
+} from './announcementLabels'
 
 export const MODULE_FR: Record<string, string> = {
   announcement: 'Annonce',
@@ -65,6 +69,64 @@ export const SUBJECT_FR: Record<string, string> = {
   EvaluationPeriod: "Période d'évaluation",
   SchoolClass: 'Classe',
   Level: 'Niveau',
+}
+
+const DOCUMENT_TYPE_FR: Record<string, string> = {
+  file: 'Fichier général',
+  receipt: 'Reçu de paiement',
+  invoice: 'Facture',
+  bulletin: 'Bulletin scolaire',
+  contract: 'Contrat',
+  certificate: 'Certificat / attestation',
+  addendum: 'Avenant',
+  id_proof: "Pièce d'identité",
+  cin: 'CIN',
+  cv: 'CV',
+  report: 'Rapport',
+  photo: 'Photo',
+  other: 'Autre',
+}
+
+const DOCUMENT_CATEGORY_FR: Record<string, string> = {
+  student: 'Élève',
+  teacher: 'Enseignant',
+  finance: 'Finance',
+  admin: 'Administration',
+  communication: 'Communication',
+  general: 'Général',
+  other: 'Autre',
+}
+
+const VISIBILITY_SCOPE_FR: Record<string, string> = {
+  staff: 'Personnel',
+  teachers: 'Enseignants',
+  students: 'Élèves',
+  parents: 'Parents',
+  public: 'Public',
+  private: 'Privé',
+}
+
+const EMPLOYMENT_TYPE_FR: Record<string, string> = {
+  full_time: 'Temps plein',
+  part_time: 'Temps partiel',
+  contract: 'Contractuel',
+  substitute: 'Suppléant',
+}
+
+const GENDER_FR: Record<string, string> = {
+  male: 'Homme',
+  female: 'Femme',
+  other: 'Autre',
+}
+
+/** Maps field name → value translations for audit diff cells */
+const ENUM_BY_FIELD: Record<string, Record<string, string>> = {
+  document_type: DOCUMENT_TYPE_FR,
+  category: DOCUMENT_CATEGORY_FR,
+  visibility_scope: VISIBILITY_SCOPE_FR,
+  audience_type: audienceTypeLabels,
+  employment_type: EMPLOYMENT_TYPE_FR,
+  gender: GENDER_FR,
 }
 
 const prettify = (raw: string) =>
@@ -230,6 +292,40 @@ const FIELD_FR: Record<string, string> = {
   // teacher
   employee_code: 'Matricule',
   employment_type: 'Type de contrat',
+  // document
+  document_type: 'Type de document',
+  category: 'Catégorie',
+  title: 'Titre',
+  file_name: 'Nom du fichier',
+  mime_type: 'Format',
+  file_size: 'Taille (octets)',
+  visibility_scope: 'Visibilité',
+  is_confidential: 'Confidentiel',
+  // announcement
+  audience_type: 'Destinataires',
+  target_class_id: 'Classe cible',
+  content: 'Contenu',
+  body: 'Contenu',
+  start_date: 'Date de début',
+  end_date: 'Date de fin',
+  published_at: 'Publié le',
+  // links
+  id: 'Identifiant',
+  student_id: 'Élève',
+  teacher_id: 'Enseignant',
+  invoice_id: 'Facture',
+  payment_id: 'Paiement',
+  expense_id: 'Dépense',
+  fee_type_id: 'Type de frais',
+  fee_assignment_id: 'Affectation de frais',
+  school_year_id: 'Année scolaire',
+  class_id: 'Classe',
+  subject_id: 'Matière',
+  path: 'Chemin',
+  deleted: 'Supprimé',
+  note: 'Note',
+  transaction_reference: 'Référence transaction',
+  gender: 'Genre',
 }
 
 const STATUS_VALUES_FR: Record<string, string> = {
@@ -252,23 +348,40 @@ const STATUS_VALUES_FR: Record<string, string> = {
   card: 'Carte',
   transfer: 'Virement',
   check: 'Chèque',
+  true: 'Oui',
+  false: 'Non',
+  ...announcementStatusLabels,
+  ...DOCUMENT_TYPE_FR,
+  ...DOCUMENT_CATEGORY_FR,
+  ...VISIBILITY_SCOPE_FR,
+  ...EMPLOYMENT_TYPE_FR,
+  ...GENDER_FR,
+  ...audienceTypeLabels,
 }
 
 function prettifyKey(path: string): string {
   if (FIELD_FR[path]) return FIELD_FR[path]
   const last = path.split('.').pop() ?? path
   if (FIELD_FR[last]) return FIELD_FR[last]
-  return last
-    .replace(/[._]/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return last.replace(/_/g, ' ')
+}
+
+function translateEnumValue(fieldKey: string, raw: string): string | null {
+  const byField = ENUM_BY_FIELD[fieldKey]?.[raw]
+  if (byField) return byField
+  if (STATUS_VALUES_FR[raw]) return STATUS_VALUES_FR[raw]
+  return null
 }
 
 function formatValue(path: string, value: unknown): string {
   if (value === null || value === undefined || value === '') return '—'
   if (typeof value === 'boolean') return value ? 'Oui' : 'Non'
+  const fieldKey = path.split('.').pop() ?? path
   if (Array.isArray(value)) {
     if (value.length === 0) return '— (vide)'
-    return value.map((v) => String(v)).join(', ')
+    return value
+      .map((v) => formatValue(fieldKey, v))
+      .join(', ')
   }
   if (typeof value === 'object') {
     return JSON.stringify(value)
@@ -277,15 +390,20 @@ function formatValue(path: string, value: unknown): string {
   if (/^\d{4}-\d{2}-\d{2}(T|\s)/.test(str)) {
     return formatAuditDate(str)
   }
-  // status-like / known enums
+  const translated = translateEnumValue(fieldKey, str)
+  if (translated) return translated
   if (
     path.endsWith('status') ||
     path.endsWith('payment_method') ||
-    STATUS_VALUES_FR[str]
+    path.endsWith('document_type') ||
+    path.endsWith('category') ||
+    path.endsWith('visibility_scope') ||
+    path.endsWith('audience_type') ||
+    path.endsWith('employment_type') ||
+    path.endsWith('gender')
   ) {
     return STATUS_VALUES_FR[str] ?? str
   }
-  // long logo paths or storage paths — shorten
   if ((path.includes('logo') || path.includes('path')) && str.length > 40) {
     return '… ' + str.slice(-32)
   }
