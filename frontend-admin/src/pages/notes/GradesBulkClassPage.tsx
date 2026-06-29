@@ -275,6 +275,18 @@ export function GradesBulkClassPage() {
     return m
   }, [subjectsQ.data?.items])
 
+  function openEditSubject(subjectIdToEdit: number, grades: gradesApi.Grade[]) {
+    const first = grades[0]
+    if (first) {
+      setMaxScore(parseFloat(first.max_score) || 20)
+      setCoefficient(parseFloat(first.coefficient) || 1)
+    }
+    setSubjectId(subjectIdToEdit)
+    setSuccessMsg(null)
+    setError(null)
+    setShowModal(true)
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -398,6 +410,19 @@ export function GradesBulkClassPage() {
                         }`}>
                           Moy. {avg.toFixed(2)} / {maxS}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => openEditSubject(sid, grades)}
+                          disabled={editingBlocked}
+                          title={
+                            editingBlocked
+                              ? 'Période clôturée — modification impossible'
+                              : 'Modifier les notes de cette matière'
+                          }
+                          className="school-btn-secondary !px-3 !py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          ✏️ Modifier
+                        </button>
                       </div>
                     </div>
                     <div className="overflow-x-auto">
