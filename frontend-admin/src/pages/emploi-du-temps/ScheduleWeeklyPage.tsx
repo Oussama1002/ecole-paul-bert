@@ -7,6 +7,11 @@ import * as scheduleApi from '../../api/schedule'
 import * as schoolYearsApi from '../../api/schoolYears'
 import * as subjectsApi from '../../api/subjects'
 import * as teachersApi from '../../api/teachers'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { ErrorState } from '../../components/ui/ErrorState'
+import { LoadingState } from '../../components/ui/LoadingState'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { SectionTitle } from '../../components/ui/SectionTitle'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCurrentSchoolYear } from '../../hooks/useCurrentSchoolYear'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -32,6 +37,52 @@ const DOW_FR: Record<string, string> = {
   sunday: 'Dimanche',
 }
 
+const SESSION_LABELS: Record<string, string> = {
+  course: 'Cours',
+  exam: 'Examen',
+  support: 'Soutien',
+  activity: 'Activité',
+  meeting: 'Réunion',
+}
+
+const SESSION_CARD: Record<string, string> = {
+  course: 'border-school-sky/50 bg-gradient-to-br from-white to-school-sky/10 hover:border-school-sky hover:shadow-school',
+  exam: 'border-school-mango/50 bg-gradient-to-br from-white to-school-mango/15 hover:border-school-mango hover:shadow-school',
+  support: 'border-school-leaf/50 bg-gradient-to-br from-white to-school-leaf/10 hover:border-school-leaf hover:shadow-school',
+  activity: 'border-school-grape/50 bg-gradient-to-br from-white to-school-grape/10 hover:border-school-grape hover:shadow-school',
+  meeting: 'border-school-bubblegum/50 bg-gradient-to-br from-white to-school-bubblegum/10 hover:border-school-bubblegum hover:shadow-school',
+}
+
+const SESSION_EMOJI: Record<string, string> = {
+  course: '📘',
+  exam: '📝',
+  support: '🤝',
+  activity: '🎨',
+  meeting: '💬',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Brouillon',
+  published: 'Publié',
+  cancelled: 'Annulé',
+}
+
+const STATUS_PILL: Record<string, string> = {
+  draft: 'school-pill-sun',
+  published: 'school-pill-green',
+  cancelled: 'school-pill-coral',
+}
+
+const DAY_HEADER: Record<string, string> = {
+  monday: 'bg-school-sky/15 text-school-skydeep',
+  tuesday: 'bg-school-grape/15 text-school-grape',
+  wednesday: 'bg-school-leaf/15 text-school-leafdeep',
+  thursday: 'bg-school-mango/15 text-[#92400E]',
+  friday: 'bg-school-bubblegum/15 text-[#C2185B]',
+  saturday: 'bg-school-mint/15 text-[#0D7377]',
+  sunday: 'bg-school-coral/15 text-[#B23A2E]',
+}
+
 function mondayDateString(d: Date): string {
   const x = new Date(d)
   const day = x.getDay()
@@ -41,6 +92,33 @@ function mondayDateString(d: Date): string {
   const m = String(x.getMonth() + 1).padStart(2, '0')
   const dayNum = String(x.getDate()).padStart(2, '0')
   return `${y}-${m}-${dayNum}`
+}
+
+function formatWeekRange(weekStart: string, weekEnd: string): string {
+  const start = new Date(`${weekStart}T12:00:00`)
+  const end = new Date(`${weekEnd}T12:00:00`)
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()} – ${end.getDate()} ${end.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`
+  }
+  return `${start.toLocaleDateString('fr-FR', opts)} – ${end.toLocaleDateString('fr-FR', { ...opts, year: 'numeric' })}`
+}
+
+function dayDateLabel(weekStart: string, dayIndex: number): string {
+  const d = new Date(`${weekStart}T12:00:00`)
+  d.setDate(d.getDate() + dayIndex)
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+function isTodayColumn(weekStart: string, dayIndex: number): boolean {
+  const d = new Date(`${weekStart}T12:00:00`)
+  d.setDate(d.getDate() + dayIndex)
+  const today = new Date()
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  )
 }
 
 export function ScheduleWeeklyPage() {
@@ -98,7 +176,7 @@ export function ScheduleWeeklyPage() {
     }
   }, [years, schoolYearId, canListYears, currentYearId])
 
-  const { data: weekly, isLoading } = useQuery({
+  const { data: weekly, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: [
       'schedule-weekly',
       schoolYearId,
@@ -251,8 +329,28 @@ export function ScheduleWeeklyPage() {
 
   const weekLabel = useMemo(() => {
     if (!weekly) return ''
-    return `${weekly.week_start} → ${weekly.week_end}`
+    return formatWeekRange(weekly.week_start, weekly.week_end)
   }, [weekly])
+
+  const stats = useMemo(() => {
+    if (!weekly) return { total: 0, activeDays: 0, published: 0 }
+    let total = 0
+    let activeDays = 0
+    let published = 0
+    for (const d of DOW) {
+      const items = weekly.days[d] ?? []
+      if (items.length > 0) activeDays++
+      total += items.length
+      published += items.filter((e) => e.status === 'published').length
+    }
+    return { total, activeDays, published }
+  }, [weekly])
+
+  const hasActiveFilters = filterClassId > 0 || filterTeacherId > 0 || filterRoomId > 0
+
+  function goToCurrentWeek() {
+    setWeekStart(mondayDateString(new Date()))
+  }
 
   function shiftWeek(delta: number) {
     const d = new Date(weekStart)
@@ -261,411 +359,434 @@ export function ScheduleWeeklyPage() {
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-slate-800">
-          {isTeacher ? 'Mon emploi du temps' : 'Emploi du temps'}
-        </h2>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => openNew()}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Nouveau créneau
-          </button>
-        )}
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
-        <div>
-          <label className="block text-xs text-slate-500">Année scolaire</label>
-          {canListYears ? (
-            <select
-              value={schoolYearId || ''}
-              onChange={(e) => setSchoolYearId(parseInt(e.target.value, 10) || 0)}
-              className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
+    <div className="space-y-5">
+      <PageHeader
+        emoji="📅"
+        title={isTeacher ? 'Mon emploi du temps' : 'Emploi du temps'}
+        subtitle="Planning hebdomadaire des cours, salles et enseignants."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              disabled={isFetching || schoolYearId <= 0}
+              className="school-btn-secondary"
+              title="Actualiser"
             >
-              <option value={0}>—</option>
-              {years?.items.map((y) => (
-                <option key={y.id} value={y.id}>
-                  {y.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="mt-1 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm font-medium text-slate-700">
-              {currentYearName ?? '—'}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="block text-xs text-slate-500">Semaine (lundi)</label>
-          <input
-            type="date"
-            value={weekStart}
-            onChange={(e) => setWeekStart(mondayDateString(new Date(e.target.value)))}
-            className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
-          />
-        </div>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => shiftWeek(-1)}
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
-          >
-            ← Semaine
-          </button>
-          <button
-            type="button"
-            onClick={() => shiftWeek(1)}
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
-          >
-            Semaine →
-          </button>
-        </div>
-        <div>
-          <label className="block text-xs text-slate-500">Classe</label>
-          <select
-            value={filterClassId || ''}
-            onChange={(e) => setFilterClassId(parseInt(e.target.value, 10) || 0)}
-            className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value={0}>Toutes</option>
-            {classes?.items.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {!isTeacher ? (
+              {isFetching ? 'Actualisation…' : '↻ Actualiser'}
+            </button>
+            {canManage && (
+              <button type="button" onClick={() => openNew()} className="school-btn-primary">
+                + Nouveau créneau
+              </button>
+            )}
+          </>
+        }
+      />
+
+      {/* Week hero strip */}
+      <div className="school-hero !from-[#0D7377] !via-school-skydeep !to-school-grape">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <label className="block text-xs text-slate-500">Enseignant</label>
-            <select
-              value={filterTeacherId || ''}
-              onChange={(e) => setFilterTeacherId(parseInt(e.target.value, 10) || 0)}
-              className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
-            >
-              <option value={0}>Tous</option>
-              {teachers?.items.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.last_name} {t.first_name}
-                </option>
-              ))}
-            </select>
+            <p className="text-xs font-bold uppercase tracking-wider text-white/70">
+              Semaine en cours
+            </p>
+            <p className="mt-1 font-display text-xl font-bold sm:text-2xl">
+              {weekLabel || '—'}
+            </p>
+            {weekly?.school_year?.name && (
+              <span className="school-chip-on-dark mt-2 inline-flex">
+                {weekly.school_year.name}
+              </span>
+            )}
           </div>
-        ) : null}
-        <div>
-          <label className="block text-xs text-slate-500">Salle</label>
-          <select
-            value={filterRoomId || ''}
-            onChange={(e) => setFilterRoomId(parseInt(e.target.value, 10) || 0)}
-            className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value={0}>Toutes</option>
-            {rooms?.items.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => shiftWeek(-1)}
+              className="rounded-2xl border border-white/30 bg-white/15 px-3 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25"
+            >
+              ← Préc.
+            </button>
+            <button
+              type="button"
+              onClick={goToCurrentWeek}
+              className="rounded-2xl border border-white/30 bg-white/15 px-3 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25"
+            >
+              Aujourd&apos;hui
+            </button>
+            <button
+              type="button"
+              onClick={() => shiftWeek(1)}
+              className="rounded-2xl border border-white/30 bg-white/15 px-3 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white/25"
+            >
+              Suiv. →
+            </button>
+          </div>
         </div>
       </div>
 
-      <p className="mb-2 text-sm text-slate-600">{weekLabel}</p>
+      {/* KPI tiles */}
+      {weekly && (
+        <section className="grid gap-4 sm:grid-cols-3">
+          <div className="school-tile school-accent-mint">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">
+                  Créneaux
+                </p>
+                <p className="mt-1 font-display text-3xl font-bold text-school-ink">
+                  {stats.total}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-school-mint/15 text-2xl">
+                📅
+              </div>
+            </div>
+          </div>
+          <div className="school-tile school-accent-blue">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">
+                  Jours actifs
+                </p>
+                <p className="mt-1 font-display text-3xl font-bold text-school-ink">
+                  {stats.activeDays}
+                  <span className="text-lg text-school-inkmuted"> / 7</span>
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-school-sky/15 text-2xl">
+                📆
+              </div>
+            </div>
+          </div>
+          <div className="school-tile school-accent-green">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">
+                  Publiés
+                </p>
+                <p className="mt-1 font-display text-3xl font-bold text-school-leafdeep">
+                  {stats.published}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-school-leaf/15 text-2xl">
+                ✅
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Filters */}
+      <section className="school-section">
+        <SectionTitle
+          emoji="🔎"
+          title="Filtres"
+          hint="Affinez l'affichage par année, classe, enseignant ou salle."
+          iconClassName="bg-school-mist text-school-skydeep"
+          actions={
+            hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterClassId(0)
+                  setFilterTeacherId(0)
+                  setFilterRoomId(0)
+                }}
+                className="school-btn-secondary !py-1.5 !text-xs"
+              >
+                Réinitialiser
+              </button>
+            ) : null
+          }
+        />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+              Année scolaire
+            </span>
+            {canListYears ? (
+              <select
+                value={schoolYearId || ''}
+                onChange={(e) => setSchoolYearId(parseInt(e.target.value, 10) || 0)}
+                className="school-select"
+              >
+                <option value={0}>—</option>
+                {years?.items.map((y) => (
+                  <option key={y.id} value={y.id}>
+                    {y.name}
+                    {y.is_current ? ' (courante)' : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="school-select bg-school-cream/50 font-semibold">
+                {currentYearName ?? '—'}
+              </p>
+            )}
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+              Semaine (lundi)
+            </span>
+            <input
+              type="date"
+              value={weekStart}
+              onChange={(e) => setWeekStart(mondayDateString(new Date(e.target.value)))}
+              className="school-input"
+            />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+              Classe
+            </span>
+            <select
+              value={filterClassId || ''}
+              onChange={(e) => setFilterClassId(parseInt(e.target.value, 10) || 0)}
+              className="school-select"
+            >
+              <option value={0}>Toutes les classes</option>
+              {classes?.items.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {!isTeacher ? (
+            <label>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                Enseignant
+              </span>
+              <select
+                value={filterTeacherId || ''}
+                onChange={(e) => setFilterTeacherId(parseInt(e.target.value, 10) || 0)}
+                className="school-select"
+              >
+                <option value={0}>Tous les enseignants</option>
+                {teachers?.items.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.last_name} {t.first_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+              Salle
+            </span>
+            <select
+              value={filterRoomId || ''}
+              onChange={(e) => setFilterRoomId(parseInt(e.target.value, 10) || 0)}
+              className="school-select"
+            >
+              <option value={0}>Toutes les salles</option>
+              {rooms?.items.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
 
       {!formOpen && conflicts.length > 0 && (
-        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <p className="font-medium">Conflits détectés</p>
-          <ul className="mt-1 list-inside list-disc">
+        <div className="rounded-3xl border-2 border-school-mango/40 bg-school-mango/10 px-5 py-4 text-sm font-semibold text-[#92400E]">
+          <p className="font-display text-base font-bold">⚠️ Conflits détectés</p>
+          <ul className="mt-2 list-inside list-disc space-y-1">
             {conflicts.map((c) => (
-              <li key={`${c.code}-${c.conflicting_entry_id}`}>
-                {c.message}
-              </li>
+              <li key={`${c.code}-${c.conflicting_entry_id}`}>{c.message}</li>
             ))}
           </ul>
         </div>
       )}
 
       {!formOpen && formErr && !conflicts.length && (
-        <p className="mb-4 text-sm text-red-600">{formErr}</p>
+        <p className="rounded-2xl border-2 border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">
+          ✕ {formErr}
+        </p>
       )}
 
-      {isLoading && <p className="text-sm text-slate-500">Chargement…</p>}
+      {isLoading && <LoadingState label="Chargement du planning…" lines={4} />}
+      {isError && (
+        <ErrorState
+          error={error}
+          fallback="Impossible de charger l'emploi du temps."
+          onRetry={() => void refetch()}
+        />
+      )}
 
-      {weekly && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-[900px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b bg-slate-50">
-                {DOW.map((d) => (
-                  <th
-                    key={d}
-                    className="border-r border-slate-200 px-2 py-2 text-left font-medium text-slate-700"
-                  >
-                    {DOW_FR[d]}
-                    {canManage && (
-                      <button
-                        type="button"
-                        onClick={() => openNew(d)}
-                        className="ml-2 text-xs text-indigo-600 hover:underline"
+      {weekly && !isLoading && (
+        <section className="school-section">
+          <SectionTitle
+            emoji="🗓️"
+            title="Planning de la semaine"
+            hint={hasActiveFilters ? 'Résultats filtrés' : 'Tous les créneaux de la semaine'}
+            iconClassName="bg-school-mint/20 text-[#0D7377]"
+          />
+
+          {stats.total === 0 ? (
+            <EmptyState
+              emoji="📭"
+              title="Aucun créneau cette semaine"
+              hint={
+                hasActiveFilters
+                  ? 'Essayez d’élargir les filtres ou créez un nouveau créneau.'
+                  : 'Commencez par ajouter des créneaux pour organiser la semaine.'
+              }
+              action={
+                canManage ? (
+                  <button type="button" onClick={() => openNew()} className="school-btn-primary">
+                    + Nouveau créneau
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto pb-2">
+              <div className="grid min-w-[980px] grid-cols-7 gap-3">
+                {DOW.map((d, dayIndex) => {
+                  const entries = weekly.days[d] ?? []
+                  const today = isTodayColumn(weekStart, dayIndex)
+                  return (
+                    <div key={d} className="flex min-w-[130px] flex-col">
+                      <div
+                        className={`mb-2 rounded-2xl border-2 px-3 py-2.5 text-center transition ${
+                          today
+                            ? 'border-school-grape bg-gradient-to-br from-school-grape/20 to-school-bubblegum/10 shadow-school'
+                            : `border-school-line ${DAY_HEADER[d]}`
+                        }`}
                       >
-                        + créneau
-                      </button>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {DOW.map((d) => (
-                  <td
-                    key={d}
-                    className="align-top border-r border-slate-100 p-2 align-top"
-                  >
-                    <div className="flex min-h-[140px] flex-col gap-1">
-                      {(weekly.days[d] ?? []).map((e) => {
-                        const inner = (
+                        <p className="font-display text-sm font-bold">{DOW_FR[d]}</p>
+                        <p className="text-[11px] font-semibold opacity-80">
+                          {dayDateLabel(weekStart, dayIndex)}
+                        </p>
+                        {today && (
+                          <span className="mt-1 inline-block rounded-full bg-school-grape px-2 py-0.5 text-[10px] font-bold text-white">
+                            Aujourd&apos;hui
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-1 flex-col gap-2 rounded-2xl border-2 border-dashed border-school-line/80 bg-school-cream/30 p-2 min-h-[200px]">
+                        {entries.length === 0 ? (
+                          <div className="flex flex-1 flex-col items-center justify-center gap-1 py-6 text-center">
+                            <span className="text-2xl opacity-40">—</span>
+                            <p className="text-[11px] font-semibold text-school-inkmuted">Libre</p>
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={() => openNew(d)}
+                                className="mt-1 text-[11px] font-bold text-school-grape hover:underline"
+                              >
+                                + Ajouter
+                              </button>
+                            )}
+                          </div>
+                        ) : (
                           <>
-                            <div className="font-mono text-slate-800">
-                              {e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}
-                            </div>
-                            <div className="text-slate-700">{e.subject?.name}</div>
-                            <div className="text-slate-500">{e.school_class?.name}</div>
-                            {e.room?.name && (
-                              <div className="text-slate-400">Salle {e.room.name}</div>
+                            {entries.map((e) => {
+                              const cardClass =
+                                SESSION_CARD[e.session_type] ?? SESSION_CARD.course
+                              const inner = (
+                                <>
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="text-base leading-none">
+                                      {SESSION_EMOJI[e.session_type] ?? '📘'}
+                                    </span>
+                                    <span
+                                      className={`${STATUS_PILL[e.status] ?? 'school-pill-muted'} !text-[9px]`}
+                                    >
+                                      {STATUS_LABELS[e.status] ?? e.status}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1.5 font-mono text-xs font-bold text-school-ink">
+                                    {e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}
+                                  </p>
+                                  <p className="mt-0.5 font-display text-sm font-bold leading-tight text-school-ink">
+                                    {e.subject?.name}
+                                  </p>
+                                  <p className="text-xs font-semibold text-school-inkmuted">
+                                    {e.school_class?.name}
+                                  </p>
+                                  {!isTeacher && e.teacher && (
+                                    <p className="text-[11px] text-school-inkmuted">
+                                      {e.teacher.last_name} {e.teacher.first_name?.[0]}.
+                                    </p>
+                                  )}
+                                  {e.room?.name && (
+                                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-school-skydeep">
+                                      🚪 {e.room.name}
+                                    </p>
+                                  )}
+                                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-school-inkmuted/70">
+                                    {SESSION_LABELS[e.session_type] ?? e.session_type}
+                                  </p>
+                                </>
+                              )
+                              return canManage ? (
+                                <button
+                                  key={e.id}
+                                  type="button"
+                                  onClick={() => openEdit(e)}
+                                  className={`w-full rounded-2xl border-2 p-2.5 text-left transition ${cardClass}`}
+                                >
+                                  {inner}
+                                </button>
+                              ) : (
+                                <div
+                                  key={e.id}
+                                  className={`rounded-2xl border-2 p-2.5 ${cardClass}`}
+                                >
+                                  {inner}
+                                </div>
+                              )
+                            })}
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={() => openNew(d)}
+                                className="mt-auto rounded-xl border-2 border-dashed border-school-grape/40 py-1.5 text-[11px] font-bold text-school-grape transition hover:border-school-grape hover:bg-school-grape/5"
+                              >
+                                + Créneau
+                              </button>
                             )}
                           </>
-                        )
-                        return canManage ? (
-                          <button
-                            key={e.id}
-                            type="button"
-                            onClick={() => openEdit(e)}
-                            className="block w-full rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-left text-xs hover:bg-indigo-100"
-                          >
-                            {inner}
-                          </button>
-                        ) : (
-                          <div
-                            key={e.id}
-                            className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
-                          >
-                            {inner}
-                          </div>
-                        )
-                      })}
+                        )}
+                      </div>
                     </div>
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </section>
       )}
 
       {formOpen && canManage && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-4 sm:items-center">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
-            <h3 className="mb-4 text-lg font-semibold text-slate-800">
-              {editingId ? 'Modifier le créneau' : 'Nouveau créneau'}
-            </h3>
-            <div className="grid grid-cols-1 gap-3 text-sm">
-              <div>
-                <label className="text-xs text-slate-500">Classe *</label>
-                <select
-                  value={classId || ''}
-                  onChange={(e) => setClassId(parseInt(e.target.value, 10) || 0)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  <option value={0}>—</option>
-                  {classes?.items.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-8 sm:pt-12"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setFormOpen(false)
+              setEditingId(null)
+              setConflicts([])
+            }
+          }}
+        >
+          <div className="w-full max-w-lg rounded-3xl border-2 border-school-line bg-school-bg shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-3xl border-b-2 border-school-line bg-gradient-to-r from-school-mint/10 via-school-sky/10 to-school-grape/10 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                  {editingId ? '✏️' : '➕'}
+                </span>
+                <h3 className="font-display text-lg font-bold text-school-ink">
+                  {editingId ? 'Modifier le créneau' : 'Nouveau créneau'}
+                </h3>
               </div>
-              <div>
-                <label className="text-xs text-slate-500">Matière *</label>
-                <select
-                  value={subjectId || ''}
-                  onChange={(e) => setSubjectId(parseInt(e.target.value, 10) || 0)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  <option value={0}>—</option>
-                  {subjects?.items.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500">Enseignant *</label>
-                <select
-                  value={teacherId || ''}
-                  onChange={(e) => setTeacherId(parseInt(e.target.value, 10) || 0)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  <option value={0}>—</option>
-                  {teachers?.items.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.last_name} {t.first_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500">Salle</label>
-                <select
-                  value={roomId || ''}
-                  onChange={(e) => setRoomId(parseInt(e.target.value, 10) || 0)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  <option value={0}>—</option>
-                  {rooms?.items.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500">Jour *</label>
-                <select
-                  value={dayOfWeek}
-                  onChange={(e) => setDayOfWeek(e.target.value)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  {DOW.map((d) => (
-                    <option key={d} value={d}>
-                      {DOW_FR[d]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-slate-500">Début *</label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Fin *</label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500">Type de séance</label>
-                <select
-                  value={sessionType}
-                  onChange={(e) => setSessionType(e.target.value)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  <option value="course">Cours</option>
-                  <option value="exam">Examen</option>
-                  <option value="support">Soutien</option>
-                  <option value="activity">Activité</option>
-                  <option value="meeting">Réunion</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-slate-500">Début de validité</label>
-                  <input
-                    type="date"
-                    value={effStart}
-                    onChange={(e) => setEffStart(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Fin de validité</label>
-                  <input
-                    type="date"
-                    value={effEnd}
-                    onChange={(e) => setEffEnd(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500">Statut</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                >
-                  <option value="draft">Brouillon</option>
-                  <option value="published">Publié</option>
-                  <option value="cancelled">Annulé</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500">Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
-                />
-              </div>
-            </div>
-            {formErr && conflicts.length === 0 && (
-              <div className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-                ✕ {formErr}
-              </div>
-            )}
-            {conflicts.length > 0 && (
-              <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p className="mb-1 font-semibold">⚠️ Conflit détecté</p>
-                <ul className="list-inside list-disc">
-                  {conflicts.map((c) => (
-                    <li key={`f-${c.code}-${c.conflicting_entry_id}`}>{c.message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => save.mutate()}
-                disabled={
-                  save.isPending ||
-                  !classId ||
-                  !subjectId ||
-                  !teacherId ||
-                  schoolYearId <= 0
-                }
-                className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-40"
-              >
-                Enregistrer
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Supprimer ce créneau ?')) {
-                      remove.mutate(editingId)
-                    }
-                  }}
-                  className="rounded-md border border-red-300 px-4 py-2 text-sm text-red-700"
-                >
-                  Supprimer
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => {
@@ -673,10 +794,243 @@ export function ScheduleWeeklyPage() {
                   setEditingId(null)
                   setConflicts([])
                 }}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700"
+                className="rounded-xl border-2 border-school-line bg-white px-3 py-1 text-sm font-semibold text-school-inkmuted hover:bg-school-cream"
               >
-                Fermer
+                ✕
               </button>
+            </div>
+
+            <div className="space-y-4 p-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="sm:col-span-2">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Classe *
+                  </span>
+                  <select
+                    value={classId || ''}
+                    onChange={(e) => setClassId(parseInt(e.target.value, 10) || 0)}
+                    className="school-select"
+                  >
+                    <option value={0}>— Choisir —</option>
+                    {classes?.items.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Matière *
+                  </span>
+                  <select
+                    value={subjectId || ''}
+                    onChange={(e) => setSubjectId(parseInt(e.target.value, 10) || 0)}
+                    className="school-select"
+                  >
+                    <option value={0}>—</option>
+                    {subjects?.items.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Enseignant *
+                  </span>
+                  <select
+                    value={teacherId || ''}
+                    onChange={(e) => setTeacherId(parseInt(e.target.value, 10) || 0)}
+                    className="school-select"
+                  >
+                    <option value={0}>—</option>
+                    {teachers?.items.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.last_name} {t.first_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Salle
+                  </span>
+                  <select
+                    value={roomId || ''}
+                    onChange={(e) => setRoomId(parseInt(e.target.value, 10) || 0)}
+                    className="school-select"
+                  >
+                    <option value={0}>— Aucune —</option>
+                    {rooms?.items.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Jour *
+                  </span>
+                  <select
+                    value={dayOfWeek}
+                    onChange={(e) => setDayOfWeek(e.target.value)}
+                    className="school-select"
+                  >
+                    {DOW.map((d) => (
+                      <option key={d} value={d}>
+                        {DOW_FR[d]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Début *
+                  </span>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="school-input"
+                  />
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Fin *
+                  </span>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="school-input"
+                  />
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Type de séance
+                  </span>
+                  <select
+                    value={sessionType}
+                    onChange={(e) => setSessionType(e.target.value)}
+                    className="school-select"
+                  >
+                    {Object.entries(SESSION_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Statut
+                  </span>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="school-select"
+                  >
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Début de validité
+                  </span>
+                  <input
+                    type="date"
+                    value={effStart}
+                    onChange={(e) => setEffStart(e.target.value)}
+                    className="school-input"
+                  />
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Fin de validité
+                  </span>
+                  <input
+                    type="date"
+                    value={effEnd}
+                    onChange={(e) => setEffEnd(e.target.value)}
+                    className="school-input"
+                  />
+                </label>
+                <label className="sm:col-span-2">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Notes
+                  </span>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="school-input resize-none"
+                  />
+                </label>
+              </div>
+
+              {formErr && conflicts.length === 0 && (
+                <div className="rounded-2xl border-2 border-school-coral/40 bg-school-coral/10 px-4 py-3 text-sm font-semibold text-[#B23A2E]">
+                  ✕ {formErr}
+                </div>
+              )}
+              {conflicts.length > 0 && (
+                <div className="rounded-2xl border-2 border-school-mango/40 bg-school-mango/10 p-4 text-sm font-semibold text-[#92400E]">
+                  <p className="font-display font-bold">⚠️ Conflit détecté</p>
+                  <ul className="mt-2 list-inside list-disc">
+                    {conflicts.map((c) => (
+                      <li key={`f-${c.code}-${c.conflicting_entry_id}`}>{c.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 border-t-2 border-school-line pt-4">
+                <button
+                  type="button"
+                  onClick={() => save.mutate()}
+                  disabled={
+                    save.isPending ||
+                    !classId ||
+                    !subjectId ||
+                    !teacherId ||
+                    schoolYearId <= 0
+                  }
+                  className="school-btn-primary"
+                >
+                  {save.isPending ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Supprimer ce créneau ?')) {
+                        remove.mutate(editingId)
+                      }
+                    }}
+                    className="rounded-2xl border-2 border-school-coral/60 bg-white px-4 py-2 text-sm font-bold text-[#B23A2E] transition hover:bg-school-coral/10"
+                  >
+                    Supprimer
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormOpen(false)
+                    setEditingId(null)
+                    setConflicts([])
+                  }}
+                  className="school-btn-secondary"
+                >
+                  Annuler
+                </button>
+              </div>
             </div>
           </div>
         </div>
