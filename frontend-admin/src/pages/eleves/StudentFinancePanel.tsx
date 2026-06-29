@@ -2,8 +2,10 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { type FormEvent, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as financeApi from '../../api/finance'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { getApiErrorMessage } from '../../utils/apiError'
-import { formatMad } from '../../utils/studentFinanceLabels'
+import { formatMad, PAYMENT_METHOD_LABELS } from '../../utils/studentFinanceLabels'
 
 const PAYMENT_METHODS = [
   ['cash', 'Espèces'],
@@ -11,6 +13,12 @@ const PAYMENT_METHODS = [
   ['transfer', 'Virement bancaire'],
   ['card', 'Carte bancaire'],
 ] as const
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  confirmed: 'Confirmé',
+  cancelled: 'Annulé',
+  pending: 'En attente',
+}
 
 function formatDate(d?: string | null): string {
   if (!d) return '—'
@@ -96,9 +104,9 @@ export function StudentFinancePanel({
     queryFn: () => financeApi.fetchFeeAssignments({ student_id: studentId, per_page: 50 }),
   })
 
-  const { data: paymentsData, refetch: refetchPayments } = useQuery({
+  const { data: paymentsData, isLoading: loadingPayments, refetch: refetchPayments } = useQuery({
     queryKey: ['payments-student', studentId],
-    queryFn: () => financeApi.fetchPayments({ student_id: studentId, per_page: 50 }),
+    queryFn: () => financeApi.fetchPayments({ student_id: studentId, per_page: 200 }),
   })
 
   const { data: feeTypes } = useQuery({
@@ -118,6 +126,20 @@ export function StudentFinancePanel({
   const confirmedPayments = useMemo(
     () => (paymentsData?.items ?? []).filter((p) => p.status !== 'cancelled'),
     [paymentsData?.items]
+  )
+
+  const paymentHistory = useMemo(
+    () =>
+      [...(paymentsData?.items ?? [])].sort(
+        (a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
+      ),
+    [paymentsData?.items]
+  )
+
+  const totalPaid = useMemo(
+    () =>
+      confirmedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0),
+    [confirmedPayments]
   )
 
   const addFeeAssignment = useMutation({
@@ -230,6 +252,96 @@ export function StudentFinancePanel({
           Configurer les types de frais
         </button>
       </div>
+
+      <section className="school-section">
+        <div className="school-section-title mb-4">
+          <span className="school-section-title-icon bg-school-leaf/20">📜</span>
+          Historique des paiements
+          {paymentHistory.length > 0 && (
+            <span className="school-chip ml-2">
+              {paymentHistory.length} paiement{paymentHistory.length > 1 ? 's' : ''}
+            </span>
+          )}
+          {totalPaid > 0 && (
+            <span className="school-chip ml-1 text-school-leafdeep">
+              Total {formatMad(totalPaid)}
+            </span>
+          )}
+        </div>
+
+        {loadingPayments && <LoadingState label="Chargement de l'historique…" lines={4} />}
+
+        {!loadingPayments && paymentHistory.length === 0 && (
+          <EmptyState
+            emoji="💳"
+            title="Aucun paiement enregistré"
+            hint="Les paiements de cet élève apparaîtront ici après enregistrement."
+          />
+        )}
+
+        {!loadingPayments && paymentHistory.length > 0 && (
+          <div className="school-table-wrap">
+            <table className="school-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type de frais</th>
+                  <th className="text-right">Montant</th>
+                  <th>Mode</th>
+                  <th>Référence</th>
+                  <th>Statut</th>
+                  <th>Note</th>
+                  <th className="text-right">Reçu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentHistory.map((p) => (
+                  <tr key={p.id}>
+                    <td className="whitespace-nowrap">{formatDate(p.payment_date)}</td>
+                    <td className="font-semibold">{p.fee_type_name ?? '—'}</td>
+                    <td className="text-right font-bold tabular-nums text-school-leafdeep">
+                      {formatMad(p.amount)}
+                    </td>
+                    <td>{PAYMENT_METHOD_LABELS[p.payment_method] ?? p.payment_method}</td>
+                    <td className="text-school-inkmuted">
+                      {p.payment_reference ?? '—'}
+                    </td>
+                    <td>
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          p.status === 'confirmed'
+                            ? 'bg-school-leaf/15 text-school-leafdeep'
+                            : p.status === 'cancelled'
+                              ? 'bg-school-coral/15 text-[#B23A2E]'
+                              : 'bg-school-sky/15 text-school-skydeep'
+                        }`}
+                      >
+                        {PAYMENT_STATUS_LABELS[p.status] ?? p.status}
+                      </span>
+                    </td>
+                    <td className="max-w-[12rem] truncate text-school-inkmuted" title={p.note ?? ''}>
+                      {p.note || '—'}
+                    </td>
+                    <td className="text-right">
+                      {p.has_receipt ? (
+                        <button
+                          type="button"
+                          onClick={() => void financeApi.downloadReceipt(p.id)}
+                          className="text-xs font-semibold text-school-grape hover:underline"
+                        >
+                          Télécharger
+                        </button>
+                      ) : (
+                        <span className="text-school-inkmuted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {paymentModalOpen && (
         <FinanceModal
