@@ -9,6 +9,7 @@ import * as subjectsApi from '../../api/subjects'
 import * as teachersApi from '../../api/teachers'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCurrentSchoolYear } from '../../hooks/useCurrentSchoolYear'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { isTeacherRole } from '../../utils/roles'
 
 const DOW = [
@@ -191,15 +192,10 @@ export function ScheduleWeeklyPage() {
       if (isAxiosError(e) && e.response?.status === 422) {
         const d = e.response.data as {
           conflicts?: scheduleApi.ScheduleConflict[]
-          message?: string
-          errors?: Record<string, string[]>
         }
         setConflicts(d.conflicts ?? [])
-        const fieldError = d.errors?.schedule?.[0] ?? d.errors?.end_time?.[0]
-        setFormErr(fieldError ?? d.message ?? 'Conflit ou validation impossible.')
-        return
       }
-      setFormErr(e instanceof Error ? e.message : 'Erreur')
+      setFormErr(getApiErrorMessage(e, 'Conflit ou validation impossible.'))
     },
   })
 

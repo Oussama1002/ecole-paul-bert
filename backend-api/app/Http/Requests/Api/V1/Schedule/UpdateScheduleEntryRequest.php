@@ -2,12 +2,13 @@
 
 namespace App\Http\Requests\Api\V1\Schedule;
 
+use App\Http\Requests\Api\V1\BaseApiFormRequest;
 use App\Models\ScheduleEntry;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Models\SchoolClass;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class UpdateScheduleEntryRequest extends FormRequest
+class UpdateScheduleEntryRequest extends BaseApiFormRequest
 {
     public function authorize(): bool
     {
@@ -49,6 +50,41 @@ class UpdateScheduleEntryRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'school_year_id' => 'année scolaire',
+            'class_id' => 'classe',
+            'subject_id' => 'matière',
+            'teacher_id' => 'enseignant',
+            'room_id' => 'salle',
+            'day_of_week' => 'jour',
+            'start_time' => 'heure de début',
+            'end_time' => 'heure de fin',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return array_merge(parent::messages(), [
+            'class_id.exists' => 'La classe sélectionnée n’existe pas.',
+            'school_year_id.exists' => 'L’année scolaire sélectionnée n’existe pas.',
+            'term_id.exists' => 'La période sélectionnée n’appartient pas à cette année scolaire.',
+            'subject_id.exists' => 'La matière sélectionnée n’existe pas.',
+            'teacher_id.exists' => 'L’enseignant sélectionné n’existe pas.',
+            'room_id.exists' => 'La salle sélectionnée n’existe pas.',
+            'day_of_week.in' => 'Le jour sélectionné est invalide.',
+            'start_time.regex' => 'L’heure de début doit être au format HH:MM.',
+            'end_time.regex' => 'L’heure de fin doit être au format HH:MM.',
+        ]);
+    }
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v): void {
@@ -57,6 +93,18 @@ class UpdateScheduleEntryRequest extends FormRequest
             }
             /** @var ScheduleEntry $entry */
             $entry = $this->route('scheduleEntry');
+            $schoolYearId = (int) ($this->input('school_year_id') ?? $entry->school_year_id);
+            $classId = (int) ($this->input('class_id') ?? $entry->class_id);
+            $class = SchoolClass::query()->find($classId);
+            if (! $class || ! $class->isOfferedInSchoolYear($schoolYearId)) {
+                $v->errors()->add(
+                    'class_id',
+                    'Cette classe n’est pas rattachée à l’année scolaire sélectionnée.'
+                );
+
+                return;
+            }
+
             $startRaw = $this->has('start_time')
                 ? (string) $this->input('start_time')
                 : (string) $entry->start_time;

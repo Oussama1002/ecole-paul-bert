@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { Paginated } from '../types/api'
+import { messageFromFailedApiPayload } from '../utils/apiError'
 
 type Ok<T> = { success: true; message: string; data: T }
 type Err = { success: false; message: string; errors: Record<string, string[]> }
@@ -122,7 +123,7 @@ export async function createScheduleEntry(
     '/v1/schedule-entries',
     payload
   )
-  if (!data.success) throw new Error(data.message)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
   return data.data
 }
 
@@ -134,7 +135,7 @@ export async function updateScheduleEntry(
     `/v1/schedule-entries/${id}`,
     payload
   )
-  if (!data.success) throw new Error(data.message)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
   return data.data
 }
 
@@ -142,5 +143,5 @@ export async function deleteScheduleEntry(id: number): Promise<void> {
   const { data } = await apiClient.delete<Ok<null> | Err>(
     `/v1/schedule-entries/${id}`
   )
-  if (!data.success) throw new Error(data.message)
+  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
 }

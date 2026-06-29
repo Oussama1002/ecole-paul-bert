@@ -52,6 +52,9 @@ function translateKnownValidationMessage(msg: string): string {
   if (m === 'validation.unique' || m.includes('validation.unique')) {
     return 'Cette valeur existe déjà. Modifiez l’entrée existante ou choisissez un autre code.'
   }
+  if (m === 'validation.exists' || m.includes('validation.exists')) {
+    return 'La valeur sélectionnée n’est pas valide.'
+  }
   if (
     (m.includes('code') && m.includes('already')) ||
     m.includes('déjà utilisé') ||
@@ -136,7 +139,20 @@ function firstApiFieldMessage(
   if (!errors) {
     return null
   }
-  const priority = ['email', 'username', 'password', 'role_id', 'teacher_id', 'code', 'name', 'start_date']
+  const priority = [
+    'email',
+    'username',
+    'password',
+    'role_id',
+    'teacher_id',
+    'class_id',
+    'subject_id',
+    'code',
+    'name',
+    'start_date',
+    'end_time',
+    'schedule',
+  ]
   for (const key of priority) {
     const msgs = errors[key]
     if (msgs?.[0]) {
