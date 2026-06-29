@@ -322,6 +322,13 @@ class ScheduleEntryController extends Controller
 
     private function entryAppliesOnDate(ScheduleEntry $entry, string $dateStr, SchoolYear $year): bool
     {
+        // Recurring weekly créneaux without an explicit validity window are shown on every
+        // matching weekday in the grid (emploi du temps template), even when the viewed
+        // calendar week falls before/after the school year's official dates.
+        if ($entry->effective_start_date === null && $entry->effective_end_date === null) {
+            return true;
+        }
+
         $d = Carbon::parse($dateStr)->startOfDay();
         $start = $entry->effective_start_date ?? $year->start_date;
         $end = $entry->effective_end_date ?? $year->end_date;

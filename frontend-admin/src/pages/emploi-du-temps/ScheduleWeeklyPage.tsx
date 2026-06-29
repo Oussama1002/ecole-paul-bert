@@ -37,7 +37,10 @@ function mondayDateString(d: Date): string {
   const day = x.getDay()
   const diff = x.getDate() - day + (day === 0 ? -6 : 1)
   x.setDate(diff)
-  return x.toISOString().slice(0, 10)
+  const y = x.getFullYear()
+  const m = String(x.getMonth() + 1).padStart(2, '0')
+  const dayNum = String(x.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dayNum}`
 }
 
 export function ScheduleWeeklyPage() {
