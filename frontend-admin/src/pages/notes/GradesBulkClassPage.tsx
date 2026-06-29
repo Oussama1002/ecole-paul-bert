@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import * as classesApi from '../../api/classes'
 import * as evaluationPeriodsApi from '../../api/evaluationPeriods'
@@ -22,6 +22,7 @@ type Row = {
 }
 
 export function GradesBulkClassPage() {
+  const queryClient = useQueryClient()
   const { hasPermission } = useAuth()
   const canOverrideLock = hasPermission('grades.override_lock')
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
@@ -32,6 +33,7 @@ export function GradesBulkClassPage() {
   const [coefficient, setCoefficient] = useState<number>(1)
   const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   const { data: years } = useQuery({
     queryKey: ['school-years-grades'],
@@ -138,8 +140,9 @@ export function GradesBulkClassPage() {
     enabled: schoolYearId > 0 && classId > 0,
   })
 
-  const { data: existingGrades, isFetching: loadingGrades } = useQuery({
-    queryKey: ['grades-existing', schoolYearId, classId, periodId, subjectId],
+  const gradesQueryKey = ['grades-existing', schoolYearId, classId, periodId, subjectId]
+  const { data: existingGrades, isFetching: loadingGrades, refetch: refetchGrades } = useQuery({
+    queryKey: gradesQueryKey,
     queryFn: () =>
       gradesApi.fetchGrades({
         school_year_id: schoolYearId,
@@ -149,6 +152,20 @@ export function GradesBulkClassPage() {
         per_page: 200,
       }),
     enabled: schoolYearId > 0 && classId > 0 && periodId > 0 && subjectId > 0,
+    staleTime: 0,
+  })
+
+  const allGradesKey = ['grades-all-class', schoolYearId, classId, periodId]
+  const { data: allClassGrades, isFetching: loadingAllGrades } = useQuery({
+    queryKey: allGradesKey,
+    queryFn: () =>
+      gradesApi.fetchGrades({
+        school_year_id: schoolYearId,
+        evaluation_period_id: periodId,
+        class_id: classId,
+        per_page: 200,
+      }),
+    enabled: schoolYearId > 0 && classId > 0 && periodId > 0,
     staleTime: 0,
   })
 
@@ -179,6 +196,7 @@ export function GradesBulkClassPage() {
   const bulk = useMutation({
     mutationFn: async () => {
       setError(null)
+      setSuccessMsg(null)
       if (!schoolYearId || !classId || !periodId || !subjectId) {
         throw new Error('Renseignez année, classe, période et matière.')
       }
@@ -211,24 +229,62 @@ export function GradesBulkClassPage() {
           })),
         })
       }
+
+      return { updated: toUpdate.length, inserted: toInsert.length }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       setError(null)
       setShowModal(false)
+      setSuccessMsg(
+        `${result.updated + result.inserted} note(s) enregistrée(s) avec succès.`
+      )
+      void queryClient.invalidateQueries({ queryKey: gradesQueryKey })
+      void queryClient.invalidateQueries({ queryKey: allGradesKey })
+      void refetchGrades()
     },
     onError: (e) => setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
 
+  const selectedClassName = classes?.items.find((c) => c.id === classId)?.name ?? ''
+  const selectedPeriodName = selectedPeriod?.name ?? ''
+
+  const gradesBySubject = useMemo(() => {
+    if (!allClassGrades?.items.length) return new Map<number, typeof allClassGrades.items>()
+    const map = new Map<number, typeof allClassGrades.items>()
+    for (const g of allClassGrades.items) {
+      const arr = map.get(g.subject_id) ?? []
+      arr.push(g)
+      map.set(g.subject_id, arr)
+    }
+    return map
+  }, [allClassGrades?.items])
+
+  const studentMap = useMemo(() => {
+    const m = new Map<number, { last_name: string; first_name: string }>()
+    for (const s of students?.items ?? []) {
+      m.set(s.id, { last_name: s.last_name, first_name: s.first_name })
+    }
+    return m
+  }, [students?.items])
+
+  const subjectMap = useMemo(() => {
+    const m = new Map<number, { name: string; code: string }>()
+    for (const s of subjectsQ.data?.items ?? []) {
+      m.set(s.id, { name: s.name, code: s.code })
+    }
+    return m
+  }, [subjectsQ.data?.items])
+
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold text-slate-800">Saisie des notes par classe</h2>
-        <p className="text-sm text-slate-500">Sélectionnez la classe, la période et la matière, puis entrez les notes de chaque élève.</p>
+        <h2 className="font-display text-xl font-bold text-school-ink">Saisie des notes par classe</h2>
+        <p className="text-sm text-school-inkmuted">Sélectionnez la classe, la période et la matière, puis entrez les notes de chaque élève.</p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-3">
+      <div className="grid gap-3 rounded-3xl border-2 border-school-line bg-white p-4 md:grid-cols-3">
         <label className="block text-sm">
-          <span className="text-xs text-slate-500">1. Année scolaire</span>
+          <span className="text-xs font-bold text-school-inkmuted">1. Année scolaire</span>
           <div className="mt-1">
             <SearchSelect
               value={schoolYearId || null}
@@ -244,7 +300,7 @@ export function GradesBulkClassPage() {
         </label>
 
         <label className="block text-sm">
-          <span className="text-xs text-slate-500">2. Classe</span>
+          <span className="text-xs font-bold text-school-inkmuted">2. Classe</span>
           <div className="mt-1">
             <SearchSelect
               value={classId || null}
@@ -257,7 +313,7 @@ export function GradesBulkClassPage() {
         </label>
 
         <label className="block text-sm">
-          <span className="text-xs text-slate-500">3. Période</span>
+          <span className="text-xs font-bold text-school-inkmuted">3. Période</span>
           <div className="mt-1">
             <SearchSelect
               value={periodId || null}
@@ -270,17 +326,138 @@ export function GradesBulkClassPage() {
         </label>
       </div>
 
+      {successMsg && (
+        <div className="flex items-center gap-2 rounded-2xl border-2 border-school-leaf/30 bg-school-leaf/5 px-4 py-3 text-sm font-semibold text-school-leafdeep">
+          <span className="text-lg">✅</span> {successMsg}
+        </div>
+      )}
+
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => setShowModal(true)}
+          onClick={() => { setShowModal(true); setSuccessMsg(null) }}
           disabled={!schoolYearId || !classId || !periodId}
-          className="rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+          className="school-btn-primary"
         >
           ✏️ Saisir les notes
         </button>
       </div>
 
+      {/* ── Saved Grades Summary ── */}
+      {schoolYearId > 0 && classId > 0 && periodId > 0 && (
+        <section className="school-section">
+          <div className="school-section-title mb-4">
+            <span className="school-section-title-icon bg-school-grape/20">📊</span>
+            Notes enregistrées
+            {selectedClassName && (
+              <span className="school-chip ml-2">{selectedClassName}</span>
+            )}
+            {selectedPeriodName && (
+              <span className="school-chip ml-1">{selectedPeriodName}</span>
+            )}
+          </div>
+
+          {loadingAllGrades && <LoadingState label="Chargement des notes…" lines={3} />}
+
+          {!loadingAllGrades && gradesBySubject.size === 0 && (
+            <EmptyState
+              emoji="📝"
+              title="Aucune note enregistrée"
+              hint="Cliquez sur « Saisir les notes » pour commencer."
+            />
+          )}
+
+          {!loadingAllGrades && gradesBySubject.size > 0 && (
+            <div className="space-y-4">
+              {Array.from(gradesBySubject.entries()).map(([sid, grades]) => {
+                const subj = subjectMap.get(sid)
+                const avg = grades.length > 0
+                  ? grades.reduce((s, g) => s + parseFloat(g.score), 0) / grades.length
+                  : 0
+                const maxS = grades.length > 0 ? parseFloat(grades[0].max_score) : 20
+                return (
+                  <div key={sid} className="rounded-2xl border-2 border-school-line bg-white">
+                    <div className="flex items-center justify-between border-b-2 border-school-line px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display text-sm font-bold text-school-ink">
+                          {subj?.name ?? `Matière #${sid}`}
+                        </span>
+                        {subj?.code && (
+                          <span className="school-badge-purple text-[10px]">{subj.code}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs font-semibold">
+                        <span className="text-school-inkmuted">
+                          {grades.length} note{grades.length > 1 ? 's' : ''}
+                        </span>
+                        <span className={`rounded-full px-2.5 py-0.5 ${
+                          avg >= (maxS * 0.7) ? 'bg-school-leaf/15 text-school-leafdeep'
+                          : avg >= (maxS * 0.5) ? 'bg-school-sky/15 text-school-skydeep'
+                          : avg >= (maxS * 0.35) ? 'bg-school-mango/15 text-[#92400E]'
+                          : 'bg-school-coral/15 text-[#B23A2E]'
+                        }`}>
+                          Moy. {avg.toFixed(2)} / {maxS}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="school-table">
+                        <thead>
+                          <tr>
+                            <th className="w-1/3">Élève</th>
+                            <th className="w-24 text-center">Note</th>
+                            <th className="w-24 text-center">/ Max</th>
+                            <th>Appréciation</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {grades
+                            .sort((a, b) => {
+                              const sa = studentMap.get(a.student_id)
+                              const sb = studentMap.get(b.student_id)
+                              return (sa?.last_name ?? '').localeCompare(sb?.last_name ?? '')
+                            })
+                            .map((g) => {
+                            const st = studentMap.get(g.student_id)
+                            const score = parseFloat(g.score)
+                            const max = parseFloat(g.max_score)
+                            const pct = max > 0 ? score / max : 0
+                            return (
+                              <tr key={g.id}>
+                                <td className="font-semibold">
+                                  {st ? `${st.last_name} ${st.first_name}` : `Élève #${g.student_id}`}
+                                </td>
+                                <td className="text-center">
+                                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
+                                    pct >= 0.7 ? 'bg-school-leaf/15 text-school-leafdeep'
+                                    : pct >= 0.5 ? 'bg-school-sky/15 text-school-skydeep'
+                                    : pct >= 0.35 ? 'bg-school-mango/15 text-[#92400E]'
+                                    : 'bg-school-coral/15 text-[#B23A2E]'
+                                  }`}>
+                                    {g.score}
+                                  </span>
+                                </td>
+                                <td className="text-center text-school-inkmuted">
+                                  {g.max_score}
+                                </td>
+                                <td className="text-school-inkmuted">
+                                  {g.appreciation || '—'}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Modal ── */}
       {showModal && (
       <div
         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10"
@@ -298,10 +475,10 @@ export function GradesBulkClassPage() {
       {isLocked && (
         <div
           className={[
-            'flex items-center justify-between gap-3 rounded-lg border px-4 py-2 text-sm',
+            'flex items-center justify-between gap-3 rounded-2xl border-2 px-4 py-2 text-sm',
             editingBlocked
-              ? 'border-amber-300 bg-amber-50 text-amber-900'
-              : 'border-indigo-300 bg-indigo-50 text-indigo-900',
+              ? 'border-school-mango/30 bg-school-mango/5 text-[#92400E]'
+              : 'border-school-sky/30 bg-school-sky/5 text-school-skydeep',
           ].join(' ')}
         >
           <span>
@@ -313,9 +490,9 @@ export function GradesBulkClassPage() {
         </div>
       )}
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-3">
+      <div className="grid gap-3 rounded-2xl border-2 border-school-line bg-white p-4 md:grid-cols-3">
         <label className="block text-sm md:col-span-1">
-          <span className="text-xs text-slate-500">Matière *</span>
+          <span className="text-xs font-bold text-school-inkmuted">Matière *</span>
           <div className="mt-1">
             <SearchSelect
               value={subjectId || null}
@@ -328,38 +505,38 @@ export function GradesBulkClassPage() {
           </div>
         </label>
         <label className="block text-sm">
-          <span className="text-xs text-slate-500">Note max</span>
+          <span className="text-xs font-bold text-school-inkmuted">Note max</span>
           <input
             type="number"
             value={maxScore}
             onChange={(e) => setMaxScore(Number(e.target.value))}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+            className="school-input mt-1"
           />
         </label>
         <label className="block text-sm">
-          <span className="text-xs text-slate-500">Coefficient</span>
+          <span className="text-xs font-bold text-school-inkmuted">Coefficient</span>
           <input
             type="number"
             value={coefficient}
             onChange={(e) => setCoefficient(Number(e.target.value))}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+            className="school-input mt-1"
           />
         </label>
       </div>
 
       {loadingGrades && subjectId > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
+        <div className="flex items-center gap-2 rounded-2xl border-2 border-school-line bg-school-bg px-4 py-2 text-sm text-school-inkmuted">
           <span className="animate-spin">⏳</span> Chargement des notes existantes…
         </div>
       )}
 
       {!loadingGrades && subjectId > 0 && rows.some((r) => r.gradeId !== null) && (
-        <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800">
+        <div className="flex items-center gap-2 rounded-2xl border-2 border-school-sky/30 bg-school-sky/5 px-4 py-2 text-sm font-semibold text-school-skydeep">
           ✏️ <strong>{rows.filter((r) => r.gradeId !== null).length} note(s)</strong> déjà saisies — pré-remplies ci-dessous. Modifiez et enregistrez pour mettre à jour.
         </div>
       )}
 
-      {error && <ErrorState title="Échec d’enregistrement" fallback={error} />}
+      {error && <ErrorState title="Échec d'enregistrement" fallback={error} />}
       {studentsError && (
         <ErrorState
           error={studentsErr}
@@ -368,22 +545,22 @@ export function GradesBulkClassPage() {
         />
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="school-table-wrap">
         {!students && classId > 0 ? (
           <LoadingState label="Chargement des élèves…" lines={3} />
         ) : null}
-        <table className="min-w-full text-sm">
+        <table className="school-table">
           <thead>
-            <tr className="border-b border-slate-200 text-left">
-              <th className="px-4 py-3">Élève</th>
-              <th className="px-4 py-3">Note</th>
-              <th className="px-4 py-3">Appréciation</th>
+            <tr>
+              <th>Élève</th>
+              <th className="w-28">Note</th>
+              <th>Appréciation</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-3 text-slate-500" colSpan={3}>
+                <td className="px-4 py-3" colSpan={3}>
                   <EmptyState
                     emoji="📝"
                     title="Aucune note à saisir pour le moment"
@@ -404,18 +581,18 @@ export function GradesBulkClassPage() {
               </tr>
             ) : (
               rows.map((r, idx) => (
-                <tr key={r.student_id} className="border-b border-slate-100">
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-1.5">
+                <tr key={r.student_id}>
+                  <td>
+                    <span className="flex items-center gap-1.5 font-semibold">
                       {r.label}
                       {r.gradeId !== null && (
-                        <span className="rounded bg-indigo-100 px-1 py-0.5 text-[10px] font-bold uppercase text-indigo-600">
+                        <span className="school-badge-purple text-[10px]">
                           existante
                         </span>
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <input
                       type="number"
                       value={r.score}
@@ -427,10 +604,10 @@ export function GradesBulkClassPage() {
                         )
                       }
                       disabled={editingBlocked}
-                      className="w-28 rounded border border-slate-300 px-2 py-1 disabled:bg-slate-100"
+                      className="school-input w-24 !py-1.5 text-center"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <input
                       value={r.appreciation}
                       onChange={(e) =>
@@ -441,7 +618,7 @@ export function GradesBulkClassPage() {
                         )
                       }
                       disabled={editingBlocked}
-                      className="w-full rounded border border-slate-300 px-2 py-1 disabled:bg-slate-100"
+                      className="school-input !py-1.5"
                       placeholder="Optionnel…"
                     />
                   </td>
@@ -453,15 +630,15 @@ export function GradesBulkClassPage() {
       </div>
       </div>
       <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-b-3xl border-t-2 border-school-line bg-white px-6 py-4">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs font-semibold text-school-inkmuted">
           {rows.length} élève{rows.length > 1 ? 's' : ''}
-          {subjectId > 0 ? ` · Matière sélectionnée` : ' · Sélectionnez une matière'}
+          {subjectId > 0 ? ' · Matière sélectionnée' : ' · Sélectionnez une matière'}
         </span>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setShowModal(false)}
-            className="rounded-xl border-2 border-school-line px-4 py-2 text-sm font-semibold text-school-inkmuted hover:bg-school-cream"
+            className="school-btn-secondary"
           >
             Annuler
           </button>
@@ -476,7 +653,7 @@ export function GradesBulkClassPage() {
               !subjectId ||
               editingBlocked
             }
-            className="rounded-xl bg-indigo-600 px-6 py-2 text-sm font-bold text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+            className="school-btn-primary"
           >
             {bulk.isPending ? 'Enregistrement…' : '💾 Enregistrer les notes'}
           </button>
@@ -488,4 +665,3 @@ export function GradesBulkClassPage() {
     </div>
   )
 }
-
