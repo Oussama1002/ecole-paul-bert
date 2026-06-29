@@ -219,13 +219,13 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('permission:grades.view')->get('/grades', [GradeController::class, 'index']);
         Route::middleware('permission:grades.view')->get('/grades/export.xlsx', [GradeController::class, 'exportExcel']);
+        Route::middleware('permission:grades.view')->get('/grades/class-ranking', [GradeAnalyticsController::class, 'classRanking']);
         Route::middleware('permission:grades.manage')->post('/grades', [GradeController::class, 'store']);
+        Route::middleware('permission:grades.manage')->post('/grades/bulk', [GradeController::class, 'bulkStore']);
+        Route::middleware('permission:grades.manage')->post('/grades/recalculate', [GradeAnalyticsController::class, 'recalculateWeightedScores']);
         Route::middleware('permission:grades.view')->get('/grades/{grade}', [GradeController::class, 'show']);
         Route::middleware('permission:grades.manage')->patch('/grades/{grade}', [GradeController::class, 'update']);
         Route::middleware('permission:grades.manage')->delete('/grades/{grade}', [GradeController::class, 'destroy']);
-        Route::middleware('permission:grades.manage')->post('/grades/bulk', [GradeController::class, 'bulkStore']);
-        Route::middleware('permission:grades.view')->get('/grades/class-ranking', [GradeAnalyticsController::class, 'classRanking']);
-        Route::middleware('permission:grades.manage')->post('/grades/recalculate', [GradeAnalyticsController::class, 'recalculateWeightedScores']);
 
         Route::middleware('permission:report_cards.view')->get('/report-cards', [ReportCardController::class, 'index']);
         Route::middleware('permission:report_cards.view')->get('/report-cards/{reportCard}', [ReportCardController::class, 'show']);

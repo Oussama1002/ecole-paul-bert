@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('name', 150);
             $table->string('code', 50)->unique();
-            $table->boolean('is_active')->default(true)->index();
+            $table->string('status', 20)->default('active')->index();
             $table->text('description')->nullable();
             $table->timestamps();
         });

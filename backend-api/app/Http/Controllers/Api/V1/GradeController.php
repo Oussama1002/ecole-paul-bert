@@ -38,7 +38,7 @@ class GradeController extends Controller
             'student_id' => ['nullable', 'integer', 'exists:students,id'],
             'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
             'is_validated' => ['nullable', 'boolean'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         $q = Grade::query();
@@ -267,7 +267,13 @@ class GradeController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            return ApiResponse::error('Erreur saisie bulk.', [], 500);
+            \Log::error('Grade bulk store error', [
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return ApiResponse::error($e->getMessage() ?: 'Erreur saisie bulk.', [], 500);
         }
 
         return ApiResponse::success([
