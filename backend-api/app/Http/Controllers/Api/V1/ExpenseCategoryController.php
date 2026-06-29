@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Finance\StoreExpenseCategoryRequest;
 use App\Http\Requests\Api\V1\Finance\UpdateExpenseCategoryRequest;
 use App\Http\Responses\ApiResponse;
+use App\Models\AppSetting;
 use App\Models\ExpenseCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ExpenseCategoryController extends Controller
 {
@@ -18,6 +20,10 @@ class ExpenseCategoryController extends Controller
             'is_active' => ['nullable', 'boolean'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
+
+        if (ExpenseCategory::query()->count() === 0) {
+            $this->seedFromSettings();
+        }
 
         $q = ExpenseCategory::query()->orderBy('name');
         if ($request->has('is_active')) {
@@ -81,6 +87,25 @@ class ExpenseCategoryController extends Controller
         $expenseCategory->delete();
 
         return ApiResponse::success(null, 'Catégorie supprimée.');
+    }
+
+    private function seedFromSettings(): void
+    {
+        $raw = AppSetting::where('key', 'finance_journal_expense_labels')->value('value');
+        $labels = is_string($raw) ? json_decode($raw, true) : null;
+        if (! is_array($labels) || $labels === []) {
+            $labels = ['Salaires', 'Énergie', 'Entretien', 'Fournitures', 'Autre dépense'];
+        }
+        foreach ($labels as $name) {
+            $code = Str::slug($name, '_');
+            if ($code === '') {
+                continue;
+            }
+            ExpenseCategory::query()->firstOrCreate(
+                ['code' => $code],
+                ['name' => $name, 'status' => 'active']
+            );
+        }
     }
 
     /**
