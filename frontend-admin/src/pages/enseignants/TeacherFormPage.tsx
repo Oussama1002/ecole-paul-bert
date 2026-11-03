@@ -26,18 +26,6 @@ export function TeacherFormPage() {
     enabled: !isNew && !Number.isNaN(id),
   })
 
-  if (simpleMode) {
-    if (!isNew && isLoading) {
-      return <p className="text-sm text-school-inkmuted">Chargement…</p>
-    }
-    return (
-      <QuickTeacherForm
-        existing={existing}
-        teacherId={Number.isNaN(id) ? undefined : id}
-      />
-    )
-  }
-
   const [employeeCode, setEmployeeCode] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -121,6 +109,21 @@ export function TeacherFormPage() {
     onError: (e: unknown) =>
       setError(getApiErrorMessage(e, 'Enregistrement impossible.')),
   })
+
+  // Simple Mode renders the quick form, but only after all hooks above have
+  // run — early-returning before them would violate the Rules of Hooks and
+  // crash when Simple Mode toggles while this page is mounted.
+  if (simpleMode) {
+    if (!isNew && isLoading) {
+      return <p className="text-sm text-school-inkmuted">Chargement…</p>
+    }
+    return (
+      <QuickTeacherForm
+        existing={existing}
+        teacherId={Number.isNaN(id) ? undefined : id}
+      />
+    )
+  }
 
   if (!isNew && isLoading) {
     return <p className="text-sm text-slate-500">Chargement…</p>
