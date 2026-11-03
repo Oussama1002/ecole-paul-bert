@@ -82,11 +82,19 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (\Throwable $e, Request $request) {
             if ($request->is('api/*')) {
+                // Respect the real HTTP status for aborts (abort(403), abort(404), …);
+                // only unexpected errors should surface as a generic 500.
+                $isHttp = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+                $status = $isHttp ? $e->getStatusCode() : 500;
+                $message = $status >= 500
+                    ? 'Une erreur interne est survenue. Veuillez réessayer.'
+                    : ($e->getMessage() ?: 'Requête refusée.');
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Une erreur interne est survenue. Veuillez réessayer.',
+                    'message' => $message,
                     'errors' => (object) [],
-                ], 500);
+                ], $status);
             }
         });
     })->create();

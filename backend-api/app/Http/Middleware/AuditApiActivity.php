@@ -58,7 +58,7 @@ class AuditApiActivity
             [
                 'method' => $method,
                 'path' => '/'.trim($request->path(), '/'),
-                'query' => $request->query()->all() !== [] ? $request->query()->all() : null,
+                'query' => $request->query() !== [] ? $request->query() : null,
                 'status' => $status,
             ],
             $request
