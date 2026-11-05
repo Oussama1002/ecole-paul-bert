@@ -242,7 +242,7 @@ export function DashboardPage() {
                     ✅
                   </div>
                 </div>
-                <div className="mt-3 flex gap-3 text-xs font-semibold">
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="school-pill-green">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-school-leafdeep" />
                     {data.attendance_today.present} présents
