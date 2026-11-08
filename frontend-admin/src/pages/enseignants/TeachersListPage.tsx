@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
+import { BulkImportModal } from '../../components/BulkImportModal'
 import { TeacherFormModal } from './TeacherFormModal'
 
 const statusLabels: Record<string, string> = {
@@ -42,8 +43,10 @@ export function TeachersListPage() {
   const [status, setStatus] = useState('')
   const [employmentType, setEmploymentType] = useState('')
   const [modalTeacher, setModalTeacher] = useState<number | 'new' | null>(null)
+  const [showImport, setShowImport] = useState(false)
 
   const canManage = hasPermission('teachers.manage')
+  const canImport = hasPermission('teachers.import')
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['teachers', page, debounced, status, employmentType],
@@ -81,16 +84,34 @@ export function TeachersListPage() {
             : 'Liste avec filtres avancés et gestion fine du personnel.'
         }
         actions={
-          canManage ? (
-            <button
-              type="button"
-              onClick={() => setModalTeacher('new')}
-              className="school-btn-primary"
-            >
-              + Nouvel enseignant
-            </button>
-          ) : null
+          <>
+            {!simpleMode && canImport && (
+              <button
+                type="button"
+                onClick={() => setShowImport(true)}
+                className="school-btn-secondary"
+              >
+                Importer CSV / Excel
+              </button>
+            )}
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setModalTeacher('new')}
+                className="school-btn-primary"
+              >
+                + Nouvel enseignant
+              </button>
+            )}
+          </>
         }
+      />
+
+      <BulkImportModal
+        type="teachers"
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['teachers'] })}
       />
 
       {simpleMode ? (

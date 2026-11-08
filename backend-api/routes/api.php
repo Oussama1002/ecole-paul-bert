@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\GradeController;
 use App\Http\Controllers\Api\V1\GradeAnalyticsController;
 use App\Http\Controllers\Api\V1\GuardianController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InternalNotificationController;
 use App\Http\Controllers\Api\V1\LevelController;
 use App\Http\Controllers\Api\V1\ExpenseCategoryController;
@@ -133,7 +134,8 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('permission:students.export')->get('/students/export', [StudentController::class, 'export']);
         Route::middleware('permission:students.export')->get('/students/export.xlsx', [StudentController::class, 'exportExcel']);
-        Route::middleware('permission:students.import')->post('/students/import', [StudentController::class, 'import']);
+        Route::middleware('permission:students.import')->post('/students/import', [ImportController::class, 'students']);
+        Route::post('/imports/template/{type}', [ImportController::class, 'template']);
         Route::middleware('permission:students.manage')->get('/students/next-code', [StudentController::class, 'nextCode']);
         Route::middleware('permission:students.view')->get('/students', [StudentController::class, 'index']);
         Route::middleware('permission:students.manage')->post('/students', [StudentController::class, 'store']);
@@ -163,6 +165,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:enrollments.manage')->patch('/enrollments/{enrollment}', [EnrollmentController::class, 'update']);
 
         Route::middleware('permission:teachers.view')->get('/teachers', [TeacherController::class, 'index']);
+        Route::middleware('permission:teachers.import')->post('/teachers/import', [ImportController::class, 'teachers']);
         Route::middleware('permission:teachers.manage')->post('/teachers', [TeacherController::class, 'store']);
         Route::middleware('permission:teachers.view')->get('/teachers/{teacher}', [TeacherController::class, 'show']);
         Route::middleware('permission:teachers.manage')->patch('/teachers/{teacher}', [TeacherController::class, 'update']);

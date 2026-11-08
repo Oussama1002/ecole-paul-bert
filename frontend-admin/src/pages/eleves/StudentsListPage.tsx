@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import * as classesApi from '../../api/classes'
 import * as levelsApi from '../../api/levels'
@@ -13,7 +13,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
-import { getApiErrorMessage } from '../../utils/apiError'
+import { BulkImportModal } from '../../components/BulkImportModal'
 import { QuickStudentForm } from './QuickStudentForm'
 import { StudentEditModal } from './StudentEditModal'
 
@@ -41,7 +41,6 @@ export function StudentsListPage() {
   const { hasPermission } = useAuth()
   const { simpleMode } = useSimpleMode()
   const queryClient = useQueryClient()
-  const fileRef = useRef<HTMLInputElement>(null)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
@@ -49,7 +48,7 @@ export function StudentsListPage() {
   const [schoolYearId, setSchoolYearId] = useState<number | ''>('')
   const [levelId, setLevelId] = useState<number | ''>('')
   const [classId, setClassId] = useState<number | ''>('')
-  const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [showImport, setShowImport] = useState(false)
   const [showNewModal, setShowNewModal] = useState(false)
   const [editStudentId, setEditStudentId] = useState<number | null>(null)
 
@@ -130,17 +129,6 @@ export function StudentsListPage() {
     mutationFn: () => studentsApi.downloadStudentsExportExcel(exportParams),
   })
 
-  const doImport = useMutation({
-    mutationFn: (file: File) => studentsApi.importStudents(file),
-    onSuccess: (r) => {
-      setImportMsg(
-        `Créés : ${r.created}, ignorés : ${r.skipped}, erreurs : ${r.errors.length}`
-      )
-      queryClient.invalidateQueries({ queryKey: ['students'] })
-    },
-    onError: (e) => setImportMsg(getApiErrorMessage(e, "Import d'élèves impossible.")),
-  })
-
   function applySearch(e: React.FormEvent) {
     e.preventDefault()
     setDebounced(search.trim())
@@ -219,29 +207,13 @@ export function StudentsListPage() {
               {isLoading ? 'Actualisation…' : '↻ Actualiser'}
             </button>
             {!simpleMode && canImport && (
-              <>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".csv,.xlsx,.xls,.txt"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) {
-                      doImport.mutate(f)
-                      e.target.value = ''
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={doImport.isPending}
-                  className="school-btn-secondary"
-                >
-                  Importer CSV / Excel
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setShowImport(true)}
+                className="school-btn-secondary"
+              >
+                Importer CSV / Excel
+              </button>
             )}
             {canExport && (
               <button
@@ -353,11 +325,12 @@ export function StudentsListPage() {
         </section>
       )}
 
-      {importMsg && (
-        <p className="rounded-2xl border-2 border-school-sun/40 bg-school-sunsoft/50 px-4 py-2.5 text-sm font-semibold text-amber-900">
-          {importMsg}
-        </p>
-      )}
+      <BulkImportModal
+        type="students"
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['students'] })}
+      />
 
       {simpleMode ? (
         <form onSubmit={applySearch} className="school-section space-y-3">

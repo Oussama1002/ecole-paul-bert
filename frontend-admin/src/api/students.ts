@@ -230,25 +230,4 @@ export async function downloadStudentsExportExcel(
   URL.revokeObjectURL(a.href)
 }
 
-export type ImportResult = {
-  created: number
-  skipped: number
-  errors: { row: number; messages: string[] }[]
-}
-
-export async function importStudents(
-  file: File,
-  columnMap?: Record<string, number>
-): Promise<ImportResult> {
-  const form = new FormData()
-  form.append('file', file)
-  if (columnMap) {
-    form.append('column_map', JSON.stringify(columnMap))
-  }
-  const { data } = await apiClient.post<Ok<ImportResult> | Err>(
-    '/v1/students/import',
-    form
-  )
-  if (!data.success) throw new Error(messageFromFailedApiPayload(data))
-  return data.data
-}
+// Bulk CSV/Excel import lives in ../api/imports.ts (shared students + teachers).

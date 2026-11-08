@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\V1\Students\ImportStudentsRequest;
 use App\Http\Requests\Api\V1\Students\IndexStudentRequest;
 use App\Http\Requests\Api\V1\Students\StoreStudentRequest;
 use App\Http\Requests\Api\V1\Students\UpdateStudentRequest;
@@ -19,7 +18,6 @@ use App\Models\Payment;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Services\AuditLogger;
-use App\Services\StudentImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -554,20 +552,6 @@ class StudentController extends Controller
         }, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
-    }
-
-    public function import(ImportStudentsRequest $request, StudentImportService $importService): JsonResponse
-    {
-        $file = $request->file('file');
-        $map = $request->input('column_map');
-
-        try {
-            $result = $importService->importFromFile($file, is_array($map) ? $map : null);
-        } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error($e->getMessage(), [], 422);
-        }
-
-        return ApiResponse::success($result, 'Import terminé.');
     }
 
     /**

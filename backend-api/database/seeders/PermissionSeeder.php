@@ -44,6 +44,7 @@ class PermissionSeeder extends Seeder
         ['name' => 'Gérer les inscriptions', 'code' => 'enrollments.manage', 'module_name' => 'enrollments', 'action_name' => 'manage'],
         ['name' => 'Voir les enseignants', 'code' => 'teachers.view', 'module_name' => 'teachers', 'action_name' => 'view'],
         ['name' => 'Gérer les enseignants', 'code' => 'teachers.manage', 'module_name' => 'teachers', 'action_name' => 'manage'],
+        ['name' => 'Importer des enseignants', 'code' => 'teachers.import', 'module_name' => 'teachers', 'action_name' => 'import'],
         ['name' => 'Voir l’emploi du temps', 'code' => 'schedule.view', 'module_name' => 'schedule', 'action_name' => 'view'],
         ['name' => 'Gérer l’emploi du temps', 'code' => 'schedule.manage', 'module_name' => 'schedule', 'action_name' => 'manage'],
 
@@ -134,6 +135,7 @@ class PermissionSeeder extends Seeder
         ];
         $studentOffice = array_merge($studentPedago, [
             'students.import',
+            'teachers.import',
             'announcements.manage',
             'audit_logs.view',
         ]);
