@@ -19,7 +19,7 @@ use App\Models\TeacherObservation;
 use App\Models\User;
 use App\Services\ReceiptService;
 use App\Services\ReportCardService;
-use App\Services\SimpleDashboardService;
+use App\Services\DashboardKpiService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
@@ -335,28 +335,29 @@ class ClientFlowRunner
             return ['report_card_id' => $reportCard->id, 'pdf_path' => $reportCard->pdf_path];
         });
 
-        $this->step($steps, $bugs, '10. Check simple dashboard numbers', function () use (&$ctx): array {
+        $this->step($steps, $bugs, '10. Check dashboard KPI numbers', function () use (&$ctx): array {
             $year = $ctx['school_year'] ?? null;
             $payment = $ctx['payment'] ?? null;
             if (! $year instanceof SchoolYear || ! $payment instanceof Payment) {
                 throw new \RuntimeException('Missing dashboard context.');
             }
 
-            $dashboard = app(SimpleDashboardService::class)->build($year->id);
-            $kpis = $dashboard['kpis'] ?? null;
-            if (! is_array($kpis)) {
+            $dashboard = app(DashboardKpiService::class)->build($year->id);
+            $enrollment = $dashboard['enrollment'] ?? null;
+            $finance = $dashboard['finance'] ?? null;
+            if (! is_array($enrollment) || ! is_array($finance)) {
                 throw new \RuntimeException('Dashboard payload is invalid.');
             }
 
-            $globalRevenue = (float) ($kpis['global_revenue'] ?? 0);
-            if ($globalRevenue <= 0) {
-                throw new \RuntimeException('Global revenue is not updated after payment.');
+            $paymentsThisMonth = (float) ($finance['payments_this_month'] ?? 0);
+            if ($paymentsThisMonth <= 0) {
+                throw new \RuntimeException('Monthly payments are not updated after payment.');
             }
 
             return [
-                'total_students' => $kpis['total_students'] ?? null,
-                'monthly_revenue' => $kpis['monthly_revenue'] ?? null,
-                'global_revenue' => $kpis['global_revenue'] ?? null,
+                'total_students' => $enrollment['total_students'] ?? null,
+                'payments_this_month' => $finance['payments_this_month'] ?? null,
+                'collection_rate' => $finance['collection_rate'] ?? null,
             ];
         });
 

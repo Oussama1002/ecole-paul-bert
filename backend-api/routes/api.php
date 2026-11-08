@@ -184,7 +184,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:attendance.justify')->post('/attendance-records/{attendanceRecord}/justify', [AttendanceRecordController::class, 'justify']);
         Route::middleware('permission:attendance.view')->get('/attendance/stats', [AttendanceRecordController::class, 'stats']);
         Route::middleware('permission:dashboard.view')->get('/dashboard', [DashboardController::class, 'index']);
-        Route::middleware('permission:dashboard.view')->get('/dashboard/simple', [DashboardController::class, 'simple']);
+        Route::middleware('permission:dashboard.view')->get('/dashboard/kpis', [DashboardController::class, 'kpis']);
 
         // Simple-mode attendance: monthly student totals + teacher daily tracking.
         Route::middleware('permission:attendance.view')->get('/simple/attendance/students', [SimpleAttendanceController::class, 'studentTotals']);

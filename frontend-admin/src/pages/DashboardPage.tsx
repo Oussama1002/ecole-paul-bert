@@ -56,6 +56,62 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }) + ' DH'
 }
 
+/**
+ * Trend indicator badge: ▲ green for a rise, ▼ red for a drop, ─ grey for flat.
+ * `unit` is appended to the value ('%' for a percent change, ' pts' for a
+ * percentage-point difference). `invert` flips the colour semantics for
+ * metrics where "up is bad" (e.g. expenses) — unused here but available.
+ */
+function TrendBadge({
+  value,
+  unit = '%',
+  invert = false,
+  suffix,
+}: {
+  value: number
+  unit?: string
+  invert?: boolean
+  suffix?: string
+}) {
+  const up = value > 0
+  const down = value < 0
+  const good = invert ? down : up
+  const tone = value === 0
+    ? 'bg-school-bg text-school-inkmuted'
+    : good
+      ? 'bg-school-leaf/15 text-school-leafdeep'
+      : 'bg-school-coral/15 text-[#B23A2E]'
+  const arrow = up ? '▲' : down ? '▼' : '─'
+  const sign = value > 0 ? '+' : ''
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${tone}`}>
+      <span aria-hidden>{arrow}</span>
+      {sign}{value.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}{unit}
+      {suffix ? <span className="font-semibold opacity-70">{suffix}</span> : null}
+    </span>
+  )
+}
+
+function activityIcon(type: string): string {
+  switch (type) {
+    case 'enrollment': return '🎒'
+    case 'payment': return '💰'
+    default: return '📌'
+  }
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const diff = Date.now() - d.getTime()
+  const mins = Math.round(diff / 60000)
+  if (mins < 1) return "à l'instant"
+  if (mins < 60) return `il y a ${mins} min`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `il y a ${hrs} h`
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0)
   useEffect(() => {
@@ -99,6 +155,19 @@ export function DashboardPage() {
         school_year_id: schoolYearId === '' ? undefined : schoolYearId,
       }),
   })
+
+  const { data: kpis } = useQuery({
+    queryKey: ['dashboard-kpis', schoolYearId],
+    queryFn: () =>
+      dashboardApi.fetchDashboardKpis({
+        school_year_id: schoolYearId === '' ? undefined : schoolYearId,
+      }),
+  })
+
+  const levelScale = useMemo(
+    () => (kpis ? kpis.enrollment.by_level.reduce((m, r) => Math.max(m, r.count), 0) || 1 : 1),
+    [kpis]
+  )
 
   const absencesScale = useMemo(
     () => (data ? data.attendance_last_7_days.reduce((m, p) => Math.max(m, p.absences), 0) || 1 : 1),
@@ -170,6 +239,149 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Headline KPIs with trend indicators ── */}
+      {kpis && (
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Enrollment */}
+          <div className="school-tile school-accent-blue">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">Élèves inscrits</p>
+                <p className="mt-1 font-display text-3xl font-bold text-school-ink">
+                  <AnimatedNumber value={kpis.enrollment.total_students} />
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-school-sky/15 text-2xl">🎒</div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <TrendBadge value={kpis.enrollment.trend_vs_last_month} suffix=" / mois préc." />
+              <span className="text-[11px] font-semibold text-school-inkmuted">
+                +{kpis.enrollment.new_this_month} ce mois
+              </span>
+            </div>
+          </div>
+
+          {/* Attendance this week */}
+          <div className="school-tile school-accent-green">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">Présence (semaine)</p>
+                <p className="mt-1 font-display text-3xl font-bold text-school-leafdeep">
+                  {kpis.attendance.rate_this_week.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}%
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-school-leaf/15 text-2xl">✅</div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <TrendBadge value={kpis.attendance.trend_vs_last_week} unit=" pts" suffix=" / sem. préc." />
+              <span className="text-[11px] font-semibold text-school-inkmuted">
+                {kpis.attendance.absences_today} abs. · {kpis.attendance.lates_today} ret. auj.
+              </span>
+            </div>
+          </div>
+
+          {/* Payments this month */}
+          <div className="school-tile school-accent-purple">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">Encaissements (mois)</p>
+                <p className="mt-1 font-display text-2xl font-bold text-school-ink">
+                  {formatCurrency(kpis.finance.payments_this_month)}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-school-sun/20 text-2xl">💰</div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <TrendBadge value={kpis.finance.trend_vs_last_month} suffix=" / mois préc." />
+              <span className="text-[11px] font-semibold text-school-inkmuted">
+                {kpis.finance.collection_rate.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}% recouvré
+              </span>
+            </div>
+          </div>
+
+          {/* Teachers present */}
+          <div className="school-tile school-accent-pink">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-school-inkmuted">Enseignants présents</p>
+                <p className="mt-1 font-display text-3xl font-bold text-school-ink">
+                  <AnimatedNumber value={kpis.teachers.present_today} />
+                  <span className="text-lg font-semibold text-school-inkmuted"> / {kpis.teachers.total_active}</span>
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-school-bubblegum/15 text-2xl">👩‍🏫</div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold text-school-inkmuted">
+                {kpis.finance.unpaid_invoices_count} facture{kpis.finance.unpaid_invoices_count > 1 ? 's' : ''} impayée{kpis.finance.unpaid_invoices_count > 1 ? 's' : ''} · {formatCurrency(kpis.finance.unpaid_invoices_total)}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Enrollment by level + recent activity ── */}
+      {kpis && (kpis.enrollment.by_level.length > 0 || kpis.recent_activity.length > 0) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {kpis.enrollment.by_level.length > 0 && (
+            <section className="school-section">
+              <div className="school-section-title mb-4">
+                <span className="school-section-title-icon bg-school-sky/20">🏫</span>
+                Effectifs par niveau
+              </div>
+              <div className="space-y-3">
+                {kpis.enrollment.by_level.map((row) => {
+                  const w = Math.round((row.count / levelScale) * 100)
+                  return (
+                    <div key={row.level}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <span className="text-sm font-bold text-school-ink">{row.level}</span>
+                        <span className="rounded-full bg-school-sky/15 px-2.5 py-0.5 text-xs font-bold text-school-skydeep">
+                          {row.count}
+                        </span>
+                      </div>
+                      <div className="school-stat-bar">
+                        <div
+                          className="school-stat-bar-fill bg-gradient-to-r from-school-skydeep to-school-sky"
+                          style={{ width: `${Math.max(w, 4)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {kpis.recent_activity.length > 0 && (
+            <section className="school-section">
+              <div className="school-section-title mb-4">
+                <span className="school-section-title-icon bg-school-leaf/20">🕑</span>
+                Activité récente
+              </div>
+              <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                {kpis.recent_activity.map((a, i) => (
+                  <div
+                    key={`${a.type}-${a.timestamp ?? ''}-${i}`}
+                    className="flex items-start gap-3 rounded-2xl border-2 border-school-line bg-white px-4 py-2.5"
+                  >
+                    <span className="mt-0.5 text-base">{activityIcon(a.type)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-school-ink">{a.message}</p>
+                      {a.timestamp && (
+                        <p className="mt-0.5 text-[11px] font-semibold text-school-inkmuted/70">
+                          {relativeTime(a.timestamp)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
 
       {isLoading && <LoadingState label="Chargement des indicateurs…" lines={5} />}
       {isError && (

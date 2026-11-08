@@ -89,33 +89,63 @@ export async function fetchDashboard(params: {
   return data.data
 }
 
-export type SimpleDashboardKpis = {
+// ── Upgraded KPI endpoint (GET /v1/dashboard/kpis) ──────────────────────────
+
+export type KpiLevelCount = { level: string; count: number }
+
+export type KpiEnrollment = {
   total_students: number
-  new_registrations: number
-  students_left: number
-  registration_revenue: number
-  monthly_revenue: number
-  global_revenue: number
+  new_this_month: number
+  /** Percent change vs last month. */
+  trend_vs_last_month: number
+  by_level: KpiLevelCount[]
 }
 
-export type SimpleRevenuePoint = { key: string; label: string; amount: number }
-
-export type SimpleDashboardPayload = {
-  school_year: {
-    id: number
-    name: string
-    start_date: string
-    end_date: string
-  } | null
-  kpis: SimpleDashboardKpis
-  revenue_trend: SimpleRevenuePoint[]
+export type KpiAttendance = {
+  rate_this_week: number
+  rate_last_week: number
+  absences_today: number
+  lates_today: number
+  /** Difference in percentage points vs last week. */
+  trend_vs_last_week: number
 }
 
-export async function fetchSimpleDashboard(params: {
+export type KpiFinance = {
+  unpaid_invoices_count: number
+  unpaid_invoices_total: number
+  payments_this_month: number
+  payments_last_month: number
+  collection_rate: number
+  /** Percent change vs last month. */
+  trend_vs_last_month: number
+  expenses_this_month: number
+}
+
+export type KpiTeachers = {
+  total_active: number
+  present_today: number
+}
+
+export type KpiActivity = {
+  type: string
+  message: string
+  timestamp: string | null
+}
+
+export type DashboardKpiPayload = {
+  school_year: { id: number; name: string } | null
+  enrollment: KpiEnrollment
+  attendance: KpiAttendance
+  finance: KpiFinance
+  teachers: KpiTeachers
+  recent_activity: KpiActivity[]
+}
+
+export async function fetchDashboardKpis(params: {
   school_year_id?: number
-} = {}): Promise<SimpleDashboardPayload> {
-  const { data } = await apiClient.get<Ok<SimpleDashboardPayload> | Err>(
-    '/v1/dashboard/simple',
+} = {}): Promise<DashboardKpiPayload> {
+  const { data } = await apiClient.get<Ok<DashboardKpiPayload> | Err>(
+    '/v1/dashboard/kpis',
     { params }
   )
   if (!data.success) throw new Error(messageFromFailedApiPayload(data))
