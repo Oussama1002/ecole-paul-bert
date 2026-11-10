@@ -180,7 +180,21 @@ export function ClassFormModal({
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
                   Section
                 </span>
-                <input value={section} onChange={(e) => setSection(e.target.value)} className="school-input" />
+                <select
+                  value={section}
+                  onChange={(e) => setSection(e.target.value)}
+                  className="school-input"
+                >
+                  <option value="">—</option>
+                  {(section && !['A', 'B', 'C', 'D', 'E', 'F'].includes(section)
+                    ? [section, 'A', 'B', 'C', 'D', 'E', 'F']
+                    : ['A', 'B', 'C', 'D', 'E', 'F']
+                  ).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
