@@ -14,6 +14,7 @@ use App\Models\ScheduleEntry;
 use App\Models\SchoolClass;
 use App\Models\SchoolYear;
 use App\Models\Teacher;
+use App\Models\TeacherClassSubject;
 use App\Services\ScheduleConflictService;
 use App\Services\TeacherScopeService;
 use Carbon\Carbon;
@@ -130,6 +131,7 @@ class ScheduleEntryController extends Controller
         }
 
         $entry = ScheduleEntry::query()->create($data);
+        $this->syncAffectation($entry);
         $entry->load(['schoolClass', 'subject', 'room', 'teacher', 'schoolYear', 'academicTerm']);
 
         return ApiResponse::success(
@@ -153,11 +155,44 @@ class ScheduleEntryController extends Controller
 
         $scheduleEntry->updated_by = $request->user()?->id;
         $scheduleEntry->save();
+        $this->syncAffectation($scheduleEntry);
         $scheduleEntry->load(['schoolClass', 'subject', 'room', 'teacher', 'schoolYear', 'academicTerm']);
 
         return ApiResponse::success(
             (new ScheduleEntryResource($scheduleEntry->fresh()))->resolve(),
             'Créneau mis à jour.'
+        );
+    }
+
+    /**
+     * Ensure a teacher↔class↔subject affectation exists for a planning slot.
+     * A planning slot (schedule entry) and an affectation are stored separately,
+     * so creating/updating a slot would otherwise leave the teacher's "Classes"
+     * and "Matières" tabs empty. We create the matching affectation when the slot
+     * carries a teacher, class, subject and school year.
+     */
+    private function syncAffectation(ScheduleEntry $entry): void
+    {
+        if (
+            $entry->teacher_id === null
+            || $entry->class_id === null
+            || $entry->subject_id === null
+            || $entry->school_year_id === null
+        ) {
+            return;
+        }
+
+        TeacherClassSubject::query()->firstOrCreate(
+            [
+                'teacher_id' => $entry->teacher_id,
+                'class_id' => $entry->class_id,
+                'subject_id' => $entry->subject_id,
+                'school_year_id' => $entry->school_year_id,
+            ],
+            [
+                'is_primary' => false,
+                'status' => 'active',
+            ]
         );
     }
 
