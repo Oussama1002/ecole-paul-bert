@@ -10,6 +10,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { BulkImportModal } from '../../components/BulkImportModal'
+import { ExportButton } from '../../components/ExportButton'
 import { TeacherFormModal } from './TeacherFormModal'
 
 const statusLabels: Record<string, string> = {
@@ -85,6 +86,11 @@ export function TeachersListPage() {
         }
         actions={
           <>
+            <ExportButton
+              endpoint="/export/teachers"
+              filename="enseignants"
+              filters={{ search: debounced || undefined }}
+            />
             {!simpleMode && canImport && (
               <button
                 type="button"

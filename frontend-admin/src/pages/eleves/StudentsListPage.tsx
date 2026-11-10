@@ -14,6 +14,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { StudentAvatar } from '../../components/ui/StudentAvatar'
 import { BulkImportModal } from '../../components/BulkImportModal'
+import { ExportButton } from '../../components/ExportButton'
 import { QuickStudentForm } from './QuickStudentForm'
 import { StudentEditModal } from './StudentEditModal'
 
@@ -117,18 +118,6 @@ export function StudentsListPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
   })
 
-  const exportParams = {
-    search: debounced || undefined,
-    status: status || undefined,
-    school_year_id: schoolYearId === '' ? undefined : schoolYearId,
-    level_id: levelId === '' ? undefined : levelId,
-    class_id: classId === '' ? undefined : classId,
-  }
-
-  const doExportExcel = useMutation({
-    mutationFn: () => studentsApi.downloadStudentsExportExcel(exportParams),
-  })
-
   function applySearch(e: React.FormEvent) {
     e.preventDefault()
     setDebounced(search.trim())
@@ -211,14 +200,15 @@ export function StudentsListPage() {
               </button>
             )}
             {canExport && (
-              <button
-                type="button"
-                onClick={() => doExportExcel.mutate()}
-                disabled={doExportExcel.isPending}
-                className="school-btn-secondary"
-              >
-                {doExportExcel.isPending ? 'Export…' : 'Exporter Excel'}
-              </button>
+              <ExportButton
+                endpoint="/export/students"
+                filename="eleves"
+                filters={{
+                  search: debounced || undefined,
+                  class_id: classId === '' ? undefined : classId,
+                  level_id: levelId === '' ? undefined : levelId,
+                }}
+              />
             )}
             {canManage && (
               <button

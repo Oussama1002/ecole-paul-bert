@@ -5,6 +5,7 @@ import type { AuditLogRow } from '../../api/auditLogs'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { ExportButton } from '../../components/ExportButton'
 import { AuditLogDetailModal } from './AuditLogDetailModal'
 import { ActionBadge, formatAuditDate, formatSubjectTarget } from './auditLogDisplay'
 
@@ -23,7 +24,14 @@ export function AuditLogsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-800">Journal d'audit</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold text-slate-800">Journal d'audit</h2>
+        <ExportButton
+          endpoint="/export/audit-logs"
+          filename="audit"
+          filters={{ action: action.trim() || undefined }}
+        />
+      </div>
       <label className="flex max-w-md items-center gap-2 text-sm">
         <span className="text-slate-600">Filtrer action</span>
         <input

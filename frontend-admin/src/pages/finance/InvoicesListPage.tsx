@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { SearchSelect, type SearchSelectOption } from '../../components/ui/SearchSelect'
+import { ExportButton } from '../../components/ExportButton'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApiErrorMessage } from '../../utils/apiError'
 
@@ -230,11 +231,25 @@ export function InvoicesListPage() {
             Création, statuts (brouillon, émise, partielle, payée, annulée), PDF, paiements liés.
           </p>
         </div>
-        {canManage && (
-          <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
-            + Nouvelle facture
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/export/invoices"
+            filename="factures"
+            filters={{
+              status:
+                status === 'issued'
+                  ? 'unpaid'
+                  : status === 'partial' || status === 'paid'
+                    ? status
+                    : undefined,
+            }}
+          />
+          {canManage && (
+            <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
+              + Nouvelle facture
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import * as rolesApi from '../api/roles'
 import * as usersApi from '../api/users'
 import { useAuth } from '../contexts/AuthContext'
+import { ExportButton } from '../components/ExportButton'
 import { UserFormModal } from './UserFormModal'
 
 const statusLabels: Record<string, string> = {
@@ -63,15 +64,25 @@ export function UsersListPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xl font-semibold text-slate-800">Utilisateurs</h2>
-        {hasPermission('users.create') && (
-          <button
-            type="button"
-            onClick={() => setModalUser('new')}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Nouvel utilisateur
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/export/users"
+            filename="utilisateurs"
+            filters={{
+              search: searchDebounced || undefined,
+              role: roleId === '' ? undefined : roleId,
+            }}
+          />
+          {hasPermission('users.create') && (
+            <button
+              type="button"
+              onClick={() => setModalUser('new')}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Nouvel utilisateur
+            </button>
+          )}
+        </div>
       </div>
 
       <form

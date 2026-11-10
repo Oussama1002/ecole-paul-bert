@@ -4,6 +4,7 @@ import * as classesApi from '../../api/classes'
 import * as evaluationPeriodsApi from '../../api/evaluationPeriods'
 import * as gradesApi from '../../api/grades'
 import * as schoolYearsApi from '../../api/schoolYears'
+import { ExportButton } from '../../components/ExportButton'
 
 export function ClassRankingPage() {
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
@@ -82,6 +83,14 @@ export function ClassRankingPage() {
           <h2 className="text-xl font-semibold text-slate-800">Classement</h2>
           <p className="text-sm text-slate-500">Moyenne période + rang (ex-aequo gérés).</p>
         </div>
+        <ExportButton
+          endpoint="/export/grades"
+          filename="notes"
+          filters={{
+            class_id: classId || undefined,
+            evaluation_period_id: periodId || undefined,
+          }}
+        />
         <button
           type="button"
           onClick={() => recalc.mutate()}

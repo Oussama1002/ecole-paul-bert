@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\EnrollmentController;
 use App\Http\Controllers\Api\V1\EvaluationPeriodController;
+use App\Http\Controllers\Api\V1\ExportController;
 use App\Http\Controllers\Api\V1\GradeController;
 use App\Http\Controllers\Api\V1\GradeAnalyticsController;
 use App\Http\Controllers\Api\V1\GuardianController;
@@ -211,6 +212,17 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:notifications.view')->get('/internal-notifications', [InternalNotificationController::class, 'index']);
         Route::middleware('permission:notifications.view')->post('/internal-notifications/read-all', [InternalNotificationController::class, 'markAllRead']);
         Route::middleware('permission:notifications.view')->post('/internal-notifications/{internalNotification}/read', [InternalNotificationController::class, 'markRead']);
+
+        // Generic PDF / Excel exports for the major list pages.
+        Route::middleware('permission:students.view')->get('/export/students', [ExportController::class, 'students']);
+        Route::middleware('permission:teachers.view')->get('/export/teachers', [ExportController::class, 'teachers']);
+        Route::middleware('permission:attendance.view')->get('/export/attendance', [ExportController::class, 'attendance']);
+        Route::middleware('permission:finance.view')->get('/export/payments', [ExportController::class, 'payments']);
+        Route::middleware('permission:finance.view')->get('/export/invoices', [ExportController::class, 'invoices']);
+        Route::middleware('permission:finance.view')->get('/export/expenses', [ExportController::class, 'expenses']);
+        Route::middleware('permission:grades.view')->get('/export/grades', [ExportController::class, 'grades']);
+        Route::middleware('permission:users.view')->get('/export/users', [ExportController::class, 'users']);
+        Route::middleware('permission:audit_logs.view')->get('/export/audit-logs', [ExportController::class, 'auditLogs']);
 
         // Email / SMS / in-app notification system.
         Route::get('/notification-preferences', [NotificationPreferenceController::class, 'index']);

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import * as attendanceApi from '../../api/attendance'
 import * as classesApi from '../../api/classes'
 import * as schoolYearsApi from '../../api/schoolYears'
+import { ExportButton } from '../../components/ExportButton'
 
 export function AttendanceStatsPage() {
   const [schoolYearId, setSchoolYearId] = useState<number>(0)
@@ -52,9 +53,20 @@ export function AttendanceStatsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-800">Statistiques absences</h2>
-        <p className="text-sm text-slate-500">Synthèse par année/classe/période.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-800">Statistiques absences</h2>
+          <p className="text-sm text-slate-500">Synthèse par année/classe/période.</p>
+        </div>
+        <ExportButton
+          endpoint="/export/attendance"
+          filename="assiduite"
+          filters={{
+            class_id: classId || undefined,
+            date_from: from || undefined,
+            date_to: to || undefined,
+          }}
+        />
       </div>
 
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-4">

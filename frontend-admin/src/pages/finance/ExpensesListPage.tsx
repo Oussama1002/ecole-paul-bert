@@ -5,6 +5,7 @@ import * as schoolYearsApi from '../../api/schoolYears'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { ExportButton } from '../../components/ExportButton'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApiErrorMessage } from '../../utils/apiError'
 
@@ -164,11 +165,22 @@ export function ExpensesListPage() {
           <h2 className="font-display text-xl font-bold text-school-ink">Dépenses</h2>
           <p className="text-sm text-school-inkmuted">Enregistrez et suivez les dépenses de l'école.</p>
         </div>
-        {canManage && (
-          <button type="button" onClick={openNew} className="school-btn-primary">
-            + Nouvelle dépense
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/export/expenses"
+            filename="depenses"
+            filters={{
+              date_from: from || undefined,
+              date_to: to || undefined,
+              category_id: categoryId || undefined,
+            }}
+          />
+          {canManage && (
+            <button type="button" onClick={openNew} className="school-btn-primary">
+              + Nouvelle dépense
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

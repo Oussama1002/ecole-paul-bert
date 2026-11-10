@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { SearchSelect, type SearchSelectOption } from '../../components/ui/SearchSelect'
+import { ExportButton } from '../../components/ExportButton'
 import { useAuth } from '../../contexts/AuthContext'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { formatMad } from '../../utils/studentFinanceLabels'
@@ -334,11 +335,18 @@ export function PaymentsListPage() {
             Élève → frais à régler (échéance) → montant → facture et reçu générés automatiquement.
           </p>
         </div>
-        {canManage && (
-          <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
-            + Nouveau paiement
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExportButton
+            endpoint="/export/payments"
+            filename="paiements"
+            filters={{ student_id: studentId ?? undefined }}
+          />
+          {canManage && (
+            <button type="button" onClick={() => setShowModal(true)} className="school-btn-primary">
+              + Nouveau paiement
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
