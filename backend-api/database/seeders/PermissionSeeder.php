@@ -69,6 +69,8 @@ class PermissionSeeder extends Seeder
         ['name' => 'Gérer les annonces', 'code' => 'announcements.manage', 'module_name' => 'announcements', 'action_name' => 'manage'],
         ['name' => 'Voir les notifications internes', 'code' => 'notifications.view', 'module_name' => 'notifications', 'action_name' => 'view'],
         ['name' => 'Voir le journal d’audit', 'code' => 'audit_logs.view', 'module_name' => 'audit_logs', 'action_name' => 'view'],
+
+        ['name' => 'Voir les analyses pluriannuelles', 'code' => 'analytics.view', 'module_name' => 'analytics', 'action_name' => 'view'],
         ];
     }
 
@@ -146,7 +148,7 @@ class PermissionSeeder extends Seeder
             1 => $allIds,
             2 => $allIds,
             3 => array_merge(
-                $pick(['users.view', 'users.edit', 'dashboard.view']),
+                $pick(['users.view', 'users.edit', 'dashboard.view', 'analytics.view']),
                 $pick($paramView),
                 $pick($paramManagePedago),
                 $pick($studentPedago)
@@ -158,7 +160,7 @@ class PermissionSeeder extends Seeder
                 $pick($studentPedago)
             ),
             5 => array_merge(
-                $pick(['users.view', 'users.create', 'users.edit', 'users.deactivate', 'dashboard.view']),
+                $pick(['users.view', 'users.create', 'users.edit', 'users.deactivate', 'dashboard.view', 'analytics.view']),
                 $pick(array_merge($paramView, $paramManageAdmin)),
                 $pick($studentOffice)
             ),

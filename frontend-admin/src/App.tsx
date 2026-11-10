@@ -55,6 +55,11 @@ import { NotificationsCenterPage } from './pages/communications/NotificationsCen
 import { UserFormPage } from './pages/UserFormPage'
 import { UsersListPage } from './pages/UsersListPage'
 import { RolloverWizardPage } from './pages/admin/RolloverWizardPage'
+import { AnalyticsDashboardPage } from './pages/analytics/AnalyticsDashboardPage'
+import { EnrollmentAnalyticsPage } from './pages/analytics/EnrollmentAnalyticsPage'
+import { FinanceAnalyticsPage } from './pages/analytics/FinanceAnalyticsPage'
+import { AttendanceAnalyticsPage } from './pages/analytics/AttendanceAnalyticsPage'
+import { GradesAnalyticsPage } from './pages/analytics/GradesAnalyticsPage'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { RequireAdvancedMode } from './routes/RequireAdvancedMode'
 import {
@@ -646,6 +651,47 @@ export default function App() {
                 element={
                   <RequirePermission permission="report_cards.view">
                     <ReportCardTemplatePage />
+                  </RequirePermission>
+                }
+              />
+
+              <Route
+                path="analyses"
+                element={
+                  <RequirePermission permission="analytics.view">
+                    <AnalyticsDashboardPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="analyses/effectifs"
+                element={
+                  <RequirePermission permission="analytics.view">
+                    <EnrollmentAnalyticsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="analyses/finances"
+                element={
+                  <RequirePermission permission="analytics.view">
+                    <FinanceAnalyticsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="analyses/assiduite"
+                element={
+                  <RequirePermission permission="analytics.view">
+                    <AttendanceAnalyticsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="analyses/resultats"
+                element={
+                  <RequirePermission permission="analytics.view">
+                    <GradesAnalyticsPage />
                   </RequirePermission>
                 }
               />

@@ -16,6 +16,7 @@ type NavGroup = {
 const standalone: NavItem[] = [
   { to: '/', label: 'Tableau de bord', emoji: '🏠', end: true },
   { to: '/eleves', label: 'Élèves', emoji: '🎒', permission: 'students.view' },
+  { to: '/analyses', label: 'Analyses pluriannuelles', emoji: '📈', permission: 'analytics.view' },
 ]
 
 const groups: NavGroup[] = [

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AcademicTermController;
+use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AppSettingController;
 use App\Http\Controllers\Api\V1\AttendanceRecordController;
@@ -321,6 +322,15 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:teachers.manage')->post('/teachers/{teacher}/assignments', [TeacherAssignmentController::class, 'store']);
         Route::middleware('permission:teachers.manage')->patch('/teacher-class-subjects/{teacherClassSubject}', [TeacherAssignmentController::class, 'update']);
         Route::middleware('permission:teachers.manage')->delete('/teacher-class-subjects/{teacherClassSubject}', [TeacherAssignmentController::class, 'destroy']);
+
+        Route::middleware('permission:analytics.view')->group(function () {
+            Route::get('/analytics/summary', [AnalyticsController::class, 'summary']);
+            Route::get('/analytics/enrollment', [AnalyticsController::class, 'enrollment']);
+            Route::get('/analytics/finance', [AnalyticsController::class, 'finance']);
+            Route::get('/analytics/attendance', [AnalyticsController::class, 'attendance']);
+            Route::get('/analytics/grades', [AnalyticsController::class, 'grades']);
+            Route::get('/analytics/teachers', [AnalyticsController::class, 'teachers']);
+        });
 
         Route::middleware('permission:teachers.view')->get('/teachers/{teacher}/documents', [TeacherDocumentController::class, 'index']);
         Route::middleware('permission:teachers.view')->get('/teacher-documents/{teacherDocument}/download', [TeacherDocumentController::class, 'download']);
