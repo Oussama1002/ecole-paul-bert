@@ -53,7 +53,7 @@ function getGreeting(): string {
 }
 
 function formatCurrency(n: number): string {
-  return n.toLocaleString('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }) + ' DH'
+  return n.toLocaleString('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }) + ' MAD'
 }
 
 /**

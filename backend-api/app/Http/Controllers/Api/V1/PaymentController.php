@@ -189,7 +189,7 @@ class PaymentController extends Controller
                 $actorId,
                 'payment.recorded',
                 'Paiement enregistré',
-                'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' DH',
+                'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' MAD',
                 ['payment_id' => $pay->id]
             );
         }
@@ -197,7 +197,7 @@ class PaymentController extends Controller
             'notifications.view',
             'payment.recorded',
             'Nouveau paiement',
-            'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' DH',
+            'Réf. '.$pay->payment_reference.' — '.number_format((float) $pay->amount, 2, ',', ' ').' MAD',
             ['payment_id' => $pay->id],
             $actorId > 0 ? $actorId : null
         );

@@ -168,7 +168,7 @@ class InvoiceController extends Controller
                 'finance.manage',
                 'invoice.created',
                 'Nouvelle facture',
-                'Facture '.$inv->invoice_number.' — '.number_format((float) $inv->total_amount, 2, ',', ' ').' FCFA',
+                'Facture '.$inv->invoice_number.' — '.number_format((float) $inv->total_amount, 2, ',', ' ').' MAD',
                 ['invoice_id' => $inv->id],
                 $actorId > 0 ? $actorId : null
             );

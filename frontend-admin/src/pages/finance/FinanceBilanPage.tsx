@@ -20,7 +20,7 @@ const PERIOD_LABELS: Record<PeriodType, string> = {
 }
 
 function formatMoney(n: number): string {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DH'
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MAD'
 }
 
 export function FinanceBilanPage() {

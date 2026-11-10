@@ -637,5 +637,5 @@ function formatMoney(n: number): string {
   return `${n.toLocaleString('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} DH`
+  })} MAD`
 }

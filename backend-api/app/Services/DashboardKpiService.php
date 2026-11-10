@@ -287,7 +287,7 @@ class DashboardKpiService
                 : '';
             $items[] = [
                 'type' => 'payment',
-                'message' => 'Paiement reçu: '.$this->formatAmount((float) $p->amount).' FCFA'
+                'message' => 'Paiement reçu: '.$this->formatAmount((float) $p->amount).' MAD'
                     .($name !== '' ? ' - '.$name : ''),
                 'timestamp' => optional($p->created_at ?? $p->payment_date)->toIso8601String(),
                 '_sort' => optional($p->created_at ?? $p->payment_date)->getTimestamp() ?? 0,
