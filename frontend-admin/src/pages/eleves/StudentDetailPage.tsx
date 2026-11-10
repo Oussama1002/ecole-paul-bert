@@ -107,6 +107,7 @@ export function StudentDetailPage() {
   const [enrollmentNumberManual, setEnrollmentNumberManual] = useState(false)
   const [enrollmentDate, setEnrollmentDate] = useState(new Date().toISOString().slice(0, 10))
   const [enrollErr, setEnrollErr] = useState<string | null>(null)
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
   const [editEnrollId, setEditEnrollId] = useState<number | null>(null)
   const [editEnrollClassId, setEditEnrollClassId] = useState<number>(0)
   const [editEnrollAcStatus, setEditEnrollAcStatus] = useState('')
@@ -236,7 +237,7 @@ export function StudentDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments-student'] })
       queryClient.invalidateQueries({ queryKey: ['student', numericId] })
-      setEnrollErr(null); setEnrollmentNumber(''); setEnrollmentNumberManual(false); refetchNumber()
+      setEnrollErr(null); setEnrollmentNumber(''); setEnrollmentNumberManual(false); setShowEnrollModal(false); setClassId(0); refetchNumber()
     },
     onError: (e) => setEnrollErr(getApiErrorMessage(e, "Impossible d'enregistrer l'inscription.")),
   })
@@ -395,7 +396,22 @@ export function StudentDetailPage() {
       {tab === 'inscription' && (
         <div className="space-y-4">
           <section className="school-section">
-            <SectionTitle emoji="📝" title="Inscriptions enregistrées" iconClassName="bg-school-grape/10 text-school-grape" />
+            <SectionTitle
+              emoji="📝"
+              title="Inscriptions enregistrées"
+              iconClassName="bg-school-grape/10 text-school-grape"
+              actions={
+                canEnroll ? (
+                  <button
+                    type="button"
+                    onClick={() => { setEnrollErr(null); setShowEnrollModal(true) }}
+                    className="school-btn-primary"
+                  >
+                    + Nouvelle inscription
+                  </button>
+                ) : undefined
+              }
+            />
             {enrollments?.items?.length ? (
               <ul className="space-y-2">
                 {enrollments.items.map((e) => (
@@ -462,45 +478,84 @@ export function StudentDetailPage() {
             )}
           </section>
 
-          {canEnroll && (
-            <form className="school-section space-y-3" onSubmit={(e) => {
-              e.preventDefault(); setEnrollErr(null)
-              if (!syEnrollment || !classId || !enrollmentNumber.trim()) {
-                setEnrollErr("Renseignez année, classe et numéro d'inscription."); return
-              }
-              createEnrollment.mutate()
-            }}>
-              <SectionTitle emoji="➕" title="Nouvelle inscription" iconClassName="bg-school-leaf/15 text-school-leafdeep" />
-              {enrollErr && <p className="rounded-2xl border-2 border-school-coral/40 bg-school-coral/10 px-4 py-2.5 text-sm font-semibold text-[#B23A2E]">{enrollErr}</p>}
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Année scolaire">
-                  <select required value={syEnrollment || ''} onChange={(e) => { setSyEnrollment(Number(e.target.value)); setClassId(0) }} className="school-select">
-                    <option value="">—</option>
-                    {years?.items.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
-                  </select>
-                </Field>
-                <Field label="Classe">
-                  <select required value={classId || ''} onChange={(e) => setClassId(Number(e.target.value))} className="school-select">
-                    <option value="">—</option>
-                    {classesForYear?.items.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-                  </select>
-                </Field>
-                <Field label="N° inscription (généré automatiquement)">
-                  <div className="flex gap-2">
-                    <input value={enrollmentNumber} onChange={(e) => { setEnrollmentNumberManual(true); setEnrollmentNumber(e.target.value) }} className="school-input font-mono" placeholder="INS-2026-0001" />
-                    <button type="button" title="Regénérer" onClick={() => { setEnrollmentNumberManual(false); refetchNumber() }} className="shrink-0 rounded-xl border-2 border-school-line px-2 text-school-inkmuted hover:bg-school-cream">↻</button>
+          {canEnroll && showEnrollModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-8 sm:pt-12"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowEnrollModal(false) }}
+            >
+              <form
+                className="flex max-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border-2 border-school-line bg-school-bg shadow-2xl"
+                onSubmit={(e) => {
+                  e.preventDefault(); setEnrollErr(null)
+                  if (!syEnrollment || !classId || !enrollmentNumber.trim()) {
+                    setEnrollErr("Renseignez année, classe et numéro d'inscription."); return
+                  }
+                  createEnrollment.mutate()
+                }}
+              >
+                <div className="flex shrink-0 items-center justify-between rounded-t-3xl border-b-2 border-school-line bg-gradient-to-r from-school-sky/10 via-school-grape/10 to-school-bubblegum/10 px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">📝</span>
+                    <div>
+                      <h2 className="font-display text-xl font-bold text-school-ink">Nouvelle inscription</h2>
+                      <p className="text-xs font-semibold text-school-inkmuted">{student.first_name} {student.last_name}</p>
+                    </div>
                   </div>
-                </Field>
-                <Field label="Date">
-                  <input type="date" value={enrollmentDate} onChange={(e) => setEnrollmentDate(e.target.value)} className="school-input" />
-                </Field>
-              </div>
-              <div className="flex justify-end">
-                <button type="submit" disabled={createEnrollment.isPending} className="school-btn-primary disabled:opacity-60">
-                  {createEnrollment.isPending ? 'Enregistrement…' : "Enregistrer l'inscription"}
-                </button>
-              </div>
-            </form>
+                  <button
+                    type="button"
+                    onClick={() => setShowEnrollModal(false)}
+                    className="rounded-xl border-2 border-school-line bg-white px-3 py-1 text-sm font-semibold text-school-inkmuted hover:bg-school-cream"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3 overflow-y-auto p-6">
+                  {enrollErr && <p className="rounded-2xl border-2 border-school-coral/40 bg-school-coral/10 px-4 py-2.5 text-sm font-semibold text-[#B23A2E]">{enrollErr}</p>}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Année scolaire">
+                      <select required value={syEnrollment || ''} onChange={(e) => { setSyEnrollment(Number(e.target.value)); setClassId(0) }} className="school-select">
+                        <option value="">—</option>
+                        {years?.items.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Classe">
+                      <select required value={classId || ''} onChange={(e) => setClassId(Number(e.target.value))} className="school-select">
+                        <option value="">—</option>
+                        {classesForYear?.items.map((c) => <option key={c.id} value={c.id}>{c.name}{c.level?.name ? ` — ${c.level.name}` : ''} ({c.code})</option>)}
+                      </select>
+                    </Field>
+                    <Field label="N° inscription (généré automatiquement)">
+                      <div className="flex gap-2">
+                        <input value={enrollmentNumber} onChange={(e) => { setEnrollmentNumberManual(true); setEnrollmentNumber(e.target.value) }} className="school-input font-mono" placeholder="INS-2026-0001" />
+                        <button type="button" title="Regénérer" onClick={() => { setEnrollmentNumberManual(false); refetchNumber() }} className="shrink-0 rounded-xl border-2 border-school-line px-2 text-school-inkmuted hover:bg-school-cream">↻</button>
+                      </div>
+                    </Field>
+                    <Field label="Date">
+                      <input type="date" value={enrollmentDate} onChange={(e) => setEnrollmentDate(e.target.value)} className="school-input" />
+                    </Field>
+                  </div>
+                  {(() => {
+                    const selectedClass = classesForYear?.items.find((c) => c.id === classId)
+                    if (!selectedClass) return null
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 rounded-2xl border-2 border-school-leaf/30 bg-school-leaf/10 px-4 py-2.5 text-sm">
+                        <span className="font-semibold text-school-ink">Niveau&nbsp;:</span>
+                        <span className="school-pill-sky">{selectedClass.level?.name ?? 'Non défini'}</span>
+                        <span className="text-school-inkmuted">· Classe {selectedClass.name}</span>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <div className="flex shrink-0 justify-end gap-2 border-t-2 border-school-line px-6 py-4">
+                  <button type="button" onClick={() => setShowEnrollModal(false)} className="school-btn-secondary">Annuler</button>
+                  <button type="submit" disabled={createEnrollment.isPending} className="school-btn-primary disabled:opacity-60">
+                    {createEnrollment.isPending ? 'Enregistrement…' : "Enregistrer l'inscription"}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       )}
