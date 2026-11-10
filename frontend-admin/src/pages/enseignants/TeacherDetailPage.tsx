@@ -563,12 +563,34 @@ export function TeacherDetailPage() {
             emoji="🚪"
             title="Classes"
             iconClassName="bg-school-mist text-school-skydeep"
+            actions={
+              canManage ? (
+                <button
+                  type="button"
+                  onClick={() => setTab('matieres')}
+                  className="school-btn-primary"
+                >
+                  + Nouvelle affectation
+                </button>
+              ) : undefined
+            }
           />
           {distinctClasses.length === 0 ? (
             <EmptyState
               emoji="🚪"
               title="Aucune classe"
               hint="Cet enseignant n'a pas encore d'affectation."
+              action={
+                canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => setTab('matieres')}
+                    className="school-btn-primary"
+                  >
+                    + Nouvelle affectation
+                  </button>
+                ) : undefined
+              }
             />
           ) : (
             <ul className="flex flex-wrap gap-2">
