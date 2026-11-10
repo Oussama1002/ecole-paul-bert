@@ -155,13 +155,13 @@ export function StudentsListPage() {
     <div className="space-y-5">
       {showNewModal && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-8 sm:pt-12"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-8 sm:pt-12"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowNewModal(false)
           }}
         >
-          <div className="w-full max-w-2xl rounded-3xl border-2 border-school-line bg-school-bg shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-3xl border-b-2 border-school-line bg-gradient-to-r from-school-sky/10 via-school-grape/10 to-school-bubblegum/10 px-6 py-4">
+          <div className="flex max-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border-2 border-school-line bg-school-bg shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between rounded-t-3xl border-b-2 border-school-line bg-gradient-to-r from-school-sky/10 via-school-grape/10 to-school-bubblegum/10 px-6 py-4">
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
                   🎒
@@ -176,7 +176,7 @@ export function StudentsListPage() {
                 ✕
               </button>
             </div>
-            <div className="p-6">
+            <div className="overflow-y-auto p-6">
               <QuickStudentForm onClose={() => setShowNewModal(false)} />
             </div>
           </div>
