@@ -87,7 +87,7 @@ export function AppHeader({ onMenuClick }: { onMenuClick?: () => void } = {}) {
   }, [])
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-school-border/60 bg-school-paper/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-3">
+    <header className="relative z-40 flex flex-wrap items-center justify-between gap-2 border-b border-school-border/60 bg-school-paper/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-3">
       <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         {onMenuClick && (
           <button
