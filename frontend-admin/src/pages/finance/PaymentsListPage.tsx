@@ -226,6 +226,74 @@ export function PaymentsListPage() {
     [studentFees, formFeeAssignmentId]
   )
 
+  const assignFeeForm = (
+    <form
+      className="space-y-2 rounded-xl border border-school-line bg-white p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        setAssignFeeErr(null)
+        assignFee.mutate()
+      }}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+        Assigner un frais ici
+      </p>
+      {assignFeeErr && <p className="text-xs text-red-600">{assignFeeErr}</p>}
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs text-school-inkmuted">Type de frais *</span>
+        <select
+          required
+          value={assignFeeTypeId || ''}
+          onChange={(e) => {
+            const id = Number(e.target.value)
+            setAssignFeeTypeId(id)
+            const ft = feeTypesForAssign.data?.items.find((t) => t.id === id)
+            if (ft?.default_amount) setAssignFeeAmount(ft.default_amount)
+          }}
+          className="school-select w-full text-sm"
+        >
+          <option value="">— Choisir —</option>
+          {(feeTypesForAssign.data?.items.length ?? 0) === 0 ? (
+            <option value="">Aucun type actif — créez-en dans Types de frais</option>
+          ) : (
+            feeTypesForAssign.data?.items.map((ft) => (
+              <option key={ft.id} value={ft.id}>
+                {ft.name} — {formatMad(ft.default_amount)}
+              </option>
+            ))
+          )}
+        </select>
+      </label>
+      {(feeTypesForAssign.data?.items.length ?? 0) === 0 && (
+        <Link
+          to="/finance/types-de-frais"
+          className="block text-xs font-semibold text-school-grape underline"
+        >
+          Configurer les types de frais
+        </Link>
+      )}
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs text-school-inkmuted">Montant dû (MAD) *</span>
+        <input
+          required
+          type="number"
+          min={0.01}
+          step={0.01}
+          value={assignFeeAmount}
+          onChange={(e) => setAssignFeeAmount(e.target.value)}
+          className="school-input w-full"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={assignFee.isPending || feeTypesForAssign.isLoading}
+        className="school-btn-secondary w-full text-sm"
+      >
+        {assignFee.isPending ? 'Ajout…' : 'Assigner ce frais'}
+      </button>
+    </form>
+  )
+
   function formatDue(d?: string | null): string {
     if (!d) return '—'
     const dt = new Date(d)
@@ -456,79 +524,7 @@ export function PaymentsListPage() {
                             'scolaire sélectionnée'}
                           .
                         </p>
-                        {canManage && paymentSchoolYearId > 0 && (
-                          <form
-                            className="space-y-2 rounded-xl border border-school-line bg-white p-3"
-                            onSubmit={(e) => {
-                              e.preventDefault()
-                              setAssignFeeErr(null)
-                              assignFee.mutate()
-                            }}
-                          >
-                            <p className="text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
-                              Assigner un frais ici
-                            </p>
-                            {assignFeeErr && (
-                              <p className="text-xs text-red-600">{assignFeeErr}</p>
-                            )}
-                            <label className="block text-sm">
-                              <span className="mb-1 block text-xs text-school-inkmuted">
-                                Type de frais *
-                              </span>
-                              <select
-                                required
-                                value={assignFeeTypeId || ''}
-                                onChange={(e) => {
-                                  const id = Number(e.target.value)
-                                  setAssignFeeTypeId(id)
-                                  const ft = feeTypesForAssign.data?.items.find((t) => t.id === id)
-                                  if (ft?.default_amount) setAssignFeeAmount(ft.default_amount)
-                                }}
-                                className="school-select w-full text-sm"
-                              >
-                                <option value="">— Choisir —</option>
-                                {(feeTypesForAssign.data?.items.length ?? 0) === 0 ? (
-                                  <option value="">Aucun type actif — créez-en dans Types de frais</option>
-                                ) : (
-                                  feeTypesForAssign.data?.items.map((ft) => (
-                                    <option key={ft.id} value={ft.id}>
-                                      {ft.name} — {formatMad(ft.default_amount)}
-                                    </option>
-                                  ))
-                                )}
-                              </select>
-                            </label>
-                            {(feeTypesForAssign.data?.items.length ?? 0) === 0 && (
-                              <Link
-                                to="/finance/types-de-frais"
-                                className="block text-xs font-semibold text-school-grape underline"
-                              >
-                                Configurer les types de frais
-                              </Link>
-                            )}
-                            <label className="block text-sm">
-                              <span className="mb-1 block text-xs text-school-inkmuted">
-                                Montant dû (MAD) *
-                              </span>
-                              <input
-                                required
-                                type="number"
-                                min={0.01}
-                                step={0.01}
-                                value={assignFeeAmount}
-                                onChange={(e) => setAssignFeeAmount(e.target.value)}
-                                className="school-input w-full"
-                              />
-                            </label>
-                            <button
-                              type="submit"
-                              disabled={assignFee.isPending || feeTypesForAssign.isLoading}
-                              className="school-btn-secondary w-full text-sm"
-                            >
-                              {assignFee.isPending ? 'Ajout…' : 'Assigner ce frais'}
-                            </button>
-                          </form>
-                        )}
+                        {canManage && paymentSchoolYearId > 0 && assignFeeForm}
                         {canManage && paymentSchoolYearId <= 0 && (
                           <p className="text-xs text-amber-800">
                             Sélectionnez une année scolaire en haut de la page pour assigner des frais.
@@ -595,6 +591,14 @@ export function PaymentsListPage() {
                       <p className="mt-2 text-xs text-amber-800">
                         Tous les frais sont soldés ; sélectionnez un autre élève ou assignez de nouveaux frais.
                       </p>
+                    )}
+                    {studentFees.length > 0 && canManage && paymentSchoolYearId > 0 && (
+                      <div className="mt-3">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                          Ajouter un autre frais (scolarité, cantine, transport…)
+                        </p>
+                        {assignFeeForm}
+                      </div>
                     )}
                   </div>
                 )}
