@@ -94,6 +94,8 @@ export function TeacherDetailPage() {
   const [syAssign, setSyAssign] = useState(0)
   const [weeklyHours, setWeeklyHours] = useState('')
   const [assignErr, setAssignErr] = useState<string | null>(null)
+  const [editAssignId, setEditAssignId] = useState<number | null>(null)
+  const [editHours, setEditHours] = useState('')
   const [docType, setDocType] = useState('contract')
   const [docErr, setDocErr] = useState<string | null>(null)
 
@@ -200,6 +202,20 @@ export function TeacherDetailPage() {
     mutationFn: (aid: number) => teachersApi.deleteTeacherAssignment(aid),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['teacher-assignments'] }),
+  })
+
+  const updateAssign = useMutation({
+    mutationFn: (vars: { id: number; weekly_hours: number | null }) =>
+      teachersApi.updateTeacherAssignment(vars.id, {
+        weekly_hours: vars.weekly_hours,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-assignments'] })
+      setAssignErr(null)
+      setEditAssignId(null)
+      setEditHours('')
+    },
+    onError: (e: Error) => setAssignErr(e.message),
   })
 
   const uploadDoc = useMutation({
@@ -532,20 +548,82 @@ export function TeacherDetailPage() {
                         {a.school_class?.name ?? '—'}
                       </td>
                       <td>{a.subject?.name ?? '—'}</td>
-                      <td className="tabular-nums">{a.weekly_hours ?? '—'}</td>
+                      <td className="tabular-nums">
+                        {editAssignId === a.id ? (
+                          <input
+                            type="number"
+                            step="0.5"
+                            min={0}
+                            value={editHours}
+                            onChange={(e) => setEditHours(e.target.value)}
+                            className="school-input w-24 py-1"
+                            autoFocus
+                          />
+                        ) : (
+                          (a.weekly_hours ?? '—')
+                        )}
+                      </td>
                       {canManage && (
                         <td className="text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm('Retirer cette affectation ?')) {
-                                removeAssign.mutate(a.id)
-                              }
-                            }}
-                            className="text-xs font-bold text-[#B23A2E] hover:underline"
-                          >
-                            Supprimer
-                          </button>
+                          {editAssignId === a.id ? (
+                            <div className="flex justify-end gap-3">
+                              <button
+                                type="button"
+                                disabled={updateAssign.isPending}
+                                onClick={() =>
+                                  updateAssign.mutate({
+                                    id: a.id,
+                                    weekly_hours: editHours
+                                      ? parseFloat(editHours)
+                                      : null,
+                                  })
+                                }
+                                className="text-xs font-bold text-school-leafdeep hover:underline disabled:opacity-50"
+                              >
+                                Enregistrer
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditAssignId(null)
+                                  setEditHours('')
+                                  setAssignErr(null)
+                                }}
+                                className="text-xs font-bold text-school-inkmuted hover:underline"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex justify-end gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditAssignId(a.id)
+                                  setEditHours(
+                                    a.weekly_hours != null
+                                      ? String(a.weekly_hours)
+                                      : ''
+                                  )
+                                  setAssignErr(null)
+                                }}
+                                className="text-xs font-bold text-school-skydeep hover:underline"
+                              >
+                                Modifier
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm('Retirer cette affectation ?')) {
+                                    removeAssign.mutate(a.id)
+                                  }
+                                }}
+                                className="text-xs font-bold text-[#B23A2E] hover:underline"
+                              >
+                                Supprimer
+                              </button>
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -563,34 +641,12 @@ export function TeacherDetailPage() {
             emoji="🚪"
             title="Classes"
             iconClassName="bg-school-mist text-school-skydeep"
-            actions={
-              canManage ? (
-                <button
-                  type="button"
-                  onClick={() => setTab('matieres')}
-                  className="school-btn-primary"
-                >
-                  + Nouvelle affectation
-                </button>
-              ) : undefined
-            }
           />
           {distinctClasses.length === 0 ? (
             <EmptyState
               emoji="🚪"
               title="Aucune classe"
               hint="Cet enseignant n'a pas encore d'affectation."
-              action={
-                canManage ? (
-                  <button
-                    type="button"
-                    onClick={() => setTab('matieres')}
-                    className="school-btn-primary"
-                  >
-                    + Nouvelle affectation
-                  </button>
-                ) : undefined
-              }
             />
           ) : (
             <ul className="flex flex-wrap gap-2">
