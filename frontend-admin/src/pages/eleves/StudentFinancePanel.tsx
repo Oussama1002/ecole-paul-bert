@@ -119,8 +119,13 @@ export function StudentFinancePanel({
   const { data: feeTypes } = useQuery({
     queryKey: ['fee-types-active'],
     queryFn: () => financeApi.fetchFeeTypes({ is_active: true, per_page: 100 }),
-    enabled: canManage && paymentModalOpen,
+    enabled: canManage,
   })
+
+  const allFees = useMemo(
+    () => (feeAssignments?.items ?? []).filter((f) => f.status !== 'cancelled'),
+    [feeAssignments?.items]
+  )
 
   const payableFees = useMemo(
     () =>
@@ -261,6 +266,131 @@ export function StudentFinancePanel({
           Configurer les types de frais
         </button>
       </div>
+
+      <section className="school-section">
+        <div className="school-section-title mb-4">
+          <span className="school-section-title-icon bg-school-sunsoft/60">🧾</span>
+          Frais de l&apos;élève
+          {allFees.length > 0 && (
+            <span className="school-chip ml-2">{allFees.length}</span>
+          )}
+        </div>
+
+        {allFees.length === 0 ? (
+          <EmptyState
+            emoji="🧾"
+            title="Aucun frais assigné"
+            hint="Assignez un type de frais (inscription, scolarité, transport…) ci-dessous."
+          />
+        ) : (
+          <ul className="mb-4 space-y-2">
+            {allFees.map((f) => (
+              <li
+                key={f.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-school-line bg-white px-4 py-2.5 text-sm"
+              >
+                <span className="font-semibold text-school-ink">
+                  {f.fee_type?.name ?? `Frais #${f.id}`}
+                </span>
+                <span className="text-xs text-school-inkmuted">
+                  Total {formatMad(f.amount_due)} · Payé {formatMad(f.amount_paid)} · Reste{' '}
+                  <strong
+                    className={
+                      (parseFloat(f.balance) || 0) > 0.001
+                        ? 'text-[#B23A2E]'
+                        : 'text-school-leafdeep'
+                    }
+                  >
+                    {formatMad(f.balance)}
+                  </strong>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {canManage && (
+          <form
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault()
+              setNewFeeErr(null)
+              if (!schoolYearId) {
+                setNewFeeErr('Aucune année scolaire active sélectionnée.')
+                return
+              }
+              if (!newFeeTypeId || !newFeeAmount) {
+                setNewFeeErr('Choisissez un type et un montant.')
+                return
+              }
+              addFeeAssignment.mutate()
+            }}
+            className="space-y-3 rounded-2xl border-2 border-school-sunsoft/50 bg-school-sunsoft/20 p-4"
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-school-inkmuted">
+              Assigner un type de frais à l&apos;élève
+            </p>
+            {newFeeErr && <p className="text-xs text-red-600">{newFeeErr}</p>}
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Field label="Type de frais">
+                <select
+                  required
+                  value={newFeeTypeId || ''}
+                  onChange={(e) => onFeeTypeChange(Number(e.target.value))}
+                  className="school-select text-sm"
+                >
+                  <option value="">— Choisir —</option>
+                  {(feeTypes?.items.length ?? 0) === 0 ? (
+                    <option value="" disabled>
+                      Aucun type actif
+                    </option>
+                  ) : (
+                    feeTypes?.items.map((ft) => (
+                      <option key={ft.id} value={ft.id}>
+                        {ft.name} — {formatMad(ft.default_amount)}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </Field>
+              <Field label="Montant dû (MAD)">
+                <input
+                  required
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={newFeeAmount}
+                  onChange={(e) => setNewFeeAmount(e.target.value)}
+                  className="school-input"
+                />
+              </Field>
+              <Field label="Échéance (optionnel)">
+                <input
+                  type="date"
+                  value={newFeeDueDate}
+                  onChange={(e) => setNewFeeDueDate(e.target.value)}
+                  className="school-input"
+                />
+              </Field>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={goToFeeTypesSetup}
+                className="text-xs font-semibold text-school-grape underline"
+              >
+                Gérer les types de frais
+              </button>
+              <button
+                type="submit"
+                disabled={addFeeAssignment.isPending}
+                className="school-btn-primary text-sm disabled:opacity-60"
+              >
+                {addFeeAssignment.isPending ? 'Ajout…' : 'Assigner ce frais'}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
 
       <section className="school-section">
         <div className="school-section-title mb-4">
