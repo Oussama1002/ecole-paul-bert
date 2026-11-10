@@ -17,6 +17,8 @@ export function navEmoji(to: string): string {
     '/emploi-du-temps': '📅',
     '/utilisateurs': '👥',
     '/communications/annonces': '📢',
+    '/communications/preferences-notifications': '🔔',
+    '/communications/journal-notifications': '📨',
     '/communications/audit': '🔍',
     '/parametrage/annees-scolaires': '📆',
     '/parametrage/niveaux': '🔢',

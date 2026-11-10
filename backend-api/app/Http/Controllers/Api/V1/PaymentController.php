@@ -11,8 +11,10 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\AuditLogger;
 use App\Services\DocumentStorageService;
+use App\Notifications\PaymentReceived;
 use App\Services\FinanceCalculatorService;
 use App\Services\FinanceNumberService;
+use App\Services\GuardianNotifier;
 use App\Services\PaymentInvoiceService;
 use App\Services\ReceiptService;
 use App\Services\SystemNotificationDispatcher;
@@ -31,7 +33,8 @@ class PaymentController extends Controller
         private PaymentInvoiceService $paymentInvoices,
         private DocumentStorageService $documentStorage,
         private AuditLogger $audit,
-        private SystemNotificationDispatcher $notify
+        private SystemNotificationDispatcher $notify,
+        private GuardianNotifier $guardianNotifier
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -202,6 +205,27 @@ class PaymentController extends Controller
             $actorId > 0 ? $actorId : null
         );
         } catch (\Throwable) {}
+
+        // Notify the student's guardian(s) that a payment was received.
+        try {
+            $student = $pay->student;
+            $studentName = $student
+                ? trim((string) ($student->first_name.' '.$student->last_name))
+                : 'Élève';
+            $this->guardianNotifier->notifyStudentGuardians(
+                (int) $pay->student_id,
+                new PaymentReceived(
+                    studentName: $studentName,
+                    amount: (float) $pay->amount,
+                    date: $pay->payment_date?->format('Y-m-d') ?? now()->toDateString(),
+                    remainingBalance: (float) $feeAssignment->balance,
+                    reference: $pay->payment_reference,
+                    studentId: (int) $pay->student_id,
+                )
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('payment.guardian_notify failed: '.$e->getMessage());
+        }
 
         return ApiResponse::success($this->toDto($pay), 'Paiement enregistré.', 201);
     }

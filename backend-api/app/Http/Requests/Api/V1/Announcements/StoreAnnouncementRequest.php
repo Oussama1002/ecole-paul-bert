@@ -28,6 +28,8 @@ class StoreAnnouncementRequest extends FormRequest
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'priority' => ['nullable', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'status' => ['nullable', Rule::in(['draft', 'published', 'archived'])],
+            'notify_parents' => ['nullable', 'boolean'],
+            'notify_staff' => ['nullable', 'boolean'],
         ];
     }
 }

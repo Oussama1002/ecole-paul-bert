@@ -8,6 +8,8 @@ use App\Http\Requests\Api\V1\ReportCards\IndexReportCardRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\Document;
 use App\Models\ReportCard;
+use App\Notifications\ReportCardAvailable;
+use App\Services\GuardianNotifier;
 use App\Services\ReportCardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +18,8 @@ use Illuminate\Support\Facades\Storage;
 class ReportCardController extends Controller
 {
     public function __construct(
-        private ReportCardService $svc
+        private ReportCardService $svc,
+        private GuardianNotifier $guardianNotifier
     ) {}
 
     public function index(IndexReportCardRequest $request): JsonResponse
@@ -81,7 +84,43 @@ class ReportCardController extends Controller
     {
         $this->svc->publish($reportCard, $request->user()?->id);
 
+        $this->dispatchReportCardAvailable($reportCard);
+
         return ApiResponse::success($this->toDto($reportCard->fresh()), 'Bulletin publié.');
+    }
+
+    /**
+     * Notify the student's guardian(s) that a report card has been published.
+     */
+    private function dispatchReportCardAvailable(ReportCard $reportCard): void
+    {
+        try {
+            $reportCard->loadMissing([
+                'student:id,first_name,last_name',
+                'schoolClass:id,name',
+                'evaluationPeriod:id,name',
+            ]);
+
+            $student = $reportCard->student;
+            if (! $student) {
+                return;
+            }
+            $studentName = trim(($student->first_name ?? '').' '.($student->last_name ?? ''));
+            $termName = $reportCard->evaluationPeriod?->name ?? 'la période en cours';
+
+            $this->guardianNotifier->notifyStudentGuardians(
+                (int) $reportCard->student_id,
+                new ReportCardAvailable(
+                    studentName: $studentName,
+                    termName: $termName,
+                    className: $reportCard->schoolClass?->name,
+                    studentId: (int) $reportCard->student_id,
+                    reportCardId: (int) $reportCard->id,
+                )
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('reportcard.guardian_notify failed: '.$e->getMessage());
+        }
     }
 
     public function archive(Request $request, ReportCard $reportCard): JsonResponse

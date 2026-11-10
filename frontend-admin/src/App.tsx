@@ -52,6 +52,8 @@ import { AnnouncementFormPage } from './pages/communications/AnnouncementFormPag
 import { AnnouncementsListPage } from './pages/communications/AnnouncementsListPage'
 import { AuditLogsPage } from './pages/communications/AuditLogsPage'
 import { NotificationsCenterPage } from './pages/communications/NotificationsCenterPage'
+import { NotificationPreferencesPage } from './pages/communications/NotificationPreferencesPage'
+import { NotificationLogsPage } from './pages/communications/NotificationLogsPage'
 import { UserFormPage } from './pages/UserFormPage'
 import { UsersListPage } from './pages/UsersListPage'
 import { RolloverWizardPage } from './pages/admin/RolloverWizardPage'
@@ -341,6 +343,24 @@ export default function App() {
                   <RequireAdvancedMode>
                     <RequirePermission permission="audit_logs.view">
                       <AuditLogsPage />
+                    </RequirePermission>
+                  </RequireAdvancedMode>
+                }
+              />
+              <Route
+                path="communications/preferences-notifications"
+                element={
+                  <RequireAdvancedMode>
+                    <NotificationPreferencesPage />
+                  </RequireAdvancedMode>
+                }
+              />
+              <Route
+                path="communications/journal-notifications"
+                element={
+                  <RequireAdvancedMode>
+                    <RequirePermission permission="notifications.view">
+                      <NotificationLogsPage />
                     </RequirePermission>
                   </RequireAdvancedMode>
                 }

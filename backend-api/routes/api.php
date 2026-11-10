@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\InternalNotificationController;
 use App\Http\Controllers\Api\V1\LevelController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\NotificationPreferenceController;
 use App\Http\Controllers\Api\V1\ExpenseCategoryController;
 use App\Http\Controllers\Api\V1\FeeTypeController;
 use App\Http\Controllers\Api\V1\FeeAssignmentController;
@@ -209,6 +211,12 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:notifications.view')->get('/internal-notifications', [InternalNotificationController::class, 'index']);
         Route::middleware('permission:notifications.view')->post('/internal-notifications/read-all', [InternalNotificationController::class, 'markAllRead']);
         Route::middleware('permission:notifications.view')->post('/internal-notifications/{internalNotification}/read', [InternalNotificationController::class, 'markRead']);
+
+        // Email / SMS / in-app notification system.
+        Route::get('/notification-preferences', [NotificationPreferenceController::class, 'index']);
+        Route::patch('/notification-preferences', [NotificationPreferenceController::class, 'update']);
+        Route::middleware('permission:notifications.view')->get('/notification-logs', [NotificationController::class, 'logs']);
+        Route::middleware('permission:notifications.view')->post('/notifications/test', [NotificationController::class, 'test']);
 
         Route::middleware('permission:announcements.view')->get('/announcements', [AnnouncementController::class, 'index']);
         Route::middleware('permission:announcements.view')->get('/announcements/{announcement}', [AnnouncementController::class, 'show']);

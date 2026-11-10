@@ -23,6 +23,8 @@ class UpdateAnnouncementRequest extends FormRequest
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'priority' => ['nullable', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'status' => ['sometimes', Rule::in(['draft', 'published', 'archived'])],
+            'notify_parents' => ['nullable', 'boolean'],
+            'notify_staff' => ['nullable', 'boolean'],
         ];
     }
 }

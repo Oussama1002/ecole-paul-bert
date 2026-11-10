@@ -13,7 +13,11 @@ use App\Models\AttendanceJustificationLog;
 use App\Models\AttendanceRecord;
 use App\Models\Enrollment;
 use App\Models\SchoolClass;
+use App\Models\Student;
+use App\Notifications\AbsenceAlert;
+use App\Notifications\LateAlert;
 use App\Services\AttendanceAlertService;
+use App\Services\GuardianNotifier;
 use App\Services\TeacherScopeService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +31,8 @@ class AttendanceRecordController extends Controller
 {
     public function __construct(
         private AttendanceAlertService $alertService,
-        private TeacherScopeService $teacherScope
+        private TeacherScopeService $teacherScope,
+        private GuardianNotifier $guardianNotifier
     ) {}
 
     public function index(IndexAttendanceRecordRequest $request): JsonResponse
@@ -179,6 +184,7 @@ class AttendanceRecordController extends Controller
         }
 
         $this->alertService->handleAfterSave($record);
+        $this->dispatchGuardianAttendanceAlert($record);
 
         return ApiResponse::success($this->toDto($record), 'Présence enregistrée.', 201);
     }
@@ -290,6 +296,7 @@ class AttendanceRecordController extends Controller
 
         foreach ($saved as $r) {
             $this->alertService->handleAfterSave($r);
+            $this->dispatchGuardianAttendanceAlert($r);
         }
 
         return ApiResponse::success([
@@ -369,6 +376,37 @@ class AttendanceRecordController extends Controller
             'absent_unjustified' => $absentUnjustified,
             'late_minutes_total' => (int) $lateMinutes,
         ], 'Statistiques absences.');
+    }
+
+    /**
+     * Notify the student's guardian(s) when a NEW absence/late record is
+     * created. Updates and justifications are skipped (not recently created)
+     * to avoid sending duplicate alerts for the same event.
+     */
+    private function dispatchGuardianAttendanceAlert(AttendanceRecord $record): void
+    {
+        if (! $record->wasRecentlyCreated) {
+            return;
+        }
+        if (! in_array($record->attendance_status, ['absent', 'late'], true)) {
+            return;
+        }
+
+        $student = Student::query()->find((int) $record->student_id);
+        if (! $student) {
+            return;
+        }
+        $class = SchoolClass::query()->find((int) $record->class_id);
+
+        $studentName = trim(($student->first_name ?? '').' '.($student->last_name ?? ''));
+        $className = $class?->name ?? '—';
+        $date = $record->attendance_date?->format('Y-m-d') ?? now()->toDateString();
+
+        $notification = $record->attendance_status === 'absent'
+            ? new AbsenceAlert($studentName, $className, $date, (int) $student->id)
+            : new LateAlert($studentName, $className, $date, $record->minutes_late !== null ? (int) $record->minutes_late : null, (int) $student->id);
+
+        $this->guardianNotifier->notifyStudentGuardians((int) $student->id, $notification);
     }
 
     private function assertAttendanceRecordVisible(Request $request, AttendanceRecord $attendanceRecord): void

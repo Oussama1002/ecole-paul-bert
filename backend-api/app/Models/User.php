@@ -68,6 +68,23 @@ class User extends Authenticatable implements CanResetPasswordContract
         return $this->hasOne(Teacher::class);
     }
 
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationPreference::class);
+    }
+
+    /**
+     * Route SMS notifications to the user's phone (normalized to
+     * international form using the configured default country code).
+     */
+    public function routeNotificationForSms(): ?string
+    {
+        return Guardian::normalizePhone(
+            (string) $this->phone,
+            (string) config('sms.default_country_code', '')
+        );
+    }
+
     public function userRolePermissions(): HasMany
     {
         return $this->hasMany(UserRolePermission::class);

@@ -60,6 +60,8 @@ const groups: NavGroup[] = [
     emoji: '📢',
     items: [
       { to: '/communications/annonces', label: 'Annonces', emoji: '📢', permission: 'announcements.view' },
+      { to: '/communications/preferences-notifications', label: 'Préférences notifications', emoji: '🔔' },
+      { to: '/communications/journal-notifications', label: 'Journal notifications', emoji: '📨', permission: 'notifications.view' },
       { to: '/communications/audit',    label: 'Audit',    emoji: '🔍', permission: 'audit_logs.view' },
     ],
   },

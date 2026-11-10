@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Announcements\UpdateAnnouncementRequest;
 use App\Http\Responses\ApiResponse;
 use App\Models\Announcement;
 use App\Models\User;
+use App\Services\AnnouncementNotifier;
 use App\Services\AuditLogger;
 use App\Services\SystemNotificationDispatcher;
 use App\Services\TeacherScopeService;
@@ -20,7 +21,8 @@ class AnnouncementController extends Controller
     public function __construct(
         private AuditLogger $audit,
         private SystemNotificationDispatcher $notify,
-        private TeacherScopeService $teacherScope
+        private TeacherScopeService $teacherScope,
+        private AnnouncementNotifier $announcementNotifier
     ) {}
 
     public function index(IndexAnnouncementRequest $request): JsonResponse
@@ -86,6 +88,9 @@ class AnnouncementController extends Controller
     public function store(StoreAnnouncementRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $notifyParents = (bool) ($data['notify_parents'] ?? false);
+        $notifyStaff = (bool) ($data['notify_staff'] ?? false);
+        unset($data['notify_parents'], $data['notify_staff']);
         if (! Schema::hasColumn('announcements', 'status')) {
             unset($data['status']);
         } else {
@@ -105,6 +110,7 @@ class AnnouncementController extends Controller
 
         if (($ann->status ?? '') === 'published') {
             $this->broadcastPublished($ann);
+            $this->announcementNotifier->broadcast($ann, $notifyParents, $notifyStaff);
         }
 
         return ApiResponse::success($this->toDto($ann), 'Annonce créée.', 201);
@@ -114,6 +120,9 @@ class AnnouncementController extends Controller
     {
         $before = $announcement->getAttributes();
         $data = $request->validated();
+        $notifyParents = (bool) ($data['notify_parents'] ?? false);
+        $notifyStaff = (bool) ($data['notify_staff'] ?? false);
+        unset($data['notify_parents'], $data['notify_staff']);
         if (array_key_exists('audience_type', $data) && ($data['audience_type'] ?? '') !== 'class_specific') {
             $data['class_id'] = null;
         }
@@ -131,6 +140,7 @@ class AnnouncementController extends Controller
 
         if ($announcement->wasChanged('status') && $announcement->status === 'published') {
             $this->broadcastPublished($announcement);
+            $this->announcementNotifier->broadcast($announcement, $notifyParents, $notifyStaff);
         }
 
         return ApiResponse::success($this->toDto($announcement->fresh()), 'Annonce mise à jour.');
@@ -158,6 +168,11 @@ class AnnouncementController extends Controller
 
         $this->audit->log($request->user(), 'announcement.published', $announcement, null, ['status' => 'published']);
         $this->broadcastPublished($announcement);
+        $this->announcementNotifier->broadcast(
+            $announcement,
+            (bool) $request->boolean('notify_parents'),
+            (bool) $request->boolean('notify_staff')
+        );
 
         return ApiResponse::success($this->toDto($announcement->fresh()), 'Annonce publiée.');
     }

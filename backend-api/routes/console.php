@@ -7,6 +7,9 @@ use App\Support\Qa\ClientFlowRunner;
 
 Schedule::command('finance:fee-payment-reminders')->hourly();
 
+// Daily parent-facing payment reminders (email/SMS) at 08:00.
+Schedule::command('app:send-payment-reminders')->dailyAt('08:00');
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();

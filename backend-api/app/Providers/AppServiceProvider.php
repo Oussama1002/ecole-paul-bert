@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use App\Listeners\LogNotificationToDatabase;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Events\NotificationFailed;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -37,6 +41,9 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(120)->by((string) $key);
         });
+
+        Event::listen(NotificationSent::class, [LogNotificationToDatabase::class, 'handleSent']);
+        Event::listen(NotificationFailed::class, [LogNotificationToDatabase::class, 'handleFailed']);
 
         ResetPassword::createUrlUsing(function (User $user, string $token) {
             $base = rtrim((string) config('app.frontend_url'), '/');

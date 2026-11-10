@@ -42,6 +42,8 @@ export function AnnouncementFormModal({
     simpleMode ? 'published' : 'draft'
   )
   const [publishNow, setPublishNow] = useState(true)
+  const [notifyParents, setNotifyParents] = useState(false)
+  const [notifyStaff, setNotifyStaff] = useState(false)
 
   useEffect(() => {
     if (!existing) return
@@ -72,6 +74,8 @@ export function AnnouncementFormModal({
         start_date: simpleMode ? null : startDate || null,
         end_date: simpleMode ? null : endDate || null,
         status: effectiveStatus,
+        notify_parents: notifyParents,
+        notify_staff: notifyStaff,
       }
       if (isEdit) {
         return announcementsApi.updateAnnouncement(announcementId as number, payload)
@@ -175,6 +179,29 @@ export function AnnouncementFormModal({
                     <option value="archived">Archivé</option>
                   </select>
                 </label>
+                <fieldset className="rounded-2xl border border-school-border/70 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-school-inkmuted">
+                    Notifications externes (à la publication)
+                  </legend>
+                  <label className="flex items-center gap-2 text-sm text-school-ink">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={notifyParents}
+                      onChange={(e) => setNotifyParents(e.target.checked)}
+                    />
+                    Notifier les parents par email/SMS
+                  </label>
+                  <label className="mt-2 flex items-center gap-2 text-sm text-school-ink">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={notifyStaff}
+                      onChange={(e) => setNotifyStaff(e.target.checked)}
+                    />
+                    Notifier le personnel
+                  </label>
+                </fieldset>
               </>
             )}
             {simpleMode && (

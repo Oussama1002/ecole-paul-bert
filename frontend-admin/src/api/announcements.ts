@@ -50,6 +50,8 @@ export async function createAnnouncement(payload: {
   end_date?: string | null
   priority?: string
   status?: string
+  notify_parents?: boolean
+  notify_staff?: boolean
 }): Promise<Announcement> {
   const { data } = await apiClient.post<Ok<Announcement> | Err>(
     '/v1/announcements',
@@ -70,6 +72,8 @@ export async function updateAnnouncement(
     end_date: string | null
     priority: string
     status: string
+    notify_parents: boolean
+    notify_staff: boolean
   }>
 ): Promise<Announcement> {
   const { data } = await apiClient.patch<Ok<Announcement> | Err>(
