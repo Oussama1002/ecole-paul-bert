@@ -151,11 +151,6 @@ export function StudentsListPage() {
   const activeOnPage = data?.items.filter((s) => s.status === 'active').length ?? 0
   const pendingOnPage = data?.items.filter((s) => s.status === 'pending').length ?? 0
 
-  const selectedYearName =
-    schoolYearId !== '' ? years?.items.find((y) => y.id === schoolYearId)?.name : null
-  const selectedClassName =
-    classId !== '' ? classes?.items.find((c) => c.id === classId)?.name : null
-
   return (
     <div className="space-y-5">
       {showNewModal && (
@@ -237,42 +232,6 @@ export function StudentsListPage() {
           </>
         }
       />
-
-      {/* Hero */}
-      <div className="school-hero !from-school-skydeep !via-school-grape !to-school-bubblegum">
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-white/70">
-              Effectif scolaire
-            </p>
-            <p className="mt-1 font-display text-xl font-bold sm:text-2xl">
-              {data ? `${data.meta.total} élève(s)` : 'Liste des élèves'}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {selectedYearName && (
-                <span className="school-chip-on-dark">{selectedYearName}</span>
-              )}
-              {selectedClassName && (
-                <span className="school-chip-on-dark">🏫 {selectedClassName}</span>
-              )}
-              {status && (
-                <span className="school-chip-on-dark">
-                  {statusLabels[status] ?? status}
-                </span>
-              )}
-              {debounced && (
-                <span className="school-chip-on-dark">🔍 « {debounced} »</span>
-              )}
-            </div>
-          </div>
-          {data && (
-            <div className="rounded-2xl border border-white/30 bg-white/15 px-4 py-3 text-center backdrop-blur">
-              <p className="font-display text-3xl font-bold">{data.meta.total}</p>
-              <p className="text-xs font-semibold text-white/80">résultat(s)</p>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* KPI tiles */}
       {data && data.meta.total > 0 && (
